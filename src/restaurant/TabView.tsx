@@ -284,26 +284,28 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
             {paid.length > 0 ? (
               <p className="text-sm text-text-2">{`${paid.length} kalem ödendi.`}</p>
             ) : null}
-            <div className="flex items-baseline justify-between border-t border-line-strong pt-3">
-              <span className="font-semibold">Kalan</span>
-              <span aria-label="Kalan tutar" className="font-mono text-2xl font-bold">
-                {formatTRY(bill?.total ?? 0)}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="primary"
-                size="lg"
-                disabled={fresh.length === 0}
-                onClick={() => void send()}
-              >
-                {`Gönder (${fresh.length})`}
-              </Button>
-              <Button size="lg" disabled={!session.can('sell')} onClick={() => setDialog('pay')}>
-                Hesap
-              </Button>
-            </div>
           </section>
+        </div>
+        {/* Always in reach, on a phone too: the menu can be long, the total and sending are not. */}
+        <div className="sticky bottom-0 z-20 -mx-5 -mb-4 flex items-center gap-2 border-t border-line-strong bg-surface px-5 py-3 sm:gap-3">
+          <span className="hidden font-semibold sm:inline">Kalan</span>
+          <span
+            aria-label="Kalan tutar"
+            className="mr-auto font-mono text-xl font-bold sm:text-2xl"
+          >
+            {formatTRY(bill?.total ?? 0)}
+          </span>
+          <Button
+            variant="primary"
+            size="lg"
+            disabled={fresh.length === 0}
+            onClick={() => void send()}
+          >
+            {`Gönder (${fresh.length})`}
+          </Button>
+          <Button size="lg" disabled={!session.can('sell')} onClick={() => setDialog('pay')}>
+            Hesap
+          </Button>
         </div>
       </AppShell>
       {voiding ? (

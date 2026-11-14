@@ -60,7 +60,11 @@ export function AppShell({
             <span className="text-sm text-muted">{deviceName}</span>
           </div>
         </div>
-        <nav aria-label="Ana menü" className="flex flex-wrap gap-1">
+        {/* On a phone the menu is one row that scrolls sideways, not four rows over the screen. */}
+        <nav
+          aria-label="Ana menü"
+          className="-mx-5 flex w-[calc(100%+2.5rem)] gap-1 overflow-x-auto px-5 whitespace-nowrap [scrollbar-width:none] md:mx-0 md:w-auto md:flex-wrap md:overflow-visible md:px-0"
+        >
           {NAV_ITEMS.filter((item) => {
             const needed = ROUTE_PERMISSIONS[item.key];
             return needed === undefined || session.can(needed);

@@ -19,6 +19,7 @@ import {
   sendTab,
   setComplimentary,
   tabBill,
+  tabTitle,
   voidItem,
 } from './restaurant';
 import { recentSales } from './sales';
@@ -63,6 +64,22 @@ describe('dining tables', () => {
     expect((await listDiningTables(db)).map((table) => table.name)).toEqual(['S2', 'S1']);
     await expect(createDiningTable(db, { name: ' ', area: 'Salon' }, at)).rejects.toThrow(
       RangeError,
+    );
+  });
+});
+
+describe('names on the floor', () => {
+  it('keeps the areas in the order they were added, and calls a numbered table “Masa”', async () => {
+    await createDiningTable(db, { name: '1', area: 'Salon' }, at);
+    await createDiningTable(db, { name: 'B1', area: 'Bahçe' }, at);
+    await createDiningTable(db, { name: '2', area: 'Salon' }, at);
+    expect((await listDiningTables(db)).map((table) => table.name)).toEqual(['1', '2', 'B1']);
+    const [one, , garden] = await listDiningTables(db);
+    expect(await tabTitle(db, await openTab(db, { tableId: one!.id, ...waiter }, at))).toBe(
+      'Masa 1',
+    );
+    expect(await tabTitle(db, await openTab(db, { tableId: garden!.id, ...waiter }, at))).toBe(
+      'B1',
     );
   });
 });

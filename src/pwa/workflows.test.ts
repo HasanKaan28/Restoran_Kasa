@@ -41,10 +41,10 @@ describe('workflows', () => {
     expect(release).toContain('Ayarlar → Masalar');
   });
 
-  it('publishes the web app from a v2 tag or a run started by hand', () => {
+  it('publishes the web app from a version tag or a run started by hand', () => {
     const deploy = job(readFileSync(`${DIR}/v2-release.yml`, 'utf8'), 'deploy-pages');
     expect(deploy).toMatch(/if: .*inputs\.deploy_pages/);
-    expect(deploy).toMatch(/if: .*startsWith\(github\.ref, 'refs\/tags\/v2\.'\)/);
+    expect(deploy).toMatch(/if: .*startsWith\(github\.ref, 'refs\/tags\/v'\)/);
   });
 
   it('builds every package against the server', () => {

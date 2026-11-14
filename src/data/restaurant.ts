@@ -72,10 +72,19 @@ export async function archiveDiningTable(db: MarketDb, id: string, at: Date): Pr
   await patch(db, 'diningTables', id, { archivedAt: at.toISOString() }, at);
 }
 
-/** The tables in use, by area and then by the order they were added. */
+/** The tables in use, area by area in the order the areas were first added, then by addition. */
 export async function listDiningTables(db: MarketDb): Promise<DiningTableRecord[]> {
   const tables = await db.diningTables.filter((table) => !table.archivedAt).toArray();
-  return tables.sort((a, b) => byName.compare(a.area, b.area) || a.sort - b.sort);
+  const firstOf = new Map<string, number>();
+  for (const table of tables) {
+    firstOf.set(table.area, Math.min(firstOf.get(table.area) ?? Infinity, table.sort));
+  }
+  return tables.sort(
+    (a, b) =>
+      (firstOf.get(a.area) ?? 0) - (firstOf.get(b.area) ?? 0) ||
+      byName.compare(a.area, b.area) ||
+      a.sort - b.sort,
+  );
 }
 
 // --- Tabs ---------------------------------------------------------------------------------------
@@ -370,7 +379,9 @@ export async function kitchenTickets(db: MarketDb, station: Station): Promise<Ki
 /** A tab's name as people say it: its table's, or the takeaway order's. */
 export async function tabTitle(db: MarketDb, tab: TabRecord): Promise<string> {
   if (tab.tableId) {
-    return (await db.diningTables.get(tab.tableId))?.name ?? 'Masa';
+    const name = (await db.diningTables.get(tab.tableId))?.name ?? '';
+    // "3" alone reads as a count; "Masa 3" is how it is said.
+    return /^\d+$/.test(name) ? `Masa ${name}` : name || 'Masa';
   }
   return tab.label ?? 'Paket';
 }

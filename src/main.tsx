@@ -29,6 +29,9 @@ createRoot(container).render(
 // Development only: `await seedDemo()` in the console fills an empty market for screenshots.
 if (import.meta.env.DEV) {
   void import('./demo/seedDemo').then(({ seedDemo }) => Object.assign(window, { seedDemo }));
+  void import('./demo/seedRestaurant').then(({ seedRestaurant }) =>
+    Object.assign(window, { seedRestaurant }),
+  );
 }
 
 void registerServiceWorker(
