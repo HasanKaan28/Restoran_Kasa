@@ -5,3 +5,6 @@ create or replace function app.entity_tables() returns text[] language sql immut
   select array['products', 'customers', 'categories', 'suppliers', 'staff', 'settings', 'invoices',
     'diningTables', 'tabs', 'tabItems']
 $$;
+
+-- create or replace drops the function's settings: keep it as every app function is.
+alter function app.entity_tables() set search_path = '';

@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Market Kasa · Bakkal ve market için kasa programı</title>
+    <title>Restoran Kasa · Restoran ve bar için adisyon ve kasa</title>
     <meta
       name="description"
-      content="İnternet olmasa da satış yapan, veresiyeyi ve stoğu tutan, bilgisayar ve telefonla aynı marketi gösteren kasa programı. Windows, Android ve tarayıcı."
+      content="Masalar, adisyon, mutfak ve bar ekranı, hesap bölme. İnternet gitse de çalışır; garsonun telefonu, mutfağın tableti ve kasa aynı masaları görür."
     />
     <meta name="theme-color" content="#F5F6F8" />
     <link rel="icon" href="img/logo.svg" type="image/svg+xml" />
@@ -17,13 +17,12 @@
     <a class="skip" href="#icerik">İçeriğe geç</a>
     <header class="top">
       <div class="wrap top__row">
-        <a class="brand" href="./" aria-label="Market Kasa ana sayfa">
+        <a class="brand" href="./" aria-label="Restoran Kasa ana sayfa">
           <img class="brand__mark" src="img/logo.svg" width="34" height="34" alt="" />
-          <span>Market Kasa</span>
+          <span>Restoran Kasa</span>
         </a>
         <nav aria-label="Sayfa">
           <a href="#ozellikler">Özellikler</a>
-          <a href="#telefon">Telefonla</a>
           <a href="#sss">Sorular</a>
           <a class="btn btn--small" href="#indir">İndir</a>
         </nav>
@@ -32,128 +31,47 @@
 
     <main id="icerik">
       <section class="hero">
-        <div class="wrap hero__grid">
-          <div class="hero__copy">
-            <p class="eyebrow">Sürüm 2.0 · Kurşunlu Market'te kullanılıyor</p>
-            <h1>İnternet gitse de kasa durmaz.</h1>
-            <p class="lead">
-              Barkodu okut, sat, veresiyeyi yaz. Market Kasa satışı önce cihaza kaydeder, internet
-              gelince diğer kasalara gönderir. Bilgisayar, telefon ve tarayıcı aynı marketi görür.
-            </p>
-            <div class="cta">
-              <a class="btn btn--primary" href="https://github.com/HasanKaan28/Market_Kasa/releases/latest/download/Market-Kasa-Setup.exe">
-                Windows için indir
-              </a>
-              <a class="btn" href="https://github.com/HasanKaan28/Market_Kasa/releases/latest/download/Market-Kasa.apk">
-                Android için indir
-              </a>
-              <a class="btn btn--ghost" href="app/">Tarayıcıda aç →</a>
-            </div>
-            <p class="fine">Ücretsiz deneme · Kurulum 2 dakika · Türkçe</p>
-          </div>
-
-          <figure class="hero__shot">
-            <div class="window">
-              <div class="window__bar" aria-hidden="true"><i></i><i></i><i></i></div>
-              <img
-                src="img/kasa.png"
-                width="1440"
-                height="900"
-                alt="Kasa ekranı: solda hızlı ürünler, sağda sepet ve toplam ₺237,40."
-              />
-            </div>
-            <!-- The page's anchor: a thermal receipt, the one thing every shop knows. -->
-            <div class="receipt" aria-hidden="true">
-              <p class="receipt__head">KURŞUNLU MARKET<br />K1-20261109-0042</p>
-              <dl>
-                <div><dt>Satış</dt><dd>✓</dd></div>
-                <div><dt>Veresiye</dt><dd>✓</dd></div>
-                <div><dt>Stok sayımı</dt><dd>✓</dd></div>
-                <div><dt>Gün sonu (Z)</dt><dd>✓</dd></div>
-                <div><dt>İnternetsiz</dt><dd>✓</dd></div>
-              </dl>
-              <p class="receipt__total"><span>TOPLAM</span><span>₺237,40</span></p>
-              <p class="receipt__foot">Teşekkür ederiz</p>
-            </div>
-          </figure>
+        <div class="wrap">
+          <p class="eyebrow">Sürüm 1.0</p>
+          <h1>Sipariş masada alınır, mutfakta görünür.</h1>
+          <p class="lead">
+            Garson telefondan siparişi alır, mutfak ve bar kendi ekranında görür, hazır olunca garsona
+            haber gider. Hesap ister tek seferde ister kişi kişi alınır. İnternet gitse de satış
+            durmaz; gelince her şey eşitlenir.
+          </p>
+          <p><a class="btn btn--primary" href="#indir">İndir</a></p>
         </div>
       </section>
 
       <section id="ozellikler" class="band">
         <div class="wrap">
-          <h2>Bir markette her gün olan her şey</h2>
-          <p class="section-lead">Sade ekranlar, büyük düğmeler, klavye kısayolları. Kasiyer ilk gün öğrenir.</p>
+          <h2>Neler var</h2>
           <ul class="features">
             <li>
-              <h3>Hızlı satış</h3>
-              <p>USB okuyucu ya da telefon kamerasıyla barkod, hızlı ürün düğmeleri, F2 nakit, F4 kart. Bölünmüş ödeme ve indirim tek dokunuşta.</p>
+              <h3>Masalar</h3>
+              <p>Salon, bahçe, teras. Her masada adisyon toplamı, kaç dakikadır açık olduğu ve hazır bekleyenler.</p>
             </li>
             <li>
-              <h3>Veresiye defteri</h3>
-              <p>Müşteri limiti, borç yaşı, tahsilat ve ekstre. Borçlulara WhatsApp'tan hatırlatma.</p>
+              <h3>Adisyon</h3>
+              <p>Kategorili menü, notlu sipariş (acısız, az pişmiş), tek tuşla mutfağa ve bara gönderme.</p>
             </li>
             <li>
-              <h3>Stok ve sayım</h3>
-              <p>Mal kabulde yeni fiyatlar, raf sayımında fark kaydı, kritik stok listesi. Stok her hareketten hesaplanır, kaybolmaz.</p>
+              <h3>Mutfak ve bar ekranı</h3>
+              <p>Her istasyon kendi siparişini masa masa görür, en çok bekleyen en üstte; dokununca hazır.</p>
             </li>
             <li>
-              <h3>Raporlar ve gün sonu</h3>
-              <p>Günlük, haftalık, aylık satış; nakit, kart, veresiye dağılımı; en çok satanlar; sayımlı Z raporu.</p>
+              <h3>Hesap</h3>
+              <p>Kalem kalem bölme, kişi başı tutar, nakit ve kart, para üstü. Her ödeme fiş ve rapora geçer.</p>
             </li>
             <li>
-              <h3>Personel ve PIN</h3>
-              <p>Herkes kendi PIN'iyle girer. İptal, iade ve indirim gibi işlemler yetkili onayı ister; her değişiklik iz kaydına düşer.</p>
+              <h3>İkram ve iptal</h3>
+              <p>Yetkili kişi ikram yapar ya da nedenini yazarak iptal eder; hepsi kayıtta kalır.</p>
             </li>
             <li>
-              <h3>İçe aktarma</h3>
-              <p>Ürün listesini Excel ya da CSV'den önizleyerek alın. Eski programın yedeğinden ürünler ve veresiye borçları gelir.</p>
+              <h3>Taşı, birleştir</h3>
+              <p>Masayı boş masaya taşıyın ya da iki masanın adisyonunu birleştirin.</p>
             </li>
           </ul>
-        </div>
-      </section>
-
-      <section class="shots">
-        <div class="wrap shots__grid">
-          <figure>
-            <img src="img/urunler.png" width="1440" height="900" loading="lazy" alt="Ürünler ekranı: kategorilere göre ürün listesi, fiyat ve stok." />
-            <figcaption>Ürünler: fiyat, stok, kategori; toplu fiyat güncelleme.</figcaption>
-          </figure>
-          <figure>
-            <img src="img/veresiye.png" width="1440" height="900" loading="lazy" alt="Müşteriler ekranı: bakiye, borç yaşı ve limit sütunları." />
-            <figcaption>Veresiye: kim ne kadar borçlu, kaç gündür.</figcaption>
-          </figure>
-          <figure>
-            <img src="img/raporlar.png" width="1440" height="900" loading="lazy" alt="Raporlar ekranı: bu ayın net satışı, işlem sayısı ve ödeme dağılımı." />
-            <figcaption>Raporlar: dönem ve kasa seçin, CSV indirin ya da yazdırın.</figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section id="telefon" class="band band--split">
-        <div class="wrap phone">
-          <div class="phone__copy">
-            <h2>Telefon ve bilgisayar aynı marketi görür</h2>
-            <ol class="steps">
-              <li>
-                <h3>Bilgisayara kurun</h3>
-                <p>Market Kasa'yı açın, Ayarlar → Bu kasa → <b>Sunucuya bağla</b>. Market sahibi “Kod üret” ile bir kez giriş yapar; 8 harflik bir kod çıkar.</p>
-              </li>
-              <li>
-                <h3>Telefonu bağlayın</h3>
-                <p>Android uygulamasını kurun ya da tarayıcıda açıp ana ekrana ekleyin. Aynı yerden kodu girin, kasaya bir ad verin (K2, K3…).</p>
-              </li>
-              <li>
-                <h3>Satın, sayın, tahsil edin</h3>
-                <p>Bir kasada yapılan satış, stok ve veresiye diğerlerinde de görünür. İnternet kesilirse satış sürer; gelince kendiliğinden eşitlenir.</p>
-              </li>
-            </ol>
-            <p class="note">Şifre telefonda ya da kasada saklanmaz. Kaybolan bir cihazı sahip kapatabilir.</p>
-          </div>
-          <figure class="phone__shot">
-            <div class="device">
-              <img src="img/telefon.png" width="390" height="844" loading="lazy" alt="Telefonda kasa ekranı: hızlı ürünler ve ürün grupları." />
-            </div>
-          </figure>
         </div>
       </section>
 
@@ -163,21 +81,21 @@
           <div class="download__grid">
             <article class="card">
               <h3>Windows</h3>
-              <p>Kasa bilgisayarı için. Yazıcıya doğrudan fiş basar.</p>
-              <a class="btn btn--primary" href="https://github.com/HasanKaan28/Market_Kasa/releases/latest/download/Market-Kasa-Setup.exe">Kurulumu indir (.exe)</a>
-              <p class="fine">“Bilgisayarınız korundu” uyarısında <b>Ek bilgi → Yine de çalıştır</b>. Yeni sürümler Ayarlar → Güncelleme'den tek tuşla gelir.</p>
+              <p>Kasa bilgisayarı için. Yeni sürümleri kendisi indirip kurar.</p>
+              <a class="btn btn--primary" href="https://github.com/HasanKaan28/Restoran_Kasa/releases/latest/download/Restoran-Kasa-Setup.exe">Kurulumu indir (.exe)</a>
+              <p class="fine">“Bilgisayarınız korundu” uyarısında <b>Ek bilgi → Yine de çalıştır</b>.</p>
             </article>
             <article class="card">
               <h3>Android</h3>
-              <p>Reyonda sayım, kasada ikinci ekran ya da cepte rapor.</p>
-              <a class="btn btn--primary" href="https://github.com/HasanKaan28/Market_Kasa/releases/latest/download/Market-Kasa.apk">Uygulamayı indir (.apk)</a>
-              <p class="fine">Telefon sorarsa bu kaynaktan yüklemeye izin verin. Yeni sürüm eskisinin üstüne kurulur, veriler kalır.</p>
+              <p>Garsonun telefonu ya da mutfağın tableti.</p>
+              <a class="btn btn--primary" href="https://github.com/HasanKaan28/Restoran_Kasa/releases/latest/download/Restoran-Kasa.apk">Uygulamayı indir (.apk)</a>
+              <p class="fine">Telefon sorarsa bu kaynaktan yüklemeye izin verin.</p>
             </article>
             <article class="card">
               <h3>Tarayıcı</h3>
               <p>iPhone, iPad ya da herhangi bir bilgisayar. Kurulum yok.</p>
-              <a class="btn" href="app/">Market Kasa'yı aç</a>
-              <p class="fine">Chrome'da “Yükle”, Safari'de “Ana Ekrana Ekle” ile uygulama gibi açılır ve internetsiz de çalışır.</p>
+              <a class="btn" href="app/">Restoran Kasa'yı aç</a>
+              <p class="fine">Safari'de “Ana Ekrana Ekle”, Chrome'da “Yükle” ile uygulama gibi açılır.</p>
             </article>
           </div>
         </div>
@@ -188,32 +106,23 @@
           <h2>Sorular</h2>
           <details>
             <summary>İnternet kesilirse ne olur?</summary>
-            <p>Satış, iade, veresiye ve stok çalışmaya devam eder. Her işlem önce cihaza yazılır; ekranın sağ üstünde kaç işlemin beklediği görünür. İnternet gelince hepsi gönderilir, diğer kasaların işlemleri de iner.</p>
+            <p>Her cihaz çalışmaya devam eder. İnternet yokken mutfak tableti yeni siparişi göremez; internet gelince her şey kendiliğinden eşitlenir.</p>
           </details>
           <details>
-            <summary>Verilerim nerede duruyor?</summary>
-            <p>Her cihazda bir kopyası, bir de marketin sunucusunda. Her market yalnız kendi verisini görür; sunucu her isteği kimin yaptığını denetler.</p>
+            <summary>İlk kurulum nasıl?</summary>
+            <p>İlk cihazda "Market kur" ile kendi e-postanızla işletmenizi açın, Ayarlar → Masalar'dan masaları ekleyin. Diğer cihazlarda aynı e-posta ve şifreyle "Markete giriş yap". Mutfak tabletinde Mutfak / Bar ekranını açın.</p>
           </details>
           <details>
-            <summary>Fatura kesebilir miyim?</summary>
-            <p>Fişten e-Arşiv faturası istenebilir ve sıraya alınır. Fatura sağlayıcısı bağlantısı yakında; o zamana kadar istekler “beklemede” görünür.</p>
-          </details>
-          <details>
-            <summary>Eski programdan geçiş nasıl olur?</summary>
-            <p>Eski programda Ayarlar → Yedek İndir (JSON). Market Kasa'da Ürünler → İçe aktar ve Müşteriler → v1'den aktar ile ürünler, stok ve veresiye borçları gelir.</p>
-          </details>
-          <details>
-            <summary>Güncelleme nasıl yapılır?</summary>
-            <p>Windows'ta Ayarlar → Güncelleme'de “Güncelle” düğmesi çıkar; basınca indirilir ve kurulur. Android'de aynı yerde yeni sürümün indirme bağlantısı görünür. Tarayıcı sürümü kendini günceller.</p>
+            <summary>Ürünün mutfakta mı barda mı hazırlandığını nasıl seçerim?</summary>
+            <p>Menü'de ürünü açın, "Hazırlandığı yer" Mutfak, Bar ya da Hazırlanmaz olsun. Hazırlanmayanlar (şişe su gibi) gönderilince hazır sayılır.</p>
           </details>
         </div>
       </section>
     </main>
 
     <footer class="foot">
-      <div class="wrap foot__row">
-        <span>Market Kasa 2.0</span>
-        <a href="https://github.com/HasanKaan28/Market_Kasa/releases">Tüm sürümler</a>
+      <div class="wrap">
+        <p>Restoran Kasa · Market Kasa altyapısıyla</p>
       </div>
     </footer>
   </body>
