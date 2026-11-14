@@ -2,6 +2,8 @@ import type { JSX } from 'react';
 import { CustomersScreen } from '@/customers/CustomersScreen';
 import { InvoicesScreen } from '@/invoices/InvoicesScreen';
 import { PosScreen } from '@/pos/PosScreen';
+import { KitchenScreen } from '@/restaurant/KitchenScreen';
+import { TablesScreen } from '@/restaurant/TablesScreen';
 import { ProductsScreen } from '@/products/ProductsScreen';
 import { ReportsScreen } from '@/reports/ReportsScreen';
 import { SettingsScreen } from '@/settings/SettingsScreen';
@@ -20,6 +22,10 @@ export function Screens({ route }: { route: Route }): JSX.Element {
     return <NoAccess route={route} />;
   }
   switch (route) {
+    case 'tables':
+      return <TablesScreen />;
+    case 'kitchen':
+      return <KitchenScreen />;
     case 'products':
       return <ProductsScreen />;
     case 'stock':

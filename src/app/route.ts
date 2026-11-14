@@ -3,9 +3,20 @@ import type { Permission } from '@/domain/permissions';
 
 /** The screens this build has; each lives at `#/<route>`, which works offline and from a file. */
 export type Route =
-  'pos' | 'products' | 'stock' | 'customers' | 'suppliers' | 'invoices' | 'reports' | 'settings';
+  | 'tables'
+  | 'kitchen'
+  | 'pos'
+  | 'products'
+  | 'stock'
+  | 'customers'
+  | 'suppliers'
+  | 'invoices'
+  | 'reports'
+  | 'settings';
 
 const ROUTES: readonly Route[] = [
+  'tables',
+  'kitchen',
   'pos',
   'products',
   'stock',
@@ -27,10 +38,10 @@ export const ROUTE_PERMISSIONS: Partial<Record<Route, Permission>> = {
   settings: 'admin',
 };
 
-/** The screen an address names; the register for anything else. */
+/** The screen an address names; the floor of tables for anything else. */
 export function parseRoute(hash: string): Route {
   const name = hash.replace(/^#\//, '');
-  return ROUTES.find((route) => route === name) ?? 'pos';
+  return ROUTES.find((route) => route === name) ?? 'tables';
 }
 
 /** The current screen, following the address as links and the back button change it. */

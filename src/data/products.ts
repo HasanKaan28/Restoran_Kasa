@@ -8,7 +8,7 @@ import { appendOutbox } from './outbox';
 import { changedFields, toPatch, withoutUndefined } from './records';
 import { recordStockMovement } from './stock';
 import { normalizeForSearch } from './text';
-import type { ProductPack, ProductRecord, ProductUnit } from './types';
+import type { ProductPack, ProductRecord, ProductUnit, Station } from './types';
 
 export type NewProduct = {
   barcode?: string;
@@ -22,6 +22,8 @@ export type NewProduct = {
   criticalLevelMilli?: number;
   /** Cases and packs under their own barcodes; an empty list clears them. */
   packs?: readonly ProductPack[];
+  /** Where an order of it is prepared: the kitchen, the bar or nowhere. */
+  station?: Station;
 };
 
 /** An empty string for `barcode` or `categoryId` clears it. */
@@ -298,6 +300,12 @@ function validateFields(input: ProductPatch): Partial<ProductFields> {
   }
   if (input.isQuick !== undefined) {
     fields.isQuick = input.isQuick;
+  }
+  if (input.station !== undefined) {
+    if (!['kitchen', 'bar', 'none'].includes(input.station)) {
+      throw new RangeError(`Unknown station: ${String(input.station)}`);
+    }
+    fields.station = input.station;
   }
   if (input.packs !== undefined) {
     if (input.packs.length > MAX_PACKS) {

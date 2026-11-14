@@ -13,8 +13,8 @@ describe('platform configuration', () => {
   it('links a manifest that names the app', () => {
     const manifest = JSON.parse(read('public/manifest.json')) as Record<string, unknown>;
     expect(manifest).toMatchObject({
-      name: 'Market Kasa',
-      short_name: 'Market Kasa',
+      name: 'Restoran Kasa',
+      short_name: 'Restoran Kasa',
       start_url: './',
       scope: './',
       display: 'standalone',

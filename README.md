@@ -1,27 +1,34 @@
-# Market Kasa v2
+# Restoran Kasa
 
-An offline-first point of sale and back office for small Turkish grocery shops. One React
-codebase runs as a web app (PWA), a Windows desktop app (Electron) and an Android app
-(Capacitor). Every register keeps working without the internet and syncs when it can.
+An offline-first restaurant and bar point of sale: tables, tabs (adisyon), a kitchen and bar
+screen, and the register behind them. It is built on [Market Kasa v2](https://github.com/HasanKaan28/Market_Kasa)
+(same sync, staff, reports, updates and backups) and adds the restaurant's own flow. One React
+codebase runs as a web app (PWA, for waiters' phones and tablets), a Windows desktop app
+(Electron) and an Android app (Capacitor).
 
-> **Status:** `2.0.0`, on the `v2` branch, syncing through Supabase. v1's code stays on `main`;
-> a `v2.*` tag publishes v2's web app to GitHub Pages (see [Releasing](#releasing)).
+> **Status:** `1.0.0`, local only. The sync server needs the migration
+> `supabase/migrations/20261114120000_restaurant_tables.sql` before restaurant data syncs.
 
 ## What it does
 
-- **Register:** barcode scanner and camera scanning, quick products, held carts, discounts,
-  cash, card, split and credit (veresiye) payments, returns and voids, printed and WhatsApp
-  receipts.
-- **Cash drawer:** opening float, money in and out, end of day (Z report) with the counted
-  difference.
-- **Catalogue and stock:** products, categories, goods receipts with new prices, stock counts,
-  CSV and XLSX import and export.
-- **Accounts:** customer credit with limits and reminders, suppliers and what is owed to them.
-- **Reports:** sales, payment methods, VAT, best sellers, staff, by any period and register.
-- **Staff:** roles and per-person permissions, PIN sign-in, approval by a permitted person,
-  an audit log of management changes.
-- **e-Arşiv invoices:** asked for from a receipt and queued; the provider adapter that issues
-  them runs on the server (not built yet, see below).
+- **Floor (Masalar):** every table by area, empty or with its tab's total, how long it has been
+  open and how many lines are ready to serve. Takeaway orders (Paket) sit beside the tables.
+- **Tab (Adisyon):** the menu by category or search on one side, the order on the other. Lines
+  are taken (a second tap adds one more, notes such as "acısız"), then sent in one go.
+- **Kitchen and bar (Mutfak / Bar):** each product is prepared in the kitchen, at the bar or
+  nowhere. Each station's screen shows one ticket per table, the longest waiting first (red
+  after 15 minutes); a tap marks a line ready and the waiter sees it on the floor.
+- **Changes after sending:** a line is made a treat (ikram, no charge) or voided with a reason,
+  each by a person with that permission.
+- **Bill (Hesap):** pay everything, or tick only some lines to split by what each person had;
+  a per-head share is shown. Cash with change, or card. Every payment is a receipt on the
+  register, so the Z report, the reports and the stock count it.
+- **Move and merge:** move a tab to an empty table, or merge it into another table's tab.
+- **Everything else** from Market Kasa: quick sale at the counter, menu (products) with
+  categories, stock and goods receipts for the bar, customers on credit, suppliers, staff with
+  PIN and permissions, reports, backups, automatic desktop updates.
+
+Prices on an open tab follow the menu until it is paid, as a register's cart does.
 
 Money is kept in integer kuruş, quantities in thousandths, and the business day follows the
 shop's own cut-off time in Europe/Istanbul.

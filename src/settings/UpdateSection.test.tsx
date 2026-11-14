@@ -63,7 +63,7 @@ describe('UpdateSection', () => {
     const link = await screen.findByRole('link', { name: 'Yeni sürümü indir (2.1.0)' });
     expect(link).toHaveAttribute(
       'href',
-      'https://github.com/HasanKaan28/Market_Kasa/releases/latest/download/Market-Kasa.apk',
+      'https://github.com/HasanKaan28/Restoran_Kasa/releases/latest/download/Restoran-Kasa.apk',
     );
   });
 

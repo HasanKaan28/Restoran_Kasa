@@ -1,10 +1,10 @@
 {
-  "name": "market-pos-android",
+  "name": "restoran-kasa",
   "productName": "Market Kasa",
-  "description": "Market Kasa POS - Modern Market ve Bakkal Satış Sistemi",
+  "description": "Restoran Kasa: masa, adisyon, mutfak/bar ekranı ve kasa; internetsiz çalışır",
   "author": "Kurşunlu Market",
   "private": true,
-  "version": "2.0.12",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.cjs",
   "engines": {
@@ -25,8 +25,8 @@
     "cap:open": "cap open android"
   },
   "build": {
-    "appId": "com.kursunlu.marketkasa",
-    "productName": "Market Kasa",
+    "appId": "com.kursunlu.restorankasa",
+    "productName": "Restoran Kasa",
     "directories": {
       "output": "dist-electron"
     },
@@ -44,15 +44,15 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Market Kasa",
-      "uninstallDisplayName": "Market Kasa POS",
-      "artifactName": "Market-Kasa-Setup.${ext}"
+      "shortcutName": "Restoran Kasa",
+      "uninstallDisplayName": "Restoran Kasa",
+      "artifactName": "Restoran-Kasa-Setup.${ext}"
     },
     "publish": [
       {
         "provider": "github",
         "owner": "HasanKaan28",
-        "repo": "Market_Kasa"
+        "repo": "Restoran_Kasa"
       }
     ]
   },

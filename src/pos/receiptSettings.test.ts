@@ -89,6 +89,6 @@ describe('receipt settings', () => {
       header: 'Adres',
       footer: '',
     });
-    expect(receiptContext(DEFAULT_DEVICE, DEFAULT_RECEIPT_SETTINGS).marketName).toBe('Market Kasa');
+    expect(receiptContext(DEFAULT_DEVICE, DEFAULT_RECEIPT_SETTINGS).marketName).toBe('Restoran Kasa');
   });
 });

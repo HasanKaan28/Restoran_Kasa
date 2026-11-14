@@ -14,7 +14,8 @@ android {
     namespace = "com.kursunlu.marketpos"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.kursunlu.marketpos"
+        // Its own app id: it installs beside Market Kasa, never over it.
+        applicationId "com.kursunlu.restorankasa"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode

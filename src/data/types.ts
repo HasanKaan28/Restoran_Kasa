@@ -7,6 +7,9 @@ import type { Summary } from '@/reports/summary';
 
 export type ProductUnit = 'piece' | 'kg';
 
+/** Where an order line is prepared: the kitchen, the bar, or nowhere (served as it is). */
+export type Station = 'kitchen' | 'bar' | 'none';
+
 /** A case or pack sold or received under its own barcode: scanning it counts `qtyMilli`. */
 export type ProductPack = { barcode: string; qtyMilli: number };
 
@@ -23,6 +26,8 @@ export type ProductRecord = {
   criticalLevelMilli: number;
   /** Cases and packs under barcodes of their own (koli, paket). */
   packs?: ProductPack[];
+  /** Where an order of it is prepared; the kitchen when not said. */
+  station?: Station;
   /** The packs' barcodes, kept beside them so the database can look them up. */
   packCodes?: string[];
   createdAt: string;
@@ -395,7 +400,72 @@ export type InvoiceRecord = {
   updatedAt: string;
 };
 
+/** A table of the restaurant, in an area such as Salon, Bahçe or Bar. */
+export type DiningTableRecord = {
+  id: string;
+  name: string;
+  area: string;
+  sort: number;
+  archivedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * An adisyon: what one table (or one takeaway order) has ordered, open until it is paid.
+ * `merged` is a tab whose lines moved to another; `cancelled` one closed with nothing to pay.
+ */
+export type TabRecord = {
+  id: string;
+  /** The table it is at; absent for a takeaway order. */
+  tableId?: string;
+  /** What a takeaway order is called ("Paket 3"); a table's tab shows the table's name. */
+  label?: string;
+  status: 'open' | 'paid' | 'merged' | 'cancelled';
+  guests?: number;
+  deviceCode: string;
+  /** The waiter who opened it; absent when no staff are set up. */
+  staffId?: string;
+  openedAt: string;
+  closedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * One order line of a tab. `new` lines are still being taken and can change; `sent` lines are at
+ * the kitchen or bar; `ready` ones are prepared; `void` ones were taken back. A paid line keeps
+ * the sale that paid it.
+ */
+export type TabItemRecord = {
+  id: string;
+  tabId: string;
+  productId: string;
+  /** The product's name and price when ordered, for the kitchen and the bill's first look. */
+  name: string;
+  unit: ProductUnit;
+  unitPrice: Kurus;
+  qtyMilli: number;
+  note?: string;
+  station: Station;
+  status: 'new' | 'sent' | 'ready' | 'void';
+  /** On the house: it is on the bill at no charge. */
+  complimentary?: boolean;
+  voidReason?: string;
+  paidSaleId?: string;
+  deviceCode: string;
+  staffId?: string;
+  orderedAt: string;
+  sentAt?: string;
+  readyAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type OutboxTable =
+  | 'diningTables'
+  | 'tabs'
+  | 'tabItems'
   | 'products'
   | 'customers'
   | 'categories'
@@ -420,7 +490,16 @@ export type OutboxOp =
   | {
       kind: 'patch';
       table:
-        'products' | 'customers' | 'categories' | 'suppliers' | 'staff' | 'settings' | 'invoices';
+        | 'products'
+        | 'customers'
+        | 'categories'
+        | 'suppliers'
+        | 'staff'
+        | 'settings'
+        | 'invoices'
+        | 'diningTables'
+        | 'tabs'
+        | 'tabItems';
       recordId: string;
       patch: object;
     };

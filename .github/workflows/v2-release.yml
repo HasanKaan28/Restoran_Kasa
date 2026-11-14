@@ -86,13 +86,13 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
             export MK_KEYSTORE_PATH="$RUNNER_TEMP/release.p12"
             (cd android && ./gradlew assembleRelease)
-            cp android/app/build/outputs/apk/release/app-release.apk out/Market-Kasa.apk
+            cp android/app/build/outputs/apk/release/app-release.apk out/Restoran-Kasa.apk
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             echo "::error::ANDROID_KEYSTORE_BASE64 is not set; a release APK must be signed with the release key."
             exit 1
           else
             (cd android && ./gradlew assembleDebug)
-            cp android/app/build/outputs/apk/debug/app-debug.apk "out/Market-Kasa-${GITHUB_REF_NAME//\//-}-debug.apk"
+            cp android/app/build/outputs/apk/debug/app-debug.apk "out/Restoran-Kasa-${GITHUB_REF_NAME//\//-}-debug.apk"
           fi
       - uses: actions/upload-artifact@v4
         with:
@@ -141,7 +141,7 @@ jobs:
         with:
           draft: true
           tag_name: ${{ github.ref_name }}
-          name: Market Kasa ${{ github.ref_name }}
+          name: Restoran Kasa ${{ github.ref_name }}
           body: |
             **Kurmadan önce yedek alın.**
             - v1'den geçiyorsanız: v1'de Ayarlar → Yedek İndir (JSON). v2 kurulunca v1'in verisi okunamaz.

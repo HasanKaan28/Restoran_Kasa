@@ -75,13 +75,13 @@ describe('workflows', () => {
     const release = readFileSync(`${DIR}/v2-release.yml`, 'utf8');
     expect(release).toContain('release-files/latest.yml');
     expect(release).toContain('release-files/*.exe.blockmap');
-    expect(release).toContain('out/Market-Kasa.apk');
+    expect(release).toContain('out/Restoran-Kasa.apk');
     const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as {
       build: { publish: { provider: string }[]; nsis: { artifactName: string } };
     };
     expect(pkg.build.publish[0]?.provider).toBe('github');
     // The site's download button points at releases/latest/download/<name>: the name never changes.
-    expect(pkg.build.nsis.artifactName).toBe('Market-Kasa-Setup.${ext}');
+    expect(pkg.build.nsis.artifactName).toBe('Restoran-Kasa-Setup.${ext}');
   });
 
   it('refuses to release a build without the server address', () => {

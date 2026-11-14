@@ -81,7 +81,7 @@ describe('access', () => {
       within(nav)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Kasa', 'Müşteriler', 'Faturalar']);
+    ).toEqual(['Masalar', 'Mutfak / Bar', 'Hızlı satış', 'Müşteriler', 'Faturalar']);
   });
 
   it('asks a permitted person to approve a discount', async () => {

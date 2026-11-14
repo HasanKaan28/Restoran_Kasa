@@ -21,10 +21,10 @@ describe('App', () => {
   it('opens the products screen from the menu', async () => {
     render(<App />);
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
-    await userEvent.click(within(nav).getByRole('link', { name: 'Ürünler' }));
+    await userEvent.click(within(nav).getByRole('link', { name: 'Menü' }));
     expect(await screen.findByRole('heading', { name: 'Ürünler', level: 1 })).toBeInTheDocument();
     const shown = screen.getByRole('navigation', { name: 'Ana menü' });
-    expect(within(shown).getByRole('link', { name: 'Ürünler' })).toHaveAttribute(
+    expect(within(shown).getByRole('link', { name: 'Menü' })).toHaveAttribute(
       'aria-current',
       'page',
     );

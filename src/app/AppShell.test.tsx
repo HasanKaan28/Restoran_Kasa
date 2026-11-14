@@ -19,8 +19,10 @@ describe('AppShell', () => {
         .getAllByRole('link')
         .map((l) => l.textContent),
     ).toEqual([
-      'Kasa',
-      'Ürünler',
+      'Masalar',
+      'Mutfak / Bar',
+      'Hızlı satış',
+      'Menü',
       'Stok',
       'Müşteriler',
       'Tedarikçiler',
@@ -28,11 +30,11 @@ describe('AppShell', () => {
       'Raporlar',
       'Ayarlar',
     ]);
-    expect(within(nav).getByRole('link', { name: 'Kasa' })).toHaveAttribute('aria-current', 'page');
-    expect(within(nav).getByRole('link', { name: 'Ürünler' })).toHaveAttribute(
-      'href',
-      '#/products',
+    expect(within(nav).getByRole('link', { name: 'Hızlı satış' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
+    expect(within(nav).getByRole('link', { name: 'Menü' })).toHaveAttribute('href', '#/products');
   });
 
   it.each([

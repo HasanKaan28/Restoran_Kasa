@@ -19,13 +19,13 @@ export type DesktopUpdates = {
   onStatus(callback: (status: UpdateStatus) => void): () => void;
 };
 
-const RELEASES = 'https://github.com/HasanKaan28/Market_Kasa/releases';
-export const APK_URL = `${RELEASES}/latest/download/Market-Kasa.apk`;
+const RELEASES = 'https://github.com/HasanKaan28/Restoran_Kasa/releases';
+export const APK_URL = `${RELEASES}/latest/download/Restoran-Kasa.apk`;
 
 /** The version of the latest published release, from GitHub. */
 export async function latestReleaseVersion(): Promise<string | null> {
   const response = await fetch(
-    'https://api.github.com/repos/HasanKaan28/Market_Kasa/releases/latest',
+    'https://api.github.com/repos/HasanKaan28/Restoran_Kasa/releases/latest',
     { headers: { Accept: 'application/vnd.github+json' } },
   );
   if (!response.ok) {

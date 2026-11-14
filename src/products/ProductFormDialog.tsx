@@ -6,7 +6,7 @@ import { listCategories } from '@/data/categories';
 import { DuplicateBarcodeError } from '@/data/errors';
 import { createProduct, deleteProduct, restoreProduct, updateProduct } from '@/data/products';
 import { stockOf } from '@/data/stock';
-import type { ProductRecord } from '@/data/types';
+import type { ProductRecord, Station } from '@/data/types';
 import { Button, ChoiceGroup, Dialog, SelectField, TextField } from '@/design';
 import { formatStock, UNIT_LABELS, VAT_OPTIONS } from '@/pos/format';
 import { useBarcodeScanner } from '@/pos/keyboard';
@@ -19,6 +19,7 @@ import {
   fractionalStockError,
   profitHint,
   readDraft,
+  STATION_OPTIONS,
   UNIT_OPTIONS,
   type DraftErrors,
   type ProductDraft,
@@ -297,6 +298,13 @@ export function ProductFormDialog({
               onChange={(event) => set('openingStock', event.target.value)}
             />
           ) : null}
+          <ChoiceGroup<Station>
+            legend="Hazırlandığı yer"
+            name="station"
+            options={STATION_OPTIONS}
+            value={draft.station}
+            onChange={(station) => set('station', station)}
+          />
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">Koli / paket barkodları</p>
             <p className="text-sm text-text-2">

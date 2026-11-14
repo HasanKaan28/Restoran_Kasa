@@ -1,6 +1,6 @@
 {
-  "appId": "com.kursunlu.marketpos",
-  "appName": "Market Kasa",
+  "appId": "com.kursunlu.restorankasa",
+  "appName": "Restoran Kasa",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {

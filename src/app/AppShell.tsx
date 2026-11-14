@@ -25,8 +25,10 @@ export type AppShellProps = {
 
 // Only screens that exist are listed; each later milestone adds its own.
 const NAV_ITEMS: readonly { key: NavKey; label: string }[] = [
-  { key: 'pos', label: 'Kasa' },
-  { key: 'products', label: 'Ürünler' },
+  { key: 'tables', label: 'Masalar' },
+  { key: 'kitchen', label: 'Mutfak / Bar' },
+  { key: 'pos', label: 'Hızlı satış' },
+  { key: 'products', label: 'Menü' },
   { key: 'stock', label: 'Stok' },
   { key: 'customers', label: 'Müşteriler' },
   { key: 'suppliers', label: 'Tedarikçiler' },

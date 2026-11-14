@@ -1,5 +1,5 @@
 import { canonicalBarcode, type NewProduct, type ProductPatch } from '@/data/products';
-import type { ProductRecord, ProductUnit } from '@/data/types';
+import type { ProductRecord, ProductUnit, Station } from '@/data/types';
 import type { ChoiceOption } from '@/design';
 import { formatTRY, parseTRY, type Kurus } from '@/domain/money';
 import { MAX_UNIT_PRICE, type VatRate } from '@/domain/pricing';
@@ -24,6 +24,7 @@ export type ProductDraft = {
   openingStock: string;
   /** Case and pack barcodes as typed; a row left wholly empty is dropped. */
   packs: PackDraft[];
+  station: Station;
 };
 
 export type PackDraft = { barcode: string; qty: string };
@@ -56,6 +57,7 @@ const FIELD_OF: Record<Exclude<keyof ProductDraft, 'openingStock'>, keyof ReadFi
   criticalLevel: 'criticalLevelMilli',
   isQuick: 'isQuick',
   packs: 'packs',
+  station: 'station',
 };
 
 /**
@@ -79,6 +81,12 @@ export function editedFields(
   return patch as ProductPatch;
 }
 
+export const STATION_OPTIONS: readonly ChoiceOption<Station>[] = [
+  { value: 'kitchen', label: 'Mutfak' },
+  { value: 'bar', label: 'Bar' },
+  { value: 'none', label: 'Hazırlanmaz' },
+];
+
 export const UNIT_OPTIONS: readonly ChoiceOption<ProductUnit>[] = [
   { value: 'piece', label: 'Adet' },
   { value: 'kg', label: 'Kilogram' },
@@ -100,6 +108,7 @@ export function draftOf(product?: ProductRecord, barcode?: string): ProductDraft
       product && product.criticalLevelMilli > 0 ? formatQtyInput(product.criticalLevelMilli) : '',
     isQuick: product?.isQuick ?? false,
     openingStock: '',
+    station: product?.station ?? 'kitchen',
     packs: (product?.packs ?? []).map((pack) => ({
       barcode: pack.barcode,
       qty: formatQtyInput(pack.qtyMilli),
@@ -138,6 +147,7 @@ export function readDraft(draft: ProductDraft): ReadDraft {
       isQuick: draft.isQuick,
       criticalLevelMilli,
       packs,
+      station: draft.station,
     },
     openingStockMilli,
   };

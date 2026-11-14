@@ -171,7 +171,14 @@ describe('readImportRows', () => {
   });
 
   it('marks a blank cell in a mapped VAT column', () => {
-    const rows = readImportRows([['Simit', ''], ['Ayran', '1']], { name: 0, vatRate: 1 }, false);
+    const rows = readImportRows(
+      [
+        ['Simit', ''],
+        ['Ayran', '1'],
+      ],
+      { name: 0, vatRate: 1 },
+      false,
+    );
     expect(rows.map((row) => row.blankVat)).toEqual([true, undefined]);
     expect(readImportRows([['Simit']], { name: 0 }, false)[0]?.blankVat).toBeUndefined();
   });

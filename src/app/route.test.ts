@@ -10,7 +10,10 @@ describe('parseRoute', () => {
     expect(parseRoute('#/suppliers')).toBe('suppliers');
     expect(parseRoute('#/reports')).toBe('reports');
     expect(parseRoute('#/settings')).toBe('settings');
-    expect(parseRoute('')).toBe('pos');
-    expect(parseRoute('#/bilinmeyen')).toBe('pos');
+    expect(parseRoute('#/tables')).toBe('tables');
+    expect(parseRoute('#/kitchen')).toBe('kitchen');
+    // A restaurant opens on its floor of tables.
+    expect(parseRoute('')).toBe('tables');
+    expect(parseRoute('#/bilinmeyen')).toBe('tables');
   });
 });

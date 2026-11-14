@@ -114,7 +114,7 @@ export function WelcomeScreen({
         <div className="flex items-center gap-3">
           <Logo className="size-11" />
           <div>
-            <h1 className="text-xl font-semibold">Market Kasa</h1>
+            <h1 className="text-xl font-semibold">Restoran Kasa</h1>
             <p className="text-sm text-text-2">
               {mode === 'open'
                 ? 'Yeni market'

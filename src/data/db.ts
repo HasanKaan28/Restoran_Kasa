@@ -11,7 +11,10 @@ import type {
   MarketSettingsRecord,
   MetaRecord,
   OutboxItem,
+  DiningTableRecord,
   ProductRecord,
+  TabItemRecord,
+  TabRecord,
   ReturnRecord,
   SaleRecord,
   SaleVoidRecord,
@@ -47,6 +50,9 @@ export class MarketDb extends Dexie {
   declare settings: Table<MarketSettingsRecord, string>;
   declare auditLog: Table<AuditRecord, string>;
   declare invoices: Table<InvoiceRecord, string>;
+  declare diningTables: Table<DiningTableRecord, string>;
+  declare tabs: Table<TabRecord, string>;
+  declare tabItems: Table<TabItemRecord, string>;
 
   constructor(name: string) {
     super(name);
@@ -111,6 +117,12 @@ export class MarketDb extends Dexie {
     this.version(14).stores({ invoices: 'id, saleId, status, updatedAt' });
     // v15: a product's case and pack barcodes, looked up when scanned.
     this.version(15).stores({ products: 'id, &barcode, name, updatedAt, *packCodes' });
+    // v16: the restaurant: its tables, the tabs open at them and their order lines.
+    this.version(16).stores({
+      diningTables: 'id, area, sort',
+      tabs: 'id, tableId, status, openedAt',
+      tabItems: 'id, tabId, status, station, sentAt',
+    });
   }
 }
 

@@ -24,6 +24,7 @@ describe('openMarketDb', () => {
       'cashSessions',
       'categories',
       'customers',
+      'diningTables',
       'invoices',
       'ledger',
       'meta',
@@ -40,6 +41,8 @@ describe('openMarketDb', () => {
       'stockMovements',
       'supplierLedger',
       'suppliers',
+      'tabItems',
+      'tabs',
     ]);
   });
 

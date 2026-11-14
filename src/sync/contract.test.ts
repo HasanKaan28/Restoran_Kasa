@@ -9,6 +9,14 @@ import {
   findProductByCode,
   updateProduct,
 } from '@/data/products';
+import {
+  addTabItem,
+  createDiningTable,
+  kitchenTickets,
+  markReady,
+  openTab,
+  sendTab,
+} from '@/data/restaurant';
 import { recordReturn, returnedQuantities } from '@/data/returns';
 import { recordSale } from '@/data/sales';
 import { loadMarketSettings, saveMarketSettings } from '@/data/settings';
@@ -97,6 +105,27 @@ describe.each(SERVERS)('the $name server', ({ make }) => {
     await syncOnce(a, toA);
     await syncOnce(b, toB);
     expect(await findProductByCode(b, 'K12')).toBeUndefined();
+  });
+
+  it('brings the kitchen’s ready lines to the waiter’s register', async () => {
+    const kebab = await createProduct(
+      a,
+      { name: 'Adana kebap', sellPrice: 45000, vatRate: 10 },
+      at,
+    );
+    const table = await createDiningTable(a, { name: 'S1', area: 'Salon' }, at);
+    const tab = await openTab(a, { tableId: table.id, deviceCode: 'K1' }, at);
+    const plate = await addTabItem(a, tab.id, kebab, { qtyMilli: 1000 }, { deviceCode: 'K1' }, at);
+    await sendTab(a, tab.id, later(1));
+    await syncOnce(a, toA);
+    await syncOnce(b, toB);
+    expect(await kitchenTickets(b, 'kitchen')).toHaveLength(1);
+
+    await markReady(b, [plate.id], later(5));
+    await syncOnce(b, toB);
+    await syncOnce(a, toA);
+    expect((await a.tabItems.get(plate.id))?.status).toBe('ready');
+    expect(await kitchenTickets(a, 'kitchen')).toEqual([]);
   });
 
   it('merges a second insert of a record', async () => {

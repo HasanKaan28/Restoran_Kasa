@@ -53,7 +53,7 @@ function createWindow() {
     height: 820,
     minWidth: 1024,
     minHeight: 650,
-    title: 'Market Kasa',
+    title: 'Restoran Kasa',
     backgroundColor: '#F5F6F8',
     webPreferences: {
       contextIsolation: true,
@@ -79,7 +79,7 @@ function createWindow() {
         overrideBrowserWindowOptions: {
           ...bounds,
           fullscreen,
-          title: 'Market Kasa · Müşteri ekranı',
+          title: 'Restoran Kasa · Müşteri ekranı',
           autoHideMenuBar: true,
           backgroundColor: '#F5F6F8',
           webPreferences: {
@@ -135,11 +135,11 @@ function createWindow() {
         label: 'Yardım',
         submenu: [
           {
-            label: 'Market Kasa hakkında',
+            label: 'Restoran Kasa hakkında',
             click: () =>
               dialog.showMessageBox(mainWindow, {
                 type: 'info',
-                title: 'Market Kasa',
+                title: 'Restoran Kasa',
                 message: `Market Kasa\nSürüm ${app.getVersion()}`,
               }),
           },

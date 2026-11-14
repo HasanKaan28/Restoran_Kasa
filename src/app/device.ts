@@ -14,7 +14,7 @@ export type DeviceSettings = {
 
 export const DEFAULT_DEVICE: DeviceSettings = {
   marketId: 'yerel',
-  marketName: 'Market Kasa',
+  marketName: 'Restoran Kasa',
   deviceCode: 'K1',
   deviceName: 'Kasa 1',
 };
