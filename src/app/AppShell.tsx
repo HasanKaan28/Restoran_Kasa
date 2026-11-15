@@ -7,7 +7,8 @@ import { ROUTE_PERMISSIONS, type Route } from './route';
 import { useSession } from './session';
 import { APP_VERSION } from './version';
 
-export type NavKey = Route;
+/** A screen's menu key; the market screens still in the code base name theirs, unlisted here. */
+export type NavKey = Route | 'pos' | 'stock' | 'customers' | 'suppliers' | 'invoices';
 
 export type AppShellProps = {
   marketName: string;
@@ -24,15 +25,10 @@ export type AppShellProps = {
 };
 
 // Only screens that exist are listed; each later milestone adds its own.
-const NAV_ITEMS: readonly { key: NavKey; label: string }[] = [
+const NAV_ITEMS: readonly { key: Route; label: string }[] = [
   { key: 'tables', label: 'Masalar' },
   { key: 'kitchen', label: 'Mutfak / Bar' },
-  { key: 'pos', label: 'Hızlı satış' },
   { key: 'products', label: 'Menü' },
-  { key: 'stock', label: 'Stok' },
-  { key: 'customers', label: 'Müşteriler' },
-  { key: 'suppliers', label: 'Tedarikçiler' },
-  { key: 'invoices', label: 'Faturalar' },
   { key: 'reports', label: 'Raporlar' },
   { key: 'settings', label: 'Ayarlar' },
 ];

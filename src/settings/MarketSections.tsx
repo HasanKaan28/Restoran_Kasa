@@ -86,7 +86,7 @@ export function MarketSection({ onDone }: { onDone(message: string): void }): JS
   return (
     <SettingsSection
       id="market-heading"
-      title="Market"
+      title="İşletme"
       description="Bütün kasalarda aynıdır. Gün dönümünden önceki satışlar bir önceki güne yazılır; yazılmış kayıtlar değişmez."
     >
       <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => void save(event)}>
@@ -207,7 +207,7 @@ export function RegisterSection(): JSX.Element {
       <form className="flex flex-col gap-3" onSubmit={(event) => void save(event)}>
         <div className="grid gap-3 sm:grid-cols-3">
           <TextField
-            label="Market adı"
+            label="İşletme adı"
             value={marketName}
             onChange={(event) => setMarketName(event.target.value)}
           />

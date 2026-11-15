@@ -16,13 +16,13 @@ describe('App after a crash', () => {
     vi.restoreAllMocks();
   });
 
-  it('goes back to the register from a crashed screen and keeps the carts', async () => {
+  it('goes back to the floor from a crashed screen and keeps the carts', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     localStorage.setItem(HELD_STORAGE_KEY, '[]');
     window.location.hash = '#/products';
     render(<App />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Kasaya dön' }));
-    expect(window.location.hash).toBe('#/pos');
+    await userEvent.click(await screen.findByRole('button', { name: 'Masalara dön' }));
+    expect(window.location.hash).toBe('#/tables');
     expect(localStorage.getItem(HELD_STORAGE_KEY)).toBe('[]');
   });
 });

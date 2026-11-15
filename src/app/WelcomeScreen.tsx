@@ -49,7 +49,7 @@ export function WelcomeScreen({
       setMarkets(result.markets);
       setMarketId(result.markets[0]?.id ?? '');
     } else {
-      setNotice('E-postanıza gelen bağlantıya tıklayın, sonra “Markete giriş yap” ile girin.');
+      setNotice('E-postanıza gelen bağlantıya tıklayın, sonra “Restorana giriş yap” ile girin.');
     }
   }
 
@@ -117,9 +117,9 @@ export function WelcomeScreen({
             <h1 className="text-xl font-semibold">Restoran Kasa</h1>
             <p className="text-sm text-text-2">
               {mode === 'open'
-                ? 'Yeni market'
+                ? 'Yeni restoran'
                 : mode === 'join'
-                  ? 'Bu cihazı marketinize ekleyin'
+                  ? 'Bu cihazı restoranınıza ekleyin'
                   : 'Hoş geldiniz'}
             </p>
           </div>
@@ -128,12 +128,12 @@ export function WelcomeScreen({
         {mode === 'choose' ? (
           <div className="flex flex-col gap-3">
             <Button variant="primary" onClick={() => choose('open')}>
-              Market kur
+              Restoran kur
             </Button>
-            <Button onClick={() => choose('join')}>Markete giriş yap</Button>
+            <Button onClick={() => choose('join')}>Restorana giriş yap</Button>
             <p className="text-sm text-text-2">
-              Marketi ilk kez kuruyorsanız “Market kur”. Başka bir cihazda kurduysanız aynı e-posta
-              ve şifreyle “Markete giriş yap”: bu cihaz o marketin yeni kasası olur.
+              Restoranı ilk kez kuruyorsanız “Restoran kur”. Başka bir cihazda kurduysanız aynı
+              e-posta ve şifreyle “Restorana giriş yap”: bu cihaz o restoranın yeni kasası olur.
             </p>
             <Button variant="ghost" onClick={onSkip}>
               İnternetsiz dene
@@ -144,7 +144,7 @@ export function WelcomeScreen({
         {mode === 'open' ? (
           <form className="flex flex-col gap-3" onSubmit={submitOpen}>
             <TextField
-              label="Market adı"
+              label="Restoran adı"
               value={marketName}
               maxLength={60}
               required
@@ -175,7 +175,7 @@ export function WelcomeScreen({
             />
             {messages}
             <Button type="submit" variant="primary" disabled={busy}>
-              Marketi kur
+              Restoranı kur
             </Button>
             <Button variant="ghost" onClick={() => setMode('choose')}>
               Geri
@@ -202,7 +202,7 @@ export function WelcomeScreen({
             />
             {markets ? (
               <SelectField
-                label="Market"
+                label="Restoran"
                 value={marketId}
                 onChange={(event) => setMarketId(event.target.value)}
                 options={markets.map((market) => ({ value: market.id, label: market.name }))}

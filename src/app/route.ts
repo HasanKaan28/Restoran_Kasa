@@ -1,39 +1,18 @@
 import { useSyncExternalStore } from 'react';
 import type { Permission } from '@/domain/permissions';
 
-/** The screens this build has; each lives at `#/<route>`, which works offline and from a file. */
-export type Route =
-  | 'tables'
-  | 'kitchen'
-  | 'pos'
-  | 'products'
-  | 'stock'
-  | 'customers'
-  | 'suppliers'
-  | 'invoices'
-  | 'reports'
-  | 'settings';
+/**
+ * The screens of the restaurant app; each lives at `#/<route>`, which works offline and from a
+ * file. The market's own screens (register, stock, credit customers, suppliers, invoices) are
+ * Market Kasa's and have no address here.
+ */
+export type Route = 'tables' | 'kitchen' | 'products' | 'reports' | 'settings';
 
-const ROUTES: readonly Route[] = [
-  'tables',
-  'kitchen',
-  'pos',
-  'products',
-  'stock',
-  'customers',
-  'suppliers',
-  'invoices',
-  'reports',
-  'settings',
-];
+const ROUTES: readonly Route[] = ['tables', 'kitchen', 'products', 'reports', 'settings'];
 
-/** What a person must be allowed to open each screen (DESIGN §8.5); the register is open to all. */
+/** What a person must be allowed to open each screen; the floor and the kitchen are open to all. */
 export const ROUTE_PERMISSIONS: Partial<Record<Route, Permission>> = {
   products: 'editProducts',
-  stock: 'stock',
-  customers: 'collect',
-  suppliers: 'suppliers',
-  invoices: 'invoice',
   reports: 'reports',
   settings: 'admin',
 };

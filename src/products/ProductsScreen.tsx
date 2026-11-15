@@ -140,7 +140,7 @@ export function ProductsScreen(): JSX.Element {
       >
         <div className="flex flex-wrap items-center gap-3">
           <div className="mr-auto">
-            <h1 className="text-xl font-semibold">Ürünler</h1>
+            <h1 className="text-xl font-semibold">Menü</h1>
             <p className="text-sm text-text-2">{`${liveCount} ürün`}</p>
           </div>
           <Button

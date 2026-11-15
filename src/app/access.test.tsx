@@ -81,7 +81,7 @@ describe('access', () => {
       within(nav)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Masalar', 'Mutfak / Bar', 'Hızlı satış', 'Müşteriler', 'Faturalar']);
+    ).toEqual(['Masalar', 'Mutfak / Bar']);
   });
 
   it('asks a permitted person to approve a discount', async () => {
@@ -224,23 +224,23 @@ describe('access', () => {
     expect(await screen.findByText(/Satış tamamlandı/)).toBeInTheDocument();
   });
 
-  it('keeps the invoices from someone not allowed to invoice', async () => {
+  it('keeps the reports from someone not allowed to see them', async () => {
     const { data } = await team();
     const zeynep = await createStaff(
       data.db,
-      { name: 'Zeynep', role: 'cashier', pin: '5555', permissions: { invoice: false } },
+      { name: 'Zeynep', role: 'cashier', pin: '5555', permissions: { reports: false } },
       before(),
     );
     signedIn(zeynep.id);
     await renderWithData(
       <SessionProvider>
-        <Screens route="invoices" />
+        <Screens route="reports" />
       </SessionProvider>,
       data,
     );
     expect(await screen.findByText('Bu ekran için yetkiniz yok.')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Ana menü' });
-    expect(within(nav).queryByRole('link', { name: 'Faturalar' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Raporlar' })).toBeNull();
   });
 
   it('asks for an invoice from a receipt', async () => {

@@ -1,13 +1,15 @@
 # Restoran Kasa
 
+**Site:** https://hasankaan28.github.io/Restoran_Kasa/ · **Web app:** https://hasankaan28.github.io/Restoran_Kasa/app/ · **Downloads:** [latest release](https://github.com/HasanKaan28/Restoran_Kasa/releases/latest)
+
 An offline-first restaurant and bar point of sale: tables, tabs (adisyon), a kitchen and bar
 screen, and the register behind them. It is built on [Market Kasa v2](https://github.com/HasanKaan28/Market_Kasa)
 (same sync, staff, reports, updates and backups) and adds the restaurant's own flow. One React
 codebase runs as a web app (PWA, for waiters' phones and tablets), a Windows desktop app
 (Electron) and an Android app (Capacitor).
 
-> **Status:** `1.0.0`, local only. The sync server needs the migration
-> `supabase/migrations/20261114120000_restaurant_tables.sql` before restaurant data syncs.
+> **Status:** `1.0.0`. Syncs through the same Supabase project as Market Kasa (migration
+> `supabase/migrations/20261114120000_restaurant_tables.sql` applied).
 
 ## What it does
 

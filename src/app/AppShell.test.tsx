@@ -7,7 +7,7 @@ const base = {
   marketName: 'Kurşunlu Market',
   deviceName: 'Kasa 1',
   staffName: 'Elif Y.',
-  activeNav: 'pos',
+  activeNav: 'tables',
 } as const;
 
 describe('AppShell', () => {
@@ -18,19 +18,8 @@ describe('AppShell', () => {
       within(nav)
         .getAllByRole('link')
         .map((l) => l.textContent),
-    ).toEqual([
-      'Masalar',
-      'Mutfak / Bar',
-      'Hızlı satış',
-      'Menü',
-      'Stok',
-      'Müşteriler',
-      'Tedarikçiler',
-      'Faturalar',
-      'Raporlar',
-      'Ayarlar',
-    ]);
-    expect(within(nav).getByRole('link', { name: 'Hızlı satış' })).toHaveAttribute(
+    ).toEqual(['Masalar', 'Mutfak / Bar', 'Menü', 'Raporlar', 'Ayarlar']);
+    expect(within(nav).getByRole('link', { name: 'Masalar' })).toHaveAttribute(
       'aria-current',
       'page',
     );

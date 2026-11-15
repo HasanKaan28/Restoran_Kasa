@@ -81,7 +81,7 @@ function AppContent(): JSX.Element {
   }
 
   return (
-    <ErrorBoundary {...(route === 'pos' ? { onReset: resetRegister } : LEAVE_SCREEN)}>
+    <ErrorBoundary {...(route === 'tables' ? { onReset: resetRegister } : LEAVE_SCREEN)}>
       <DataProvider value={data}>
         <SessionProvider>
           <Screens route={route} />
@@ -98,12 +98,12 @@ function resetRegister(): void {
 }
 
 // A crash on another screen has nothing to do with the carts: keep them and go back to the
-// register, which a reload of the crashed screen would never reach.
+// floor, which a reload of the crashed screen would never reach.
 const LEAVE_SCREEN = {
-  message: 'Kaydedilen satışlar ve ürünler güvende. Kasaya dönüp devam edebilirsiniz.',
-  resetLabel: 'Kasaya dön',
+  message: 'Kaydedilen siparişler ve satışlar güvende. Masalara dönüp devam edebilirsiniz.',
+  resetLabel: 'Masalara dön',
   onReset: () => {
-    window.location.hash = '#/pos';
+    window.location.hash = '#/tables';
     window.location.reload();
   },
 };

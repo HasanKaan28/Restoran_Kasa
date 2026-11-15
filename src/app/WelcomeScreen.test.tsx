@@ -29,12 +29,12 @@ function setup(overrides: Partial<Parameters<typeof WelcomeScreen>[0]> = {}) {
 describe('WelcomeScreen', () => {
   it('opens a market with the shop’s own email', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Market kur' }));
-    await userEvent.type(screen.getByLabelText('Market adı'), 'Kurşunlu Market');
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.type(screen.getByLabelText('Restoran adı'), 'Kurşunlu Market');
     await userEvent.type(screen.getByLabelText('E-posta'), 'emin@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
     await userEvent.type(screen.getByLabelText('Şifre (tekrar)'), 'gizli-sifre');
-    await userEvent.click(screen.getByRole('button', { name: 'Marketi kur' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
 
     expect(props.open).toHaveBeenCalledWith({
       marketName: 'Kurşunlu Market',
@@ -54,37 +54,37 @@ describe('WelcomeScreen', () => {
 
   it('checks the password before asking the server', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Market kur' }));
-    await userEvent.type(screen.getByLabelText('Market adı'), 'M');
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.type(screen.getByLabelText('Restoran adı'), 'M');
     await userEvent.type(screen.getByLabelText('E-posta'), 'a@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'kisa');
     await userEvent.type(screen.getByLabelText('Şifre (tekrar)'), 'kisa');
-    await userEvent.click(screen.getByRole('button', { name: 'Marketi kur' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Şifre en az 8 karakter olmalı.');
 
     await userEvent.clear(screen.getByLabelText('Şifre'));
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
-    await userEvent.click(screen.getByRole('button', { name: 'Marketi kur' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Şifreler aynı değil.');
     expect(props.open).not.toHaveBeenCalled();
   });
 
   it('tells the shop to confirm its email', async () => {
     setup({ open: vi.fn(async () => ({ confirmEmail: true as const })) });
-    await userEvent.click(screen.getByRole('button', { name: 'Market kur' }));
-    await userEvent.type(screen.getByLabelText('Market adı'), 'M');
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.type(screen.getByLabelText('Restoran adı'), 'M');
     await userEvent.type(screen.getByLabelText('E-posta'), 'a@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
     await userEvent.type(screen.getByLabelText('Şifre (tekrar)'), 'gizli-sifre');
-    await userEvent.click(screen.getByRole('button', { name: 'Marketi kur' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'E-postanıza gelen bağlantıya tıklayın, sonra “Markete giriş yap” ile girin.',
+      'E-postanıza gelen bağlantıya tıklayın, sonra “Restorana giriş yap” ile girin.',
     );
   });
 
   it('signs another device into the market', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Markete giriş yap' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Restorana giriş yap' }));
     await userEvent.type(screen.getByLabelText('E-posta'), 'emin@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
     await userEvent.click(screen.getByRole('button', { name: 'Giriş yap' }));
@@ -107,11 +107,11 @@ describe('WelcomeScreen', () => {
           },
     );
     setup({ join });
-    await userEvent.click(screen.getByRole('button', { name: 'Markete giriş yap' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Restorana giriş yap' }));
     await userEvent.type(screen.getByLabelText('E-posta'), 'emin@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
     await userEvent.click(screen.getByRole('button', { name: 'Giriş yap' }));
-    await userEvent.selectOptions(await screen.findByLabelText('Market'), 'b');
+    await userEvent.selectOptions(await screen.findByLabelText('Restoran'), 'b');
     await userEvent.click(screen.getByRole('button', { name: 'Giriş yap' }));
     expect(join).toHaveBeenLastCalledWith(expect.objectContaining({ marketId: 'b' }));
   });

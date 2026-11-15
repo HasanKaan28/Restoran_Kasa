@@ -58,12 +58,9 @@ describe('MovementsDialog', () => {
 
   it('names the count a movement came from', async () => {
     const data = createTestData();
-    const cups = await createProduct(
-      data.db,
-      { name: 'Bardak', sellPrice: 500, vatRate: 20 },
-      at,
-      { openingStockMilli: 10000 },
-    );
+    const cups = await createProduct(data.db, { name: 'Bardak', sellPrice: 500, vatRate: 20 }, at, {
+      openingStockMilli: 10000,
+    });
     await recordCount(
       data.db,
       { deviceCode: 'K1', lines: [{ productId: cups.id, countedMilli: 8000 }], note: 'Raf 3' },

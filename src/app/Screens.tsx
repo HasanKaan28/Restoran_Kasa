@@ -1,14 +1,9 @@
 import type { JSX } from 'react';
-import { CustomersScreen } from '@/customers/CustomersScreen';
-import { InvoicesScreen } from '@/invoices/InvoicesScreen';
-import { PosScreen } from '@/pos/PosScreen';
 import { KitchenScreen } from '@/restaurant/KitchenScreen';
 import { TablesScreen } from '@/restaurant/TablesScreen';
 import { ProductsScreen } from '@/products/ProductsScreen';
 import { ReportsScreen } from '@/reports/ReportsScreen';
 import { SettingsScreen } from '@/settings/SettingsScreen';
-import { StockScreen } from '@/stock/StockScreen';
-import { SuppliersScreen } from '@/suppliers/SuppliersScreen';
 import { useData, useSyncStatus } from './appData';
 import { AppShell } from './AppShell';
 import { ROUTE_PERMISSIONS, type Route } from './route';
@@ -28,20 +23,10 @@ export function Screens({ route }: { route: Route }): JSX.Element {
       return <KitchenScreen />;
     case 'products':
       return <ProductsScreen />;
-    case 'stock':
-      return <StockScreen />;
-    case 'customers':
-      return <CustomersScreen />;
-    case 'suppliers':
-      return <SuppliersScreen />;
-    case 'invoices':
-      return <InvoicesScreen />;
     case 'reports':
       return <ReportsScreen />;
     case 'settings':
       return <SettingsScreen />;
-    case 'pos':
-      return <PosScreen />;
   }
 }
 

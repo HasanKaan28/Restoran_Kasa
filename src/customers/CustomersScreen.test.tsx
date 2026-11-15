@@ -1,7 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
-import { App } from '@/app/App';
 import { createCustomer } from '@/data/customers';
 import { recordAdjustment, recordPayment } from '@/data/ledger';
 import { createTestData, renderWithData } from '@/test/renderWithData';
@@ -24,16 +23,6 @@ describe('CustomersScreen', () => {
   afterEach(() => {
     window.location.hash = '';
   });
-
-  it('opens from the menu', async () => {
-    render(<App />);
-    const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
-    await userEvent.click(within(nav).getByRole('link', { name: 'Müşteriler' }));
-    expect(
-      await screen.findByRole('heading', { name: 'Müşteriler', level: 1 }),
-    ).toBeInTheDocument();
-  });
-
   it('lists customers with balance, debt age and limit', async () => {
     const data = createTestData();
     const ahmet = await createCustomer(

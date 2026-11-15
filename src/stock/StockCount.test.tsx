@@ -78,9 +78,7 @@ describe('StockCount', () => {
     await userEvent.type(counted, '8');
     await userEvent.type(screen.getByLabelText('Not'), 'Raf 3');
     await userEvent.click(screen.getByRole('button', { name: 'Sayımı kaydet' }));
-    await waitFor(() =>
-      expect(onDone).toHaveBeenCalledWith('Sayım kaydedildi: 1 ürün, 1 farklı.'),
-    );
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith('Sayım kaydedildi: 1 ürün, 1 farklı.'));
     expect(await stockOf(data.db, product.id)).toBe(8000);
     expect(await data.db.stockCounts.toArray()).toMatchObject([{ note: 'Raf 3' }]);
     expect(screen.queryByRole('group', { name: 'Çay' })).not.toBeInTheDocument();

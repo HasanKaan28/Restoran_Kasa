@@ -1,7 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { App } from '@/app/App';
 import { createProduct } from '@/data/products';
 import { recordPurchase } from '@/data/purchases';
 import { addSupplierInvoice, recordSupplierPayment } from '@/data/supplierLedger';
@@ -27,16 +26,6 @@ describe('SuppliersScreen', () => {
   afterEach(() => {
     window.location.hash = '';
   });
-
-  it('opens from the menu', async () => {
-    render(<App />);
-    const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
-    await userEvent.click(within(nav).getByRole('link', { name: 'Tedarikçiler' }));
-    expect(
-      await screen.findByRole('heading', { name: 'Tedarikçiler', level: 1 }),
-    ).toBeInTheDocument();
-  });
-
   it('lists suppliers with their balance', async () => {
     const data = createTestData();
     const eti = await createSupplier(data.db, { name: 'Eti', phone: '02125550011' }, at);

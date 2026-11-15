@@ -10,7 +10,6 @@ import { Button, ToastRegion, useToast } from '@/design';
 import { ROLE_LABELS } from '@/domain/permissions';
 import { AuditLog } from './AuditLog';
 import { BackupSection } from './BackupSection';
-import { ScaleSection } from './ScaleSection';
 import { TablesSection } from '@/restaurant/TablesSection';
 import { LicenseSection, MarketSection, ReceiptSection, RegisterSection } from './MarketSections';
 import { StaffDialog } from './StaffDialog';
@@ -49,7 +48,6 @@ export function SettingsScreen(): JSX.Element {
         <TablesSection onDone={(message) => done(message)} />
         <RegisterSection />
         <ReceiptSection onDone={(message) => done(message)} />
-        <ScaleSection onDone={(message) => done(message)} />
         <UpdateSection version={APP_VERSION} {...updateTarget()} />
         <BackupSection />
         <section

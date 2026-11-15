@@ -22,7 +22,7 @@ describe('App', () => {
     render(<App />);
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
     await userEvent.click(within(nav).getByRole('link', { name: 'Menü' }));
-    expect(await screen.findByRole('heading', { name: 'Ürünler', level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Menü', level: 1 })).toBeInTheDocument();
     const shown = screen.getByRole('navigation', { name: 'Ana menü' });
     expect(within(shown).getByRole('link', { name: 'Menü' })).toHaveAttribute(
       'aria-current',
