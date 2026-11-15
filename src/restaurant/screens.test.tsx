@@ -47,7 +47,7 @@ describe('the waiter’s floor', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
     const bill = await screen.findByRole('dialog', { name: 'Hesap' });
-    await userEvent.click(within(bill).getByRole('radio', { name: 'Kart' }));
+    await userEvent.click(await within(bill).findByRole('radio', { name: 'Kart' }));
     await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
 
     // Paid: back on the floor, the table empty, and the sale on record.

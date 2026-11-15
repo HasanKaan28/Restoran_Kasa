@@ -185,12 +185,56 @@ export function stationOf(product: Pick<ProductRecord, 'station'>): Station {
   return product.station ?? 'kitchen';
 }
 
+export type OrderInput = {
+  qtyMilli: number;
+  note?: string;
+  /** A portion the dish has; the plain one when absent. */
+  portion?: string;
+  /** Choices from the dish's groups; every required group needs one. */
+  options?: readonly string[];
+  /** Keep it back to fire later (the next course). */
+  hold?: boolean;
+};
+
+/** The price of a dish in a portion: the portion's own, or the product's for the plain one. */
+export function portionPrice(product: ProductRecord, portion: string | undefined): Kurus {
+  if (portion === undefined) {
+    return product.sellPrice;
+  }
+  const found = product.portions?.find((item) => item.label === portion);
+  if (!found) {
+    throw new RangeError(`${product.name} has no portion "${portion}"`);
+  }
+  return found.price;
+}
+
+/** How a line reads on a ticket and a receipt: "Adana kebap (Yarım)". */
+export function itemLabel(item: Pick<TabItemRecord, 'name' | 'portion'>): string {
+  return item.portion ? `${item.name} (${item.portion})` : item.name;
+}
+
+/** The choices given must be the dish's own, and every required group answered. */
+function checkOptions(product: ProductRecord, options: readonly string[]): void {
+  const groups = product.optionGroups ?? [];
+  const known = new Set(groups.flatMap((group) => group.choices));
+  const unknown = options.find((option) => !known.has(option));
+  if (unknown !== undefined) {
+    throw new RangeError(`${product.name} has no choice "${unknown}"`);
+  }
+  const missing = groups.find(
+    (group) => group.required && !group.choices.some((choice) => options.includes(choice)),
+  );
+  if (missing) {
+    throw new RangeError(`${product.name} needs a choice for ${missing.name}`);
+  }
+}
+
 /** A line being taken: it can change or go until the order is sent. */
 export async function addTabItem(
   db: MarketDb,
   tabId: string,
   product: ProductRecord,
-  input: { qtyMilli: number; note?: string },
+  input: OrderInput,
   waiter: Waiter,
   at: Date,
 ): Promise<TabItemRecord> {
@@ -198,8 +242,14 @@ export async function addTabItem(
   if (input.qtyMilli <= 0 || (product.unit === 'piece' && input.qtyMilli % 1000 !== 0)) {
     throw new RangeError(`Cannot order ${input.qtyMilli} of ${product.name}`);
   }
+  const price = portionPrice(product, input.portion);
+  const options = [...(input.options ?? [])];
+  checkOptions(product, options);
   return db.transaction('rw', db.tabs, db.tabItems, db.outbox, async () => {
-    await requireOpenTab(db, tabId);
+    const tab = await requireOpenTab(db, tabId);
+    if (tab.billRequestedAt) {
+      throw new RangeError('The bill was asked for: unlock the tab to add to it');
+    }
     const stamp = at.toISOString();
     const record: TabItemRecord = withoutUndefined({
       id: newId(at.getTime()),
@@ -207,9 +257,12 @@ export async function addTabItem(
       productId: product.id,
       name: product.name,
       unit: product.unit,
-      unitPrice: product.sellPrice,
+      unitPrice: price,
       qtyMilli: input.qtyMilli,
       note: input.note?.trim() || undefined,
+      portion: input.portion,
+      options: options.length > 0 ? options : undefined,
+      hold: input.hold ? true : undefined,
       station: stationOf(product),
       status: 'new' as const,
       deviceCode: waiter.deviceCode,
@@ -248,6 +301,22 @@ export async function changeNewItem(
       changes.note = input.note.trim() || null;
     }
     await patch(db, 'tabItems', itemId, changes, at);
+  });
+}
+
+/** Keeps a line still being taken back for the next course, or lets it go with the order. */
+export async function setHold(
+  db: MarketDb,
+  itemId: string,
+  hold: boolean,
+  at: Date,
+): Promise<void> {
+  await db.transaction('rw', db.tabItems, db.outbox, async () => {
+    const item = await requireItem(db, itemId);
+    if (item.status !== 'new') {
+      throw new RangeError('Only a line not yet sent can be held');
+    }
+    await patch(db, 'tabItems', itemId, { hold: hold ? true : null }, at);
   });
 }
 
@@ -320,13 +389,75 @@ export async function sendTab(db: MarketDb, tabId: string, at: Date): Promise<nu
         db,
         'tabItems',
         item.id,
-        item.station === 'none'
-          ? { status: 'ready', sentAt: stamp, readyAt: stamp }
-          : { status: 'sent', sentAt: stamp },
+        item.hold ? { status: 'held' } : started(item, stamp),
         at,
       );
     }
     return waiting.length;
+  });
+}
+
+/** A line on its way: to its station, or ready at once when nothing has to be prepared. */
+function started(item: TabItemRecord, stamp: string): Record<string, unknown> {
+  return item.station === 'none'
+    ? { status: 'ready', sentAt: stamp, readyAt: stamp }
+    : { status: 'sent', sentAt: stamp };
+}
+
+/** Fires the course kept back: the held lines go to their stations now. Returns how many. */
+export async function fireHeld(db: MarketDb, tabId: string, at: Date): Promise<number> {
+  return db.transaction('rw', db.tabs, db.tabItems, db.outbox, async () => {
+    await requireOpenTab(db, tabId);
+    const held = (await db.tabItems.where('tabId').equals(tabId).toArray()).filter(
+      (item) => item.status === 'held',
+    );
+    for (const item of held) {
+      await patch(db, 'tabItems', item.id, started(item, at.toISOString()), at);
+    }
+    return held.length;
+  });
+}
+
+/** One more of a line already ordered, the same portion, choices and note: a new line to send. */
+export async function repeatItem(
+  db: MarketDb,
+  itemId: string,
+  waiter: Waiter,
+  at: Date,
+): Promise<TabItemRecord> {
+  const item = await requireItem(db, itemId);
+  const product = await db.products.get(item.productId);
+  if (!product || product.deletedAt) {
+    throw new RecordNotFoundError('Product', item.productId);
+  }
+  return addTabItem(
+    db,
+    item.tabId,
+    product,
+    {
+      qtyMilli: item.qtyMilli,
+      ...(item.note ? { note: item.note } : {}),
+      ...(item.portion ? { portion: item.portion } : {}),
+      ...(item.options ? { options: item.options } : {}),
+    },
+    waiter,
+    at,
+  );
+}
+
+/** The bill is asked for: the table shows it and takes no new lines until unlocked or paid. */
+export async function requestBill(db: MarketDb, tabId: string, at: Date): Promise<void> {
+  await db.transaction('rw', db.tabs, db.outbox, async () => {
+    await requireOpenTab(db, tabId);
+    await patch(db, 'tabs', tabId, { billRequestedAt: at.toISOString() }, at);
+  });
+}
+
+/** Back to ordering after a bill was asked for. */
+export async function cancelBillRequest(db: MarketDb, tabId: string, at: Date): Promise<void> {
+  await db.transaction('rw', db.tabs, db.outbox, async () => {
+    await requireOpenTab(db, tabId);
+    await patch(db, 'tabs', tabId, { billRequestedAt: null }, at);
   });
 }
 
@@ -346,34 +477,97 @@ export type KitchenTicket = {
   tab: TabRecord;
   /** The table's name, or the takeaway order's label. */
   title: string;
+  /** What to prepare now. */
   items: TabItemRecord[];
-  /** When the oldest of its lines was sent. */
+  /** The next course, kept back until the waiter fires it: shown so the station can plan. */
+  held: TabItemRecord[];
+  /** When the oldest of its lines was sent (or ordered, for a ticket with only held lines). */
   sentAt: string;
 };
 
 /** What a station has to prepare, one ticket per tab, the longest waiting first. */
 export async function kitchenTickets(db: MarketDb, station: Station): Promise<KitchenTicket[]> {
-  const sent = await db.tabItems.where('status').equals('sent').toArray();
-  const mine = sent.filter((item) => item.station === station);
-  const byTab = new Map<string, TabItemRecord[]>();
-  for (const item of mine) {
-    byTab.set(item.tabId, [...(byTab.get(item.tabId) ?? []), item]);
+  const [sent, held] = await Promise.all([
+    db.tabItems.where('status').equals('sent').toArray(),
+    db.tabItems.where('status').equals('held').toArray(),
+  ]);
+  const byTab = new Map<string, { items: TabItemRecord[]; held: TabItemRecord[] }>();
+  const entry = (tabId: string) => {
+    const found = byTab.get(tabId) ?? { items: [], held: [] };
+    byTab.set(tabId, found);
+    return found;
+  };
+  for (const item of sent.filter((line) => line.station === station)) {
+    entry(item.tabId).items.push(item);
+  }
+  for (const item of held.filter((line) => line.station === station)) {
+    entry(item.tabId).held.push(item);
   }
   const tickets: KitchenTicket[] = [];
-  for (const [tabId, items] of byTab) {
+  for (const [tabId, lines] of byTab) {
     const tab = await db.tabs.get(tabId);
     if (!tab) {
       continue;
     }
-    items.sort((a, b) => (a.sentAt ?? '').localeCompare(b.sentAt ?? ''));
+    lines.items.sort((a, b) => (a.sentAt ?? '').localeCompare(b.sentAt ?? ''));
+    lines.held.sort((a, b) => a.orderedAt.localeCompare(b.orderedAt));
     tickets.push({
       tab,
       title: await tabTitle(db, tab),
-      items,
-      sentAt: items[0]?.sentAt ?? tab.openedAt,
+      items: lines.items,
+      held: lines.held,
+      sentAt: lines.items[0]?.sentAt ?? lines.held[0]?.orderedAt ?? tab.openedAt,
     });
   }
-  return tickets.sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+  // Tickets with something to make come first; those only waiting to be fired after them.
+  return tickets.sort(
+    (a, b) =>
+      Number(a.items.length === 0) - Number(b.items.length === 0) ||
+      a.sentAt.localeCompare(b.sentAt),
+  );
+}
+
+/** How many of each dish a station has still to make, across every ticket ("Adana ×9"). */
+export async function allDayCounts(
+  db: MarketDb,
+  station: Station,
+): Promise<{ name: string; qtyMilli: number }[]> {
+  const sent = (await db.tabItems.where('status').equals('sent').toArray()).filter(
+    (item) => item.station === station,
+  );
+  const counts = new Map<string, number>();
+  for (const item of sent) {
+    const label = itemLabel(item);
+    counts.set(label, (counts.get(label) ?? 0) + item.qtyMilli);
+  }
+  return [...counts]
+    .map(([name, qtyMilli]) => ({ name, qtyMilli }))
+    .sort((a, b) => byName.compare(a.name, b.name));
+}
+
+/**
+ * Brings back what a station last marked ready, by mistake: every line marked in that same
+ * moment returns to its ticket. Returns how many came back.
+ */
+export async function recallLast(db: MarketDb, station: Station, at: Date): Promise<number> {
+  return db.transaction('rw', db.tabItems, db.outbox, async () => {
+    const ready = (await db.tabItems.where('status').equals('ready').toArray()).filter(
+      (item) => item.station === station && item.readyAt && !item.paidSaleId,
+    );
+    const last = ready.reduce<string | undefined>(
+      (latest, item) =>
+        latest === undefined || (item.readyAt ?? '') > latest ? item.readyAt : latest,
+      undefined,
+    );
+    if (last === undefined) {
+      return 0;
+    }
+    const back = ready.filter((item) => item.readyAt === last);
+    for (const item of back) {
+      await patch(db, 'tabItems', item.id, { status: 'sent', readyAt: null }, at);
+    }
+    return back.length;
+  });
 }
 
 /** A tab's name as people say it: its table's, or the takeaway order's. */
@@ -405,7 +599,7 @@ export async function tabBill(
     .sort((a, b) => a.orderedAt.localeCompare(b.orderedAt) || a.id.localeCompare(b.id));
   const products = await db.products.bulkGet(items.map((item) => item.productId));
   const priced = items.map((item, index) => {
-    const price = products[index]?.sellPrice ?? item.unitPrice;
+    const price = currentPrice(item, products[index]);
     const gross = lineTotal(item.qtyMilli, price);
     return { item, price, gross, discount: item.complimentary ? gross : 0 };
   });
@@ -479,13 +673,15 @@ export async function payTabItems(
       at,
       cutoffMinutes: input.cutoffMinutes,
       staffId: input.staffId,
-      lines: chosen.map((item, index) => ({
-        productId: item!.productId,
-        qtyMilli: item!.qtyMilli,
-        lineDiscount: item!.complimentary
-          ? lineTotal(item!.qtyMilli, products[index]?.sellPrice ?? item!.unitPrice)
-          : 0,
-      })),
+      lines: chosen.map((item, index) => {
+        const price = currentPrice(item!, products[index]);
+        return {
+          productId: item!.productId,
+          qtyMilli: item!.qtyMilli,
+          lineDiscount: item!.complimentary ? lineTotal(item!.qtyMilli, price) : 0,
+          ...(item!.portion ? { unitPrice: price, label: itemLabel(item!) } : {}),
+        };
+      }),
       payments: input.payments,
       ...(input.cashGiven !== undefined ? { cashGiven: input.cashGiven } : {}),
     });
@@ -500,6 +696,22 @@ export async function payTabItems(
 }
 
 // --- Helpers ------------------------------------------------------------------------------------
+
+/**
+ * A line's price now: its portion's, or the product's, as the menu stands; the price it was
+ * ordered at when the product or the portion is gone.
+ */
+function currentPrice(item: TabItemRecord, product: ProductRecord | undefined): Kurus {
+  if (!product) {
+    return item.unitPrice;
+  }
+  if (!item.portion) {
+    return product.sellPrice;
+  }
+  return (
+    product.portions?.find((portion) => portion.label === item.portion)?.price ?? item.unitPrice
+  );
+}
 
 async function requireOpenTab(db: MarketDb, tabId: string): Promise<TabRecord> {
   const tab = await db.tabs.get(tabId);

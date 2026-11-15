@@ -7,6 +7,12 @@ import type { Summary } from '@/reports/summary';
 
 export type ProductUnit = 'piece' | 'kg';
 
+/** A portion of a dish at its own price ("Yarım", "1,5", "Duble"); the plain one is the product's. */
+export type ProductPortion = { label: string; price: Kurus };
+
+/** Choices a dish asks for ("Acı": Acılı / Acısız); a required one must be answered to order it. */
+export type OptionGroup = { name: string; choices: string[]; required: boolean };
+
 /** Where an order line is prepared: the kitchen, the bar, or nowhere (served as it is). */
 export type Station = 'kitchen' | 'bar' | 'none';
 
@@ -28,6 +34,10 @@ export type ProductRecord = {
   packs?: ProductPack[];
   /** Where an order of it is prepared; the kitchen when not said. */
   station?: Station;
+  /** Portions other than the plain one, each at its own price. */
+  portions?: ProductPortion[];
+  /** Choices asked when it is ordered. */
+  optionGroups?: OptionGroup[];
   /** The packs' barcodes, kept beside them so the database can look them up. */
   packCodes?: string[];
   createdAt: string;
@@ -423,6 +433,8 @@ export type TabRecord = {
   label?: string;
   status: 'open' | 'paid' | 'merged' | 'cancelled';
   guests?: number;
+  /** When the bill was asked for; the tab takes no new lines until it is paid or unlocked. */
+  billRequestedAt?: string;
   deviceCode: string;
   /** The waiter who opened it; absent when no staff are set up. */
   staffId?: string;
@@ -447,8 +459,15 @@ export type TabItemRecord = {
   unitPrice: Kurus;
   qtyMilli: number;
   note?: string;
+  /** The portion ordered; the plain portion when absent. */
+  portion?: string;
+  /** The choices made for it ("Acısız", "Az pişmiş"). */
+  options?: string[];
+  /** Taken to be sent later (the next course): stays out of the kitchen until fired. */
+  hold?: boolean;
   station: Station;
-  status: 'new' | 'sent' | 'ready' | 'void';
+  /** `held`: sent with the order but kept back, to be fired later. */
+  status: 'new' | 'held' | 'sent' | 'ready' | 'void';
   /** On the house: it is on the bill at no charge. */
   complimentary?: boolean;
   voidReason?: string;

@@ -1,7 +1,7 @@
 import { loadDeviceSettings } from '@/app/device';
 import { createCategory } from '@/data/categories';
 import { openMarketDb } from '@/data/db';
-import { createProduct } from '@/data/products';
+import { createProduct, type NewProduct } from '@/data/products';
 import {
   addTabItem,
   createDiningTable,
@@ -39,6 +39,23 @@ const MENU: DemoDish[] = [
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000);
 
+const SPICE = { name: 'Acı', choices: ['Acılı', 'Acısız'], required: true };
+const DONENESS = { name: 'Pişme', choices: ['Az pişmiş', 'Orta', 'İyi pişmiş'], required: true };
+
+/** Portions and choices of the dishes that ask for them. */
+const EXTRAS: Record<string, Pick<NewProduct, 'portions' | 'optionGroups'>> = {
+  'Adana kebap': {
+    portions: [
+      { label: 'Yarım', price: 25000 },
+      { label: '1,5', price: 65000 },
+    ],
+    optionGroups: [SPICE],
+  },
+  'Urfa kebap': { portions: [{ label: 'Yarım', price: 25000 }] },
+  'Kuzu şiş': { optionGroups: [DONENESS] },
+  'Izgara köfte': { optionGroups: [DONENESS] },
+};
+
 /**
  * Fills this browser's restaurant with a believable evening for screenshots: a menu by category,
  * tables in the salon and the garden, tabs open at some of them with lines sent, ready and a
@@ -68,6 +85,7 @@ export async function seedRestaurant(): Promise<string> {
           station,
           categoryId: categories.get(category),
           isQuick: true,
+          ...(EXTRAS[name] ?? {}),
         },
         at,
       ),
@@ -83,7 +101,7 @@ export async function seedRestaurant(): Promise<string> {
 
   const waiter = { deviceCode: settings.deviceCode };
   const dish = (name: string) => dishes.get(name) as ProductRecord;
-  type Line = [name: string, qty: number, note?: string];
+  type Line = [name: string, qty: number, note?: string, options?: string[]];
   async function seat(
     table: string,
     minutes: number,
@@ -93,12 +111,12 @@ export async function seedRestaurant(): Promise<string> {
   ) {
     const tab = await openTab(db, { tableId: tables.get(table), ...waiter }, minutesAgo(minutes));
     const ids = new Map<string, string>();
-    for (const [name, qty, note] of sent) {
+    for (const [name, qty, note, options] of sent) {
       const item = await addTabItem(
         db,
         tab.id,
         dish(name),
-        { qtyMilli: qty * 1000, ...(note ? { note } : {}) },
+        { qtyMilli: qty * 1000, ...(note ? { note } : {}), ...(options ? { options } : {}) },
         waiter,
         minutesAgo(minutes),
       );
@@ -110,12 +128,12 @@ export async function seedRestaurant(): Promise<string> {
       ready.map((name) => ids.get(name) as string),
       minutesAgo(Math.max(1, minutes - 10)),
     );
-    for (const [name, qty, note] of taking) {
+    for (const [name, qty, note, options] of taking) {
       await addTabItem(
         db,
         tab.id,
         dish(name),
-        { qtyMilli: qty * 1000, ...(note ? { note } : {}) },
+        { qtyMilli: qty * 1000, ...(note ? { note } : {}), ...(options ? { options } : {}) },
         waiter,
         minutesAgo(1),
       );
@@ -131,7 +149,7 @@ export async function seedRestaurant(): Promise<string> {
       ['Ezme', 1],
       ['Haydari', 1],
       ['Çoban salata', 1],
-      ['Adana kebap', 2, 'Biri acısız'],
+      ['Adana kebap', 2, 'Biri acısız', ['Acılı']],
       ['Su', 2],
     ],
     [],
@@ -143,7 +161,7 @@ export async function seedRestaurant(): Promise<string> {
     [
       ['Mercimek çorbası', 2],
       ['Urfa kebap', 1],
-      ['Izgara köfte', 1, 'Az pişmiş'],
+      ['Izgara köfte', 1, undefined, ['Az pişmiş']],
       ['Ayran', 2],
     ],
     [],
@@ -154,7 +172,7 @@ export async function seedRestaurant(): Promise<string> {
     '5',
     9,
     [
-      ['Kuzu şiş', 2],
+      ['Kuzu şiş', 2, undefined, ['Orta']],
       ['Tavuk kanat', 1],
       ['Şalgam', 3],
     ],

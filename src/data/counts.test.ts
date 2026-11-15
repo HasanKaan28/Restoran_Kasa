@@ -98,9 +98,9 @@ describe('recordCount', () => {
     await expect(one(tea.id, 1500)).rejects.toBeInstanceOf(RangeError);
     await expect(one(tea.id, -1000)).rejects.toBeInstanceOf(RangeError);
     await expect(one(gone.id, 1000)).rejects.toBeInstanceOf(RecordNotFoundError);
-    await expect(recordCount(db, { deviceCode: 'K1', lines: [] }, minute(5))).rejects.toBeInstanceOf(
-      RangeError,
-    );
+    await expect(
+      recordCount(db, { deviceCode: 'K1', lines: [] }, minute(5)),
+    ).rejects.toBeInstanceOf(RangeError);
     await expect(
       recordCount(
         db,
@@ -182,7 +182,12 @@ describe('countsNeedingCheck', () => {
   it('is not broken by a sale stamped ahead by a fast clock', async () => {
     const tea = await stocked('Çay', 10000);
     // K2's clock runs three hours ahead: its sale, known here before the count, is stamped later.
-    await recordStockMovement(db, { productId: tea.id, delta: -1000, kind: 'sale', at: minute(190) });
+    await recordStockMovement(db, {
+      productId: tea.id,
+      delta: -1000,
+      kind: 'sale',
+      at: minute(190),
+    });
     const count = await recordCount(
       db,
       { deviceCode: 'K1', lines: [{ productId: tea.id, countedMilli: 9000 }] },

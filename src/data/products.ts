@@ -8,7 +8,14 @@ import { appendOutbox } from './outbox';
 import { changedFields, toPatch, withoutUndefined } from './records';
 import { recordStockMovement } from './stock';
 import { normalizeForSearch } from './text';
-import type { ProductPack, ProductRecord, ProductUnit, Station } from './types';
+import type {
+  OptionGroup,
+  ProductPack,
+  ProductPortion,
+  ProductRecord,
+  ProductUnit,
+  Station,
+} from './types';
 
 export type NewProduct = {
   barcode?: string;
@@ -24,6 +31,10 @@ export type NewProduct = {
   packs?: readonly ProductPack[];
   /** Where an order of it is prepared: the kitchen, the bar or nowhere. */
   station?: Station;
+  /** Portions at their own prices; an empty list clears them. */
+  portions?: readonly ProductPortion[];
+  /** Choices asked when it is ordered; an empty list clears them. */
+  optionGroups?: readonly OptionGroup[];
 };
 
 /** An empty string for `barcode` or `categoryId` clears it. */
@@ -300,6 +311,34 @@ function validateFields(input: ProductPatch): Partial<ProductFields> {
   }
   if (input.isQuick !== undefined) {
     fields.isQuick = input.isQuick;
+  }
+  if (input.portions !== undefined) {
+    const portions = input.portions.map((portion) => {
+      const label = portion.label.trim();
+      if (label === '' || label.length > 20) {
+        throw new RangeError('A portion needs a name of 1 to 20 characters');
+      }
+      assertNonNegativeInteger(portion.price, 'portion price');
+      if (portion.price > MAX_UNIT_PRICE) {
+        throw new RangeError(`A portion price cannot exceed ${MAX_UNIT_PRICE}`);
+      }
+      return { label, price: portion.price };
+    });
+    if (new Set(portions.map((portion) => portion.label)).size !== portions.length) {
+      throw new RangeError('Each portion needs a name of its own');
+    }
+    fields.portions = portions.length > 0 ? portions : undefined;
+  }
+  if (input.optionGroups !== undefined) {
+    const groups = input.optionGroups.map((group) => {
+      const name = group.name.trim();
+      const choices = [...new Set(group.choices.map((choice) => choice.trim()).filter(Boolean))];
+      if (name === '' || choices.length === 0) {
+        throw new RangeError('A choice group needs a name and at least one choice');
+      }
+      return { name, choices, required: group.required === true };
+    });
+    fields.optionGroups = groups.length > 0 ? groups : undefined;
   }
   if (input.station !== undefined) {
     if (!['kitchen', 'bar', 'none'].includes(input.station)) {

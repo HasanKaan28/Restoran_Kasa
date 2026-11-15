@@ -25,6 +25,16 @@ codebase runs as a web app (PWA, for waiters' phones and tablets), a Windows des
 - **Bill (Hesap):** pay everything, or tick only some lines to split by what each person had;
   a per-head share is shown. Cash with change, or card. Every payment is a receipt on the
   register, so the Z report, the reports and the stock count it.
+- **Portions and choices:** a dish can have portions at their own prices (Yarım, 1,5, Duble)
+  and choice groups asked when it is ordered (Acı, Pişme); a required one must be answered.
+- **Courses:** a line can be kept back ("Sonra gönder") and fired later with one tap; the
+  kitchen sees the next course greyed on the ticket. A sent line can be repeated in one tap.
+- **Bill requested (Hesap istendi):** the table turns amber and its tab takes no new lines
+  until it is paid or unlocked. A long press (or right click) on a table offers its actions:
+  open, ask for the bill, take the payment, move or merge.
+- **Kitchen helpers:** a strip counts every dish still to make across tickets ("Adana ×9"),
+  tickets turn yellow at 10 minutes and red at 15, and the last line marked ready by mistake
+  can be brought back.
 - **Move and merge:** move a tab to an empty table, or merge it into another table's tab.
 - **Everything else** from Market Kasa: quick sale at the counter, menu (products) with
   categories, stock and goods receipts for the bar, customers on credit, suppliers, staff with

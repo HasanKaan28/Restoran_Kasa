@@ -1,13 +1,22 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ShoppingBag } from 'lucide-react';
-import { useState, type JSX } from 'react';
+import { useRef, useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
 import { useSession } from '@/app/session';
-import { listDiningTables, openTab, openTabs, tabBill } from '@/data/restaurant';
+import {
+  cancelBillRequest,
+  listDiningTables,
+  openTab,
+  openTabs,
+  requestBill,
+  tabBill,
+} from '@/data/restaurant';
 import type { TabRecord } from '@/data/types';
-import { Button, ChoiceGroup, ToastRegion, useToast } from '@/design';
+import { Button, ChoiceGroup, Dialog, ToastRegion, useToast } from '@/design';
 import { formatTRY } from '@/domain/money';
+import { MoveDialog } from './MoveDialog';
+import { PayDialog } from './PayDialog';
 import { TabView } from './TabView';
 import { minutesSince, useNow } from './time';
 
@@ -23,8 +32,9 @@ type FloorTable = {
 };
 
 /**
- * The floor: every table, empty or with its tab's total, how long it has been open and how many
- * lines are ready to serve; takeaway orders beside them. A tap opens the table's tab.
+ * The floor: every table, empty or with its tab's total, how long it has been open, how many
+ * lines are ready to serve and whether the bill was asked for; takeaway orders beside them. A
+ * tap opens the table's tab; a long press (or a right click) offers its actions without it.
  */
 export function TablesScreen(): JSX.Element {
   const { db, settings, runner } = useData();
@@ -34,6 +44,10 @@ export function TablesScreen(): JSX.Element {
   const now = useNow();
   const [area, setArea] = useState(ALL);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [actions, setActions] = useState<FloorTable | null>(null);
+  const [tabDialog, setTabDialog] = useState<{ kind: 'pay' | 'move'; tabId: string } | null>(null);
+  const pressTimer = useRef<number | undefined>(undefined);
+  const longPressed = useRef(false);
 
   const floor = useLiveQuery(async () => {
     const [tables, tabs] = await Promise.all([listDiningTables(db), openTabs(db)]);
@@ -63,6 +77,31 @@ export function TablesScreen(): JSX.Element {
 
   if (openId) {
     return <TabView tabId={openId} onClose={() => setOpenId(null)} />;
+  }
+
+  // A press held half a second opens the table's actions instead of the tab.
+  function pressStart(table: FloorTable) {
+    longPressed.current = false;
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = window.setTimeout(() => {
+      longPressed.current = true;
+      setActions(table);
+    }, 500);
+  }
+  function pressEnd() {
+    window.clearTimeout(pressTimer.current);
+  }
+
+  async function toggleBill(tab: TabRecord) {
+    if (tab.billRequestedAt) {
+      await cancelBillRequest(db, tab.id, new Date());
+      toast.show('Kilit açıldı.');
+    } else {
+      await requestBill(db, tab.id, new Date());
+      toast.show('Hesap istendi.');
+    }
+    setActions(null);
+    void runner.run();
   }
 
   const areas = [...new Set((floor?.seated ?? []).map((table) => table.area))];
@@ -124,14 +163,36 @@ export function TablesScreen(): JSX.Element {
           {shown.map((table) => {
             const busy = table.tab !== undefined;
             const minutes = table.tab ? minutesSince(table.tab.openedAt, now) : 0;
+            const billAsked = table.tab?.billRequestedAt !== undefined;
             return (
               <li key={table.id}>
                 <button
                   type="button"
-                  onClick={() => void open(table.id)}
-                  aria-label={`${table.name}, ${busy ? `dolu, ${formatTRY(table.total)}` : 'boş'}`}
-                  className={`flex min-h-28 w-full flex-col justify-between rounded-control border p-3 text-left ${
-                    busy ? 'border-accent bg-accent/10' : 'border-line bg-surface hover:bg-bg'
+                  onClick={() => {
+                    if (!longPressed.current) {
+                      void open(table.id);
+                    }
+                    longPressed.current = false;
+                  }}
+                  onPointerDown={() => pressStart(table)}
+                  onPointerUp={pressEnd}
+                  onPointerLeave={pressEnd}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    pressEnd();
+                    setActions(table);
+                  }}
+                  aria-label={`${table.name}, ${
+                    busy
+                      ? `${billAsked ? 'hesap istendi' : 'dolu'}, ${formatTRY(table.total)}`
+                      : 'boş'
+                  }`}
+                  className={`flex min-h-28 w-full touch-manipulation flex-col justify-between rounded-control border p-3 text-left select-none ${
+                    billAsked
+                      ? 'border-warning bg-warning-bg'
+                      : busy
+                        ? 'border-accent bg-accent/10'
+                        : 'border-line bg-surface hover:bg-bg'
                   } ${table.ready > 0 ? 'ring-2 ring-success' : ''}`}
                 >
                   <span className="text-lg font-semibold">{table.name}</span>
@@ -141,6 +202,9 @@ export function TablesScreen(): JSX.Element {
                         {formatTRY(table.total)}
                       </span>
                       <span className="text-text-2">{`${minutes} dk`}</span>
+                      {billAsked ? (
+                        <span className="font-medium text-warning">Hesap istendi</span>
+                      ) : null}
                       {table.ready > 0 ? (
                         <span className="font-medium text-success">{`${table.ready} hazır`}</span>
                       ) : null}
@@ -170,6 +234,71 @@ export function TablesScreen(): JSX.Element {
           </section>
         ) : null}
       </AppShell>
+      {actions ? (
+        <Dialog
+          open
+          onOpenChange={(next) => !next && setActions(null)}
+          title={actions.tab ? `${actions.name} · ${formatTRY(actions.total)}` : actions.name}
+        >
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActions(null);
+                void open(actions.id);
+              }}
+            >
+              {actions.tab ? 'Adisyonu aç' : 'Masayı aç'}
+            </Button>
+            {actions.tab ? (
+              <>
+                <Button onClick={() => void toggleBill(actions.tab as TabRecord)}>
+                  {actions.tab.billRequestedAt ? 'Kilidi aç' : 'Hesap iste'}
+                </Button>
+                <Button
+                  disabled={!session.can('sell')}
+                  onClick={() => {
+                    setTabDialog({ kind: 'pay', tabId: (actions.tab as TabRecord).id });
+                    setActions(null);
+                  }}
+                >
+                  Hesap al
+                </Button>
+                <Button
+                  onClick={() => {
+                    setTabDialog({ kind: 'move', tabId: (actions.tab as TabRecord).id });
+                    setActions(null);
+                  }}
+                >
+                  Taşı / birleştir
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </Dialog>
+      ) : null}
+      {tabDialog?.kind === 'pay' ? (
+        <PayDialog
+          tabId={tabDialog.tabId}
+          onClose={() => setTabDialog(null)}
+          onPaid={(message) => {
+            setTabDialog(null);
+            toast.show(message);
+            void runner.run();
+          }}
+        />
+      ) : null}
+      {tabDialog?.kind === 'move' ? (
+        <MoveDialog
+          tabId={tabDialog.tabId}
+          onClose={() => setTabDialog(null)}
+          onMoved={(message) => {
+            setTabDialog(null);
+            toast.show(message);
+            void runner.run();
+          }}
+        />
+      ) : null}
       <ToastRegion message={toast.message} />
     </>
   );

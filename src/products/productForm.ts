@@ -1,5 +1,6 @@
 import { canonicalBarcode, type NewProduct, type ProductPatch } from '@/data/products';
 import type { ProductRecord, ProductUnit, Station } from '@/data/types';
+import type { GroupDraft, PortionDraft } from '@/restaurant/MenuOptionsEditor';
 import type { ChoiceOption } from '@/design';
 import { formatTRY, parseTRY, type Kurus } from '@/domain/money';
 import { MAX_UNIT_PRICE, type VatRate } from '@/domain/pricing';
@@ -25,13 +26,24 @@ export type ProductDraft = {
   /** Case and pack barcodes as typed; a row left wholly empty is dropped. */
   packs: PackDraft[];
   station: Station;
+  /** Portions at their own prices, as typed. */
+  portions: PortionDraft[];
+  /** Choice groups, the choices typed comma separated. */
+  optionGroups: GroupDraft[];
 };
 
 export type PackDraft = { barcode: string; qty: string };
 
 export type DraftErrors = Partial<
   Record<
-    'barcode' | 'name' | 'sellPrice' | 'buyPrice' | 'criticalLevel' | 'openingStock' | 'packs',
+    | 'barcode'
+    | 'name'
+    | 'sellPrice'
+    | 'buyPrice'
+    | 'criticalLevel'
+    | 'openingStock'
+    | 'packs'
+    | 'menu',
     string
   >
 >;
@@ -58,6 +70,8 @@ const FIELD_OF: Record<Exclude<keyof ProductDraft, 'openingStock'>, keyof ReadFi
   isQuick: 'isQuick',
   packs: 'packs',
   station: 'station',
+  portions: 'portions',
+  optionGroups: 'optionGroups',
 };
 
 /**
@@ -109,6 +123,15 @@ export function draftOf(product?: ProductRecord, barcode?: string): ProductDraft
     isQuick: product?.isQuick ?? false,
     openingStock: '',
     station: product?.station ?? 'kitchen',
+    portions: (product?.portions ?? []).map((portion) => ({
+      label: portion.label,
+      price: formatPriceInput(portion.price),
+    })),
+    optionGroups: (product?.optionGroups ?? []).map((group) => ({
+      name: group.name,
+      choices: group.choices.join(', '),
+      required: group.required,
+    })),
     packs: (product?.packs ?? []).map((pack) => ({
       barcode: pack.barcode,
       qty: formatQtyInput(pack.qtyMilli),
@@ -132,6 +155,8 @@ export function readDraft(draft: ProductDraft): ReadDraft {
   const criticalLevelMilli = readQuantity(draft.criticalLevel, draft.unit, 'criticalLevel', errors);
   const openingStockMilli = readQuantity(draft.openingStock, draft.unit, 'openingStock', errors);
   const packs = readPacks(draft.packs, draft.unit, errors);
+  const portions = readPortions(draft.portions, errors);
+  const optionGroups = readGroups(draft.optionGroups, errors);
   if (Object.keys(errors).length > 0) {
     return { errors };
   }
@@ -148,9 +173,70 @@ export function readDraft(draft: ProductDraft): ReadDraft {
       criticalLevelMilli,
       packs,
       station: draft.station,
+      portions,
+      optionGroups,
     },
     openingStockMilli,
   };
+}
+
+/** The portions typed, empty rows dropped; the first that cannot be read is named. */
+function readPortions(rows: readonly PortionDraft[], errors: DraftErrors) {
+  const portions: { label: string; price: Kurus }[] = [];
+  for (const [index, row] of rows.entries()) {
+    const name = `Porsiyon ${index + 1}`;
+    const label = row.label.trim();
+    if (label === '' && row.price.trim() === '') {
+      continue;
+    }
+    if (label === '') {
+      errors.menu = `${name}: adını yazın.`;
+      return [];
+    }
+    if (row.price.trim() === '') {
+      errors.menu = `${name}: fiyatı girin.`;
+      return [];
+    }
+    let price: Kurus;
+    try {
+      price = parseTRY(row.price);
+    } catch {
+      errors.menu = `${name}: geçerli bir fiyat girin.`;
+      return [];
+    }
+    if (price > MAX_UNIT_PRICE) {
+      errors.menu = `${name}: fiyat en fazla ${formatTRY(MAX_UNIT_PRICE)} olabilir.`;
+      return [];
+    }
+    if (portions.some((portion) => portion.label === label)) {
+      errors.menu = `${name}: bu adla bir porsiyon zaten var.`;
+      return [];
+    }
+    portions.push({ label, price });
+  }
+  return portions;
+}
+
+/** The choice groups typed, empty rows dropped; the first that cannot be read is named. */
+function readGroups(rows: readonly GroupDraft[], errors: DraftErrors) {
+  const groups: { name: string; choices: string[]; required: boolean }[] = [];
+  for (const [index, row] of rows.entries()) {
+    const label = `Seçenek grubu ${index + 1}`;
+    const name = row.name.trim();
+    const choices = row.choices
+      .split(',')
+      .map((choice) => choice.trim())
+      .filter(Boolean);
+    if (name === '' && choices.length === 0) {
+      continue;
+    }
+    if (name === '' || choices.length === 0) {
+      errors.menu = `${label}: adını ve en az bir seçeneği yazın.`;
+      return [];
+    }
+    groups.push({ name, choices, required: row.required });
+  }
+  return groups;
 }
 
 /** The packs typed, rows left empty dropped; the first row that cannot be read is named. */

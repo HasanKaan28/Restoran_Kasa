@@ -13,7 +13,15 @@ import { withoutUndefined } from './records';
 import { recordStockMovement } from './stock';
 import type { Payment, ProductRecord, SaleLine, SaleRecord } from './types';
 
-export type SaleLineInput = { productId: string; qtyMilli: number; lineDiscount?: Kurus };
+export type SaleLineInput = {
+  productId: string;
+  qtyMilli: number;
+  lineDiscount?: Kurus;
+  /** A price of its own (a portion of a dish); the product's price when absent. */
+  unitPrice?: Kurus;
+  /** The name on the receipt ("Adana kebap (Yarım)"); the product's name when absent. */
+  label?: string;
+};
 
 export type RecordSaleInput = {
   /** Pass the cart's id: submitting the same id again returns the stored sale instead of selling twice. */
@@ -58,7 +66,7 @@ export async function recordSale(db: MarketDb, input: RecordSaleInput): Promise<
     const cart = computeCart(
       input.lines.map((line, index) => ({
         qtyMilli: line.qtyMilli,
-        unitPrice: productAt(products, index).sellPrice,
+        unitPrice: line.unitPrice ?? productAt(products, index).sellPrice,
         vatRate: productAt(products, index).vatRate,
         lineDiscount: line.lineDiscount,
       })),
@@ -144,6 +152,12 @@ async function loadProducts(
   const products: ProductRecord[] = [];
   for (const line of lines) {
     assertSafeInteger(line.qtyMilli, 'Quantity (thousandths)');
+    if (line.unitPrice !== undefined) {
+      assertSafeInteger(line.unitPrice, 'Unit price');
+      if (line.unitPrice < 0) {
+        throw new RangeError(`A unit price cannot be negative, got ${line.unitPrice}`);
+      }
+    }
     if (line.qtyMilli <= 0) {
       throw new RangeError(`A sale line needs a positive quantity, got ${line.qtyMilli}`);
     }
@@ -231,11 +245,11 @@ function buildSale(
     const line = input.lines[index];
     return withoutUndefined({
       productId: product.id,
-      name: product.name,
+      name: line?.label?.trim() || product.name,
       barcode: product.barcode,
       unit: product.unit,
       qtyMilli: line?.qtyMilli ?? 0,
-      unitPrice: product.sellPrice,
+      unitPrice: line?.unitPrice ?? product.sellPrice,
       vatRate: product.vatRate,
       lineDiscount: totals.lineDiscount,
       cartShare: totals.cartShare,

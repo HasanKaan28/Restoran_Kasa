@@ -2,10 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
-import { kitchenTickets, markReady } from '@/data/restaurant';
+import { allDayCounts, itemLabel, kitchenTickets, markReady, recallLast } from '@/data/restaurant';
 import type { Station } from '@/data/types';
 import { Button, ChoiceGroup } from '@/design';
-import { formatLineQty } from '@/pos/format';
+import { formatLineQty, formatQty } from '@/pos/format';
 import { minutesSince, useNow } from './time';
 
 const STATIONS: readonly { value: Exclude<Station, 'none'>; label: string }[] = [
@@ -14,7 +14,8 @@ const STATIONS: readonly { value: Exclude<Station, 'none'>; label: string }[] = 
 ];
 
 const STATION_KEY = 'rk.station';
-/** A ticket waiting this long turns red. */
+/** A ticket waiting this long turns yellow, then red. */
+const SLOW_MINUTES = 10;
 const LATE_MINUTES = 15;
 
 function storedStation(): Exclude<Station, 'none'> {
@@ -36,6 +37,7 @@ export function KitchenScreen(): JSX.Element {
   const now = useNow(15_000);
   const [station, setStation] = useState(storedStation);
   const tickets = useLiveQuery(() => kitchenTickets(db, station), [db, station]);
+  const counts = useLiveQuery(() => allDayCounts(db, station), [db, station]);
 
   function choose(next: Exclude<Station, 'none'>) {
     setStation(next);
@@ -48,6 +50,11 @@ export function KitchenScreen(): JSX.Element {
 
   async function ready(ids: string[]) {
     await markReady(db, ids, new Date());
+    void runner.run();
+  }
+
+  async function recall() {
+    await recallLast(db, station, new Date());
     void runner.run();
   }
 
@@ -72,6 +79,23 @@ export function KitchenScreen(): JSX.Element {
           />
         </div>
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {counts && counts.length > 0 ? (
+          <ul aria-label="Toplam" className="mr-auto flex flex-wrap gap-2">
+            {counts.map((count) => (
+              <li
+                key={count.name}
+                className="rounded-control border border-line bg-surface px-3 py-1.5 font-medium"
+              >
+                {`${count.name} ×${formatQty(count.qtyMilli)}`}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span className="mr-auto" />
+        )}
+        <Button onClick={() => void recall()}>Son hazırı geri al</Button>
+      </div>
       {tickets && tickets.length === 0 ? (
         <p className="rounded-control border border-line bg-surface p-5 text-text-2">
           Bekleyen sipariş yok.
@@ -83,17 +107,29 @@ export function KitchenScreen(): JSX.Element {
       >
         {(tickets ?? []).map((ticket) => {
           const minutes = minutesSince(ticket.sentAt, now);
-          const late = minutes >= LATE_MINUTES;
+          const waiting = ticket.items.length > 0;
+          const late = waiting && minutes >= LATE_MINUTES;
+          const slow = waiting && !late && minutes >= SLOW_MINUTES;
           return (
             <li
               key={ticket.tab.id}
               aria-label={ticket.title}
-              className={`flex flex-col gap-2 rounded-control border bg-surface p-3 ${late ? 'border-danger' : 'border-line'}`}
+              className={`flex flex-col gap-2 rounded-control border bg-surface p-3 ${
+                late ? 'border-danger' : slow ? 'border-warning bg-warning-bg' : 'border-line'
+              }`}
             >
               <div className="flex items-baseline justify-between">
                 <span className="text-xl font-semibold">{ticket.title}</span>
-                <span className={late ? 'font-semibold text-danger' : 'text-text-2'}>
-                  {`${minutes} dk`}
+                <span
+                  className={
+                    late
+                      ? 'font-semibold text-danger'
+                      : slow
+                        ? 'font-semibold text-warning'
+                        : 'text-text-2'
+                  }
+                >
+                  {waiting ? `${minutes} dk` : 'Sırada'}
                 </span>
               </div>
               <ul className="flex flex-col gap-1">
@@ -106,8 +142,11 @@ export function KitchenScreen(): JSX.Element {
                       className="flex w-full flex-col rounded-control border border-line px-3 py-2 text-left hover:bg-bg"
                     >
                       <span className="text-lg font-medium">
-                        {`${formatLineQty(item.qtyMilli, item.unit)} × ${item.name}`}
+                        {`${formatLineQty(item.qtyMilli, item.unit)} × ${itemLabel(item)}`}
                       </span>
+                      {item.options ? (
+                        <span className="font-medium">{item.options.join(' · ')}</span>
+                      ) : null}
                       {item.note ? (
                         <span className="font-medium text-accent">{item.note}</span>
                       ) : null}
@@ -115,12 +154,26 @@ export function KitchenScreen(): JSX.Element {
                   </li>
                 ))}
               </ul>
-              <Button
-                variant="primary"
-                onClick={() => void ready(ticket.items.map((item) => item.id))}
-              >
-                Hepsi hazır
-              </Button>
+              {ticket.held.length > 0 ? (
+                <div className="flex flex-col gap-1 rounded-control bg-bg p-2 text-text-2">
+                  <span className="text-sm font-medium">Sıradaki servis</span>
+                  {ticket.held.map((item) => (
+                    <span key={item.id}>
+                      {`${formatLineQty(item.qtyMilli, item.unit)} × ${itemLabel(item)}${
+                        item.options ? ` (${item.options.join(', ')})` : ''
+                      }`}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {waiting ? (
+                <Button
+                  variant="primary"
+                  onClick={() => void ready(ticket.items.map((item) => item.id))}
+                >
+                  Hepsi hazır
+                </Button>
+              ) : null}
             </li>
           );
         })}

@@ -7,13 +7,21 @@ import { useSession } from '@/app/session';
 import { listCategories } from '@/data/categories';
 import {
   addTabItem,
+  cancelBillRequest,
   changeNewItem,
+  fireHeld,
+  itemLabel,
+  payTabItems,
   removeNewItem,
+  repeatItem,
+  requestBill,
   sendTab,
   setComplimentary,
+  setHold,
   tabBill,
   tabTitle,
   voidItem,
+  type OrderInput,
 } from '@/data/restaurant';
 import { normalizeForSearch } from '@/data/text';
 import type { ProductRecord, TabItemRecord } from '@/data/types';
@@ -21,20 +29,24 @@ import { Button, ChoiceGroup, Dialog, TextField, ToastRegion, useToast } from '@
 import { formatTRY } from '@/domain/money';
 import { formatLineQty } from '@/pos/format';
 import { MoveDialog } from './MoveDialog';
+import { OrderDialog } from './OrderDialog';
 import { PayDialog } from './PayDialog';
 
 const ALL = '';
 
 const STATUS_LABELS: Record<TabItemRecord['status'], string> = {
   new: 'Gönderilmedi',
+  held: 'Sırada',
   sent: 'Hazırlanıyor',
   ready: 'Hazır',
   void: 'İptal',
 };
 
 /**
- * One tab: the menu on one side, the order on the other. Lines are taken, then sent to the
- * kitchen and the bar in one go; a sent line can be made a treat or voided with a reason.
+ * One tab: the menu on one side, the order on the other. Lines are taken (a dish with portions
+ * or choices asks for them), then sent to the kitchen and the bar in one go, or kept back for
+ * the next course and fired later. A sent line can be repeated, made a treat or voided with a
+ * reason. Asking for the bill locks the tab until it is paid or unlocked.
  */
 export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }): JSX.Element {
   const { db, settings, runner } = useData();
@@ -46,6 +58,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [voiding, setVoiding] = useState<TabItemRecord | null>(null);
   const [dialog, setDialog] = useState<'pay' | 'move' | null>(null);
+  const [ordering, setOrdering] = useState<ProductRecord | null>(null);
   const waiter = { deviceCode: settings.deviceCode, staffId: session.staff?.id };
 
   const tab = useLiveQuery(async () => {
@@ -86,15 +99,32 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   }, [gone, onClose]);
 
   const fresh = (items ?? []).filter((item) => item.status === 'new');
+  const held = (items ?? []).filter((item) => item.status === 'held');
   const paid = (items ?? []).filter((item) => item.paidSaleId);
+  const billRequested = tab?.record.billRequestedAt !== undefined;
 
   async function order(product: ProductRecord) {
+    if (billRequested) {
+      toast.show('Hesap istendi. Sipariş eklemek için önce kilidi açın.');
+      return;
+    }
+    // A dish that asks for a portion or a choice opens its own window.
+    if ((product.portions?.length ?? 0) > 0 || (product.optionGroups?.length ?? 0) > 0) {
+      setOrdering(product);
+      return;
+    }
     try {
       // A second tap on the same dish adds one more to the line being taken.
       // Read from the database, not the screen: two quick taps must not make two lines.
       const lines = await db.tabItems.where('tabId').equals(tabId).toArray();
       const same = lines.find(
-        (item) => item.status === 'new' && item.productId === product.id && !item.note,
+        (item) =>
+          item.status === 'new' &&
+          item.productId === product.id &&
+          !item.note &&
+          !item.portion &&
+          !item.options &&
+          !item.hold,
       );
       if (same) {
         await changeNewItem(db, same.id, { qtyMilli: same.qtyMilli + 1000 }, new Date());
@@ -107,8 +137,52 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   }
 
   async function send() {
+    const holding = fresh.filter((item) => item.hold).length;
     const count = await sendTab(db, tabId, new Date());
-    toast.show(`${count} kalem gönderildi.`);
+    toast.show(
+      holding > 0
+        ? `${count - holding} kalem gönderildi, ${holding} kalem sırada.`
+        : `${count} kalem gönderildi.`,
+    );
+    void runner.run();
+  }
+
+  async function addOrdered(product: ProductRecord, input: OrderInput) {
+    try {
+      await addTabItem(db, tabId, product, input, waiter, new Date());
+      setOrdering(null);
+    } catch {
+      toast.show('Ürün eklenemedi.');
+    }
+  }
+
+  // A table opened and left with nothing ordered is not taken: its tab closes.
+  async function leave() {
+    // Read from the database: a quick tap can come before the screen has loaded the tab.
+    const [lines, record] = await Promise.all([
+      db.tabItems.where('tabId').equals(tabId).count(),
+      db.tabs.get(tabId),
+    ]);
+    if (lines === 0 && record?.status === 'open') {
+      await payTabItems(db, { tabId, itemIds: [], payments: [], ...waiter }, new Date());
+    }
+    onClose();
+  }
+
+  async function fire() {
+    const count = await fireHeld(db, tabId, new Date());
+    toast.show(`Sıradaki ${count} kalem gönderildi.`);
+    void runner.run();
+  }
+
+  async function toggleBillRequest() {
+    if (billRequested) {
+      await cancelBillRequest(db, tabId, new Date());
+      toast.show('Kilit açıldı; sipariş eklenebilir.');
+    } else {
+      await requestBill(db, tabId, new Date());
+      toast.show('Hesap istendi.');
+    }
     void runner.run();
   }
 
@@ -132,12 +206,28 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
         activeNav="tables"
       >
         <div className="flex flex-wrap items-center gap-3">
-          <Button icon={<ArrowLeft aria-hidden="true" size={18} />} onClick={onClose}>
+          <Button icon={<ArrowLeft aria-hidden="true" size={18} />} onClick={() => void leave()}>
             Masalar
           </Button>
           <h1 className="mr-auto text-xl font-semibold">{tab?.title ?? ''}</h1>
+          {held.length > 0 ? (
+            <Button variant="primary" onClick={() => void fire()}>
+              {`Sıradakileri gönder (${held.length})`}
+            </Button>
+          ) : null}
+          <Button onClick={() => void toggleBillRequest()}>
+            {billRequested ? 'Kilidi aç' : 'Hesap iste'}
+          </Button>
           <Button onClick={() => setDialog('move')}>Taşı / birleştir</Button>
         </div>
+        {billRequested ? (
+          <p
+            role="status"
+            className="rounded-control border border-accent bg-accent/10 p-3 font-medium"
+          >
+            Hesap istendi. Yeni sipariş için “Kilidi aç”a basın.
+          </p>
+        ) : null}
         <div className="grid gap-4 lg:grid-cols-[1fr_24rem]">
           <section aria-label="Menü" className="flex min-w-0 flex-col gap-3">
             <TextField
@@ -190,10 +280,13 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
                       <div
                         className={`min-w-0 flex-1 ${item.status === 'void' ? 'line-through opacity-60' : ''}`}
                       >
-                        <p className="font-medium break-words">{item.name}</p>
+                        <p className="font-medium break-words">{itemLabel(item)}</p>
                         <p className="font-mono text-sm text-text-2">
-                          {`${formatLineQty(item.qtyMilli, item.unit)} · ${STATUS_LABELS[item.status]}${item.complimentary ? ' · İkram' : ''}`}
+                          {`${formatLineQty(item.qtyMilli, item.unit)} · ${item.status === 'new' && item.hold ? 'Sonra gönderilecek' : STATUS_LABELS[item.status]}${item.complimentary ? ' · İkram' : ''}`}
                         </p>
+                        {item.options ? (
+                          <p className="text-sm text-text-2">{item.options.join(' · ')}</p>
+                        ) : null}
                         {item.note ? (
                           <p className="text-sm text-text-2">{`Not: ${item.note}`}</p>
                         ) : null}
@@ -249,14 +342,32 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
                           }}
                         />
                       ) : (
-                        <div>
+                        <div className="flex flex-wrap gap-2">
                           <Button variant="ghost" onClick={() => setNoteFor(item.id)}>
                             Not ekle
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            aria-pressed={item.hold === true}
+                            onClick={() => void setHold(db, item.id, !item.hold, new Date())}
+                          >
+                            {item.hold ? 'Şimdi gönder' : 'Sonra gönder'}
                           </Button>
                         </div>
                       )
                     ) : item.status !== 'void' ? (
                       <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="ghost"
+                          disabled={billRequested}
+                          onClick={() =>
+                            void repeatItem(db, item.id, waiter, new Date()).catch(() =>
+                              toast.show('Tekrarlanamadı.'),
+                            )
+                          }
+                        >
+                          Tekrarla
+                        </Button>
                         <Button
                           variant="ghost"
                           disabled={!session.can('discount')}
@@ -308,6 +419,13 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           </Button>
         </div>
       </AppShell>
+      {ordering ? (
+        <OrderDialog
+          product={ordering}
+          onClose={() => setOrdering(null)}
+          onOrder={(input) => addOrdered(ordering, input)}
+        />
+      ) : null}
       {voiding ? (
         <VoidDialog
           item={voiding}
