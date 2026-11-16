@@ -11,7 +11,7 @@ afterEach(async () => {
 describe('openMarketDb', () => {
   it('names the database per market, apart from v1', () => {
     db = openMarketDb('kursunlu-market');
-    expect(db.name).toBe('mk2-kursunlu-market');
+    expect(db.name).toBe('rk-kursunlu-market');
     expect(db.name).not.toBe('MarketPosDB');
   });
 
@@ -62,7 +62,7 @@ describe('openMarketDb', () => {
     expect(() => openMarketDb('Kurşunlu Market')).toThrow(RangeError));
 
   it('upper-cases stored barcodes when it opens, keeping the oldest holder', async () => {
-    const old = new Dexie('mk2-barcode-case');
+    const old = new Dexie('rk-barcode-case');
     old.version(4).stores({
       products: 'id, &barcode, name, updatedAt',
       customers: 'id, name, phone, updatedAt',

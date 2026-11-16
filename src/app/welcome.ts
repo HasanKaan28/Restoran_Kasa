@@ -2,7 +2,7 @@ import type { ServerConfig } from '@/server/config';
 import type { DeviceSettings } from './device';
 
 /** Set once the shop chooses to try the app without a server; the screen then stays away. */
-export const WELCOME_SKIPPED = 'mk2.welcomeSkipped';
+export const WELCOME_SKIPPED = 'rk.welcomeSkipped';
 
 /** The first screen shows on a build with a server, on a device not yet bound to a market. */
 export function shouldWelcome(

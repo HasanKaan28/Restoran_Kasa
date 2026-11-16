@@ -6,7 +6,7 @@ export type HeldCart = { cart: Cart; heldAt: string };
 export const MAX_HELD = 10;
 
 /** Where held carts live between reloads; other tabs watch it through `storage` events. */
-export const HELD_STORAGE_KEY = 'mk2.held';
+export const HELD_STORAGE_KEY = 'rk.held';
 
 /** Parks a cart, newest first. The cart keeps its id, so it still sells only once. */
 export function holdCart(held: readonly HeldCart[], cart: Cart, at: Date): HeldCart[] {

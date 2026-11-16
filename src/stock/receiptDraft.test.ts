@@ -92,15 +92,15 @@ describe('receiptDraft', () => {
     saveDraft(draft, storage);
     expect(loadDraft(storage)).toEqual(draft);
     const typed = { note: '', lines: [{ ...draft.lines[0]!, buyPrice: '30', sellPrice: '' }] };
-    expect(loadDraft(memoryStorage({ 'mk2.goodsReceipt': JSON.stringify(typed) }))).toEqual(typed);
+    expect(loadDraft(memoryStorage({ 'rk.goodsReceipt': JSON.stringify(typed) }))).toEqual(typed);
     const numeric = { note: '', lines: [{ ...draft.lines[0]!, buyPrice: 3000 }] };
-    expect(loadDraft(memoryStorage({ 'mk2.goodsReceipt': JSON.stringify(numeric) }))).toEqual(
+    expect(loadDraft(memoryStorage({ 'rk.goodsReceipt': JSON.stringify(numeric) }))).toEqual(
       EMPTY_DRAFT,
     );
-    expect(loadDraft(memoryStorage({ 'mk2.goodsReceipt': '{"lines":[{"name":3}]}' }))).toEqual(
+    expect(loadDraft(memoryStorage({ 'rk.goodsReceipt': '{"lines":[{"name":3}]}' }))).toEqual(
       EMPTY_DRAFT,
     );
-    expect(loadDraft(memoryStorage({ 'mk2.goodsReceipt': 'not json' }))).toEqual(EMPTY_DRAFT);
+    expect(loadDraft(memoryStorage({ 'rk.goodsReceipt': 'not json' }))).toEqual(EMPTY_DRAFT);
   });
 
   it('reads lines and names what is wrong', () => {

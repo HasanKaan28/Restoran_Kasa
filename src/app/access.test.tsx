@@ -33,7 +33,7 @@ async function team() {
 }
 
 function signedIn(staffId: string) {
-  localStorage.setItem('mk2.staff', staffId);
+  localStorage.setItem('rk.staff', staffId);
 }
 
 function scan(code: string) {

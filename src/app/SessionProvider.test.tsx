@@ -43,7 +43,7 @@ describe('SessionProvider', () => {
     }
     await userEvent.click(screen.getByRole('button', { name: 'Giriş' }));
     expect(await screen.findByText('Kasa ekranı')).toBeInTheDocument();
-    expect(localStorage.getItem('mk2.staff')).toBe(ayse.id);
+    expect(localStorage.getItem('rk.staff')).toBe(ayse.id);
   });
 
   it('opens straight in when no staff are set up', async () => {
@@ -58,7 +58,7 @@ describe('SessionProvider', () => {
 
   it('signs out with Kilitle', async () => {
     const { data, ayse } = await staffData();
-    localStorage.setItem('mk2.staff', ayse.id);
+    localStorage.setItem('rk.staff', ayse.id);
     await renderWithData(
       <SessionProvider>
         <Shell />
@@ -68,12 +68,12 @@ describe('SessionProvider', () => {
     expect(await screen.findByText('Ayşe')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Kilitle' }));
     expect(await screen.findByRole('heading', { name: 'Kim kasada?' })).toBeInTheDocument();
-    expect(localStorage.getItem('mk2.staff')).toBeNull();
+    expect(localStorage.getItem('rk.staff')).toBeNull();
   });
 
   it('leaves a session whose person was archived', async () => {
     const { data, ayse } = await staffData();
-    localStorage.setItem('mk2.staff', ayse.id);
+    localStorage.setItem('rk.staff', ayse.id);
     await renderWithData(
       <SessionProvider>
         <Shell />

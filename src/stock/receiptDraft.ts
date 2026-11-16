@@ -44,7 +44,7 @@ export const EMPTY_DRAFT: ReceiptDraft = { lines: [], note: '' };
 
 export const DELETED_PRODUCT_LINE = 'Bu ürün silinmiş; satırı çıkarın.';
 
-const STORAGE_KEY = 'mk2.goodsReceipt';
+const STORAGE_KEY = 'rk.goodsReceipt';
 const ONE = 1000;
 
 /**

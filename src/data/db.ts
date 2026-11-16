@@ -161,5 +161,5 @@ export function openMarketDb(marketId: string): MarketDb {
   if (!MARKET_ID.test(marketId)) {
     throw new RangeError(`Market id must match ${MARKET_ID}, got "${marketId}"`);
   }
-  return new MarketDb(`mk2-${marketId}`);
+  return new MarketDb(`rk-${marketId}`);
 }

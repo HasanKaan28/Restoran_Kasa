@@ -22,7 +22,7 @@ async function team() {
 
 async function settingsAs(data: ReturnType<typeof createTestData>, staffId?: string) {
   if (staffId) {
-    localStorage.setItem('mk2.staff', staffId);
+    localStorage.setItem('rk.staff', staffId);
   }
   await renderWithData(
     <SessionProvider>
@@ -67,7 +67,7 @@ describe('SettingsScreen', () => {
     expect(await screen.findByRole('button', { name: 'Kilitle' })).toBeInTheDocument();
     const [kaan] = await data.db.staff.toArray();
     expect(kaan).toMatchObject({ name: 'Kaan', role: 'owner' });
-    expect(localStorage.getItem('mk2.staff')).toBe(kaan?.id);
+    expect(localStorage.getItem('rk.staff')).toBe(kaan?.id);
   });
 
   it('changes a role and a permission', async () => {
@@ -133,7 +133,7 @@ describe('SettingsScreen', () => {
         'Kasa açık: önce gün sonunu (Z) alın, sonra kodu değiştirin.',
       ),
     ).toBeInTheDocument();
-    expect(localStorage.getItem('mk2.device')).toBeNull();
+    expect(localStorage.getItem('rk.device')).toBeNull();
     await closeCashSession(data.db, { deviceCode: 'K1', countedCash: 5000 }, new Date());
     // K2 has rung up sales: its code is taken.
     const tea = await createProduct(
@@ -155,13 +155,13 @@ describe('SettingsScreen', () => {
         'K2 koduyla daha önce satış yapılmış. Bu kod başka bir kasanınsa fiş numaraları karışır; yine de kullanmak için yeniden kaydedin.',
       ),
     ).toBeInTheDocument();
-    expect(localStorage.getItem('mk2.device')).toBeNull();
+    expect(localStorage.getItem('rk.device')).toBeNull();
     // It may be this register's own old code: saved on the second try.
     await userEvent.click(within(register).getByRole('button', { name: 'Kasayı kaydet' }));
     expect(
       await within(register).findByText('Kaydedildi. Uygulama yeniden açıldığında geçerli olur.'),
     ).toBeInTheDocument();
-    expect(localStorage.getItem('mk2.device')).toContain('"deviceCode":"K2"');
+    expect(localStorage.getItem('rk.device')).toContain('"deviceCode":"K2"');
   });
 
   it('edits the market and this register', async () => {
@@ -180,7 +180,7 @@ describe('SettingsScreen', () => {
     await userEvent.type(within(register).getByLabelText('Kasa kodu'), 'K2');
     await userEvent.click(within(register).getByRole('button', { name: 'Kasayı kaydet' }));
     expect(await screen.findByText(/yeniden açıldığında/)).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem('mk2.device') ?? '{}')).toMatchObject({
+    expect(JSON.parse(localStorage.getItem('rk.device') ?? '{}')).toMatchObject({
       deviceName: 'Ön kasa',
       deviceCode: 'K2',
     });

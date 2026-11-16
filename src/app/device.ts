@@ -19,7 +19,7 @@ export const DEFAULT_DEVICE: DeviceSettings = {
   deviceName: 'Kasa 1',
 };
 
-const STORAGE_KEY = 'mk2.device';
+const STORAGE_KEY = 'rk.device';
 const DEVICE_CODE = /^[A-Z][A-Z0-9]{0,3}$/;
 const MAX_NAME_LENGTH = 60;
 

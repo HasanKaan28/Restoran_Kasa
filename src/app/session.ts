@@ -31,7 +31,7 @@ export function useSession(): Session {
   return useContext(SessionContext) ?? OPEN_SESSION;
 }
 
-const STORAGE_KEY = 'mk2.staff';
+const STORAGE_KEY = 'rk.staff';
 
 /** The person signed in on this device, kept across a reload. */
 export function loadSessionStaffId(): string | null {

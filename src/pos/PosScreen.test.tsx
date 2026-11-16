@@ -122,7 +122,7 @@ describe('PosScreen', () => {
       { name: 'Ayşe', role: 'cashier', pin: '1234' },
       new Date(),
     );
-    localStorage.setItem('mk2.staff', ayse.id);
+    localStorage.setItem('rk.staff', ayse.id);
     await renderWithData(
       <SessionProvider>
         <PosScreen />
@@ -199,8 +199,8 @@ describe('PosScreen', () => {
     const { data } = await renderWithData(<PosScreen />);
     const created = await createProduct(data.db, milk, new Date());
     const other = cartReducer(emptyCart(), { type: 'add', product: created });
-    localStorage.setItem('mk2.cart', JSON.stringify(other));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'mk2.cart' }));
+    localStorage.setItem('rk.cart', JSON.stringify(other));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'rk.cart' }));
     expect(await screen.findByText('1 kalem')).toBeInTheDocument();
   });
 
@@ -312,7 +312,7 @@ describe('PosScreen', () => {
       payments: singlePayment(cart, 'cash'),
       at: new Date(),
     });
-    localStorage.setItem('mk2.held', JSON.stringify([{ cart, heldAt: new Date().toISOString() }]));
+    localStorage.setItem('rk.held', JSON.stringify([{ cart, heldAt: new Date().toISOString() }]));
     await renderWithData(<PosScreen />, data);
     await userEvent.click(screen.getByRole('button', { name: 'Bekleyenler (1)' }));
     await userEvent.click(await screen.findByRole('button', { name: /^Devam et/ }));
@@ -373,8 +373,8 @@ describe('PosScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Düzenle · Süt' }));
     await screen.findByLabelText('Miktar');
     // Another tab empties the cart while the editor is open.
-    localStorage.setItem('mk2.cart', JSON.stringify(emptyCart()));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'mk2.cart' }));
+    localStorage.setItem('rk.cart', JSON.stringify(emptyCart()));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'rk.cart' }));
     await screen.findByText('Sepet boş');
     fireEvent.keyDown(window, { key: 'F9' });
     expect(await screen.findByRole('dialog', { name: 'Son fişler' })).toBeInTheDocument();
@@ -382,7 +382,7 @@ describe('PosScreen', () => {
 
   it('prints the new receipt when auto print is on', async () => {
     localStorage.setItem(
-      'mk2.receipt',
+      'rk.receipt',
       JSON.stringify({ printing: true, autoPrint: true, paperWidth: 80, header: '', footer: '' }),
     );
     const print = vi.spyOn(window, 'print').mockImplementation(() => {});
@@ -399,7 +399,7 @@ describe('PosScreen', () => {
 
   it('does not print after a void', async () => {
     localStorage.setItem(
-      'mk2.receipt',
+      'rk.receipt',
       JSON.stringify({ printing: true, autoPrint: true, paperWidth: 80, header: '', footer: '' }),
     );
     const print = vi.spyOn(window, 'print').mockImplementation(() => {});

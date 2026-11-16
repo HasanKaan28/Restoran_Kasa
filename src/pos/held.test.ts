@@ -82,11 +82,11 @@ describe('held carts', () => {
 
   it('clears the stored cart and held carts', () => {
     const store = new Map([
-      ['mk2.cart', '{}'],
-      ['mk2.held', '[]'],
-      ['mk2.device', '{}'],
+      ['rk.cart', '{}'],
+      ['rk.held', '[]'],
+      ['rk.device', '{}'],
     ]);
     clearStoredCarts({ removeItem: (key) => void store.delete(key) });
-    expect([...store.keys()]).toEqual(['mk2.device']);
+    expect([...store.keys()]).toEqual(['rk.device']);
   });
 });

@@ -15,7 +15,7 @@ export type CountDraft = { lines: CountDraftLine[]; note: string };
 
 export const EMPTY_COUNT: CountDraft = { lines: [], note: '' };
 
-const STORAGE_KEY = 'mk2.stockCount';
+const STORAGE_KEY = 'rk.stockCount';
 const ONE = 1000;
 const ZERO = /^0+(?:[.,]0{1,3})?$/;
 

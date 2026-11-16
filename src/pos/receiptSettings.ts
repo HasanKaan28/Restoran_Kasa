@@ -22,7 +22,7 @@ export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   footer: '',
 };
 
-const STORAGE_KEY = 'mk2.receipt';
+const STORAGE_KEY = 'rk.receipt';
 const MAX_LINES = 3;
 const MAX_LINE_LENGTH = 48;
 

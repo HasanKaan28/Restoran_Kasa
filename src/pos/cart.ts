@@ -35,7 +35,7 @@ export type CartAction =
   | { type: 'setCartDiscount'; amount: Kurus };
 
 /** Where the cart is kept between reloads; other tabs watch it through `storage` events. */
-export const CART_STORAGE_KEY = 'mk2.cart';
+export const CART_STORAGE_KEY = 'rk.cart';
 const ONE = 1000;
 
 export function emptyCart(id: string = newId()): Cart {

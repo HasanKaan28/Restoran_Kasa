@@ -136,7 +136,7 @@ describe('WelcomeScreen', () => {
   });
 
   it('comes back once the shop asks for it after trying offline', () => {
-    const stored = new Map([['mk2.welcomeSkipped', '1']]);
+    const stored = new Map([['rk.welcomeSkipped', '1']]);
     const storage = {
       getItem: (key: string) => stored.get(key) ?? null,
       removeItem: (key: string) => void stored.delete(key),

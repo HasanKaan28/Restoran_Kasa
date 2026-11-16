@@ -21,7 +21,7 @@ describe('pull cursor', () => {
   });
 
   it('upgrades a version 1 database without losing rows', async () => {
-    const name = `mk2-test-${crypto.randomUUID()}`;
+    const name = `rk-test-${crypto.randomUUID()}`;
     const v1 = new Dexie(name);
     v1.version(1).stores({
       products: 'id, &barcode, name, isQuick, updatedAt',

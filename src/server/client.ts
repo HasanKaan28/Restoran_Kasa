@@ -25,7 +25,7 @@ export type ServerClient = {
 /** The register's own session is kept on the device and renewed while it runs. */
 const DEVICE_CLIENT_OPTIONS: SupabaseClientOptions<'public'> = {
   auth: {
-    storageKey: 'mk2.auth',
+    storageKey: 'rk.auth',
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
@@ -35,7 +35,7 @@ const DEVICE_CLIENT_OPTIONS: SupabaseClientOptions<'public'> = {
 /** The owner signs in only to make a pairing code; nothing of that session is stored. */
 export const OWNER_CLIENT_OPTIONS: SupabaseClientOptions<'public'> = {
   auth: {
-    storageKey: 'mk2.owner',
+    storageKey: 'rk.owner',
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: false,
