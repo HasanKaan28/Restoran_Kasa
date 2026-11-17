@@ -1,7 +1,9 @@
-// Keeps Market Kasa opening without a network. The page registers this file with its version
-// (sw.js?v=2.0.0), so each release installs a new worker with its own cache and drops the last.
+// Keeps Restoran Kasa opening without a network. The page registers this file with its version
+// (sw.js?v=1.0.0), so each release installs a new worker with its own cache and drops the last.
+// Market Kasa lives on the same site and keeps its caches beside ours (mk2-…): this worker names,
+// reads and clears only its own rk-… caches, never theirs.
 const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
-const CACHE = `mk2-${VERSION}`;
+const CACHE = `rk-${VERSION}`;
 const SHELL = ['./', './index.html', './manifest.json', './logo.svg'];
 // The built files the page names: the first visit loads them before this worker is in charge.
 const ASSET_REFERENCE = /(?:src|href)="(\.?\/?assets\/[^"]+)"/g;
@@ -40,7 +42,7 @@ self.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key.startsWith('mk2-') && key !== CACHE)
+            .filter((key) => key.startsWith('rk-') && key !== CACHE)
             .map((key) => caches.delete(key)),
         ),
       )
@@ -65,23 +67,29 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('./index.html').then((cached) => cached || Response.error())),
+        .catch(() =>
+          caches
+            .open(CACHE)
+            .then((cache) => cache.match('./index.html'))
+            .then((cached) => cached || Response.error()),
+        ),
     );
     return;
   }
   if (url.pathname.includes('/assets/')) {
     // Built files carry a hash in their name: a kept copy is always the right one.
     event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((response) => {
-            if (response.ok) {
-              const copy = response.clone();
-              void caches.open(CACHE).then((cache) => cache.put(request, copy));
-            }
-            return response;
-          }),
+      caches.open(CACHE).then((cache) =>
+        cache.match(request).then(
+          (cached) =>
+            cached ||
+            fetch(request).then((response) => {
+              if (response.ok) {
+                void cache.put(request, response.clone());
+              }
+              return response;
+            }),
+        ),
       ),
     );
   }
