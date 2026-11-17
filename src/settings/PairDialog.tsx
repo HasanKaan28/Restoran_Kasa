@@ -124,7 +124,7 @@ export function PairDialog({
       open
       onOpenChange={(next) => !next && onClose()}
       title="Sunucuya bağla"
-      description="Bağlanan kasalar aynı marketin satışını, stoğunu ve veresiyesini görür."
+      description="Bağlanan kasalar aynı restoranın satışını, stoğunu ve veresiyesini görür."
     >
       {owner ? (
         <form
@@ -150,7 +150,7 @@ export function PairDialog({
           />
           {owner.markets ? (
             <SelectField
-              label="Market"
+              label="Restoran"
               value={owner.marketId}
               onChange={(event) => setOwner({ ...owner, marketId: event.target.value })}
               options={owner.markets.map((market) => ({ value: market.id, label: market.name }))}
@@ -211,7 +211,7 @@ export function PairDialog({
             onChange={setKeepData}
             options={[
               { value: 'empty', label: 'Boş başla' },
-              { value: 'send', label: `Bu kasadaki ${pendingCount} işlemi markete gönder` },
+              { value: 'send', label: `Bu kasadaki ${pendingCount} işlemi restorana gönder` },
             ]}
           />
         ) : null}
@@ -254,7 +254,7 @@ export function PairingAction({
   lost?: boolean;
   onOpen(): void;
   onRepair?(): void;
-  /** Back to the first screen ("Market kur" / "Markete giriş yap"), for a device tried offline. */
+  /** Back to the first screen ("Restoran kur" / "Restorana giriş yap"), for a device tried offline. */
   onWelcome?(): void;
 }): JSX.Element | null {
   if (!config) {
@@ -272,7 +272,7 @@ export function PairingAction({
   return (
     <div className="flex flex-wrap gap-2">
       <Button variant="primary" onClick={onWelcome}>
-        Market kur ya da giriş yap
+        Restoran kur ya da giriş yap
       </Button>
       <Button onClick={onOpen}>Kodla bağla</Button>
     </div>

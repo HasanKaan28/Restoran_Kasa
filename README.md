@@ -69,11 +69,11 @@ PGlite with `npm test`.
 
 1. In the Supabase dashboard, turn on anonymous sign-ins. Turn "Confirm email" off unless the
    project sends email through its own SMTP: the built-in sender only reaches the team.
-2. On the first device, the first screen's **Market kur** signs the shop up with its own email
-   and opens its market; the device becomes register K1.
-3. On every other device, **Markete giriş yap** with the same email and password: it becomes the
+2. On the first device, the first screen's **Restoran kur** signs the restaurant up with its own
+   email and opens it; the device becomes register K1.
+3. On every other device, **Restorana giriş yap** with the same email and password: it becomes the
    next register (K2, K3…). The password is never kept on a device. Registers bound to the same
-   market see each other's sales, stock and credit.
+   restaurant see each other's sales, tabs and credit.
 
 ### Desktop (Windows)
 

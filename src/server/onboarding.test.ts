@@ -121,7 +121,7 @@ describe('opening a market', () => {
         marketName: 'M',
         platform: 'web',
       }),
-    ).rejects.toThrow('Bu hesapla en çok 3 market açılabilir.');
+    ).rejects.toThrow('Bu hesapla en çok 3 restoran açılabilir.');
   });
 });
 

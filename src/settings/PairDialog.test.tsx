@@ -57,7 +57,7 @@ describe('PairDialog', () => {
     const props = setup({ pendingCount: 12 });
     expect(screen.getByRole('radio', { name: 'Boş başla' })).toBeChecked();
     await userEvent.click(
-      screen.getByRole('radio', { name: 'Bu kasadaki 12 işlemi markete gönder' }),
+      screen.getByRole('radio', { name: 'Bu kasadaki 12 işlemi restorana gönder' }),
     );
     await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD2345');
     await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
@@ -99,7 +99,7 @@ describe('PairDialog', () => {
     await userEvent.type(screen.getByLabelText('E-posta'), 'sahip@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli');
     await userEvent.click(screen.getByRole('button', { name: 'Kodu üret' }));
-    await userEvent.selectOptions(await screen.findByLabelText('Market'), 'b');
+    await userEvent.selectOptions(await screen.findByLabelText('Restoran'), 'b');
     await userEvent.click(screen.getByRole('button', { name: 'Kodu üret' }));
 
     expect(createCode).toHaveBeenLastCalledWith({
@@ -115,13 +115,13 @@ describe('PairDialog', () => {
   it('says when the register code is taken', async () => {
     const props = setup({
       claim: vi.fn(async () => {
-        throw new Error('K2 kodu bu markette kullanılıyor.');
+        throw new Error('K2 kodu bu restoranda kullanılıyor.');
       }),
     });
     await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD2345');
     await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('K2 kodu bu markette kullanılıyor.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('K2 kodu bu restoranda kullanılıyor.');
     expect(props.onPaired).not.toHaveBeenCalled();
   });
 });
@@ -131,7 +131,7 @@ describe('PairDialog recovery', () => {
     const claim = vi
       .fn()
       .mockRejectedValueOnce(
-        Object.assign(new Error('K2 kodu bu markette kullanılıyor.'), { taken: true }),
+        Object.assign(new Error('K2 kodu bu restoranda kullanılıyor.'), { taken: true }),
       )
       .mockResolvedValueOnce(claimed);
     const props = setup({ claim });
@@ -208,7 +208,7 @@ describe('PairingAction', () => {
         paired={false}
       />,
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Market kur ya da giriş yap' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur ya da giriş yap' }));
     expect(onWelcome).toHaveBeenCalled();
     // The code is still there for a register an owner pairs by hand.
     await userEvent.click(screen.getByRole('button', { name: 'Kodla bağla' }));

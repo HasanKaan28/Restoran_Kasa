@@ -44,7 +44,7 @@ export async function seedDemo(): Promise<string> {
   const settings = loadDeviceSettings();
   const db = openMarketDb(settings.databaseId ?? settings.marketId);
   if ((await db.products.count()) > 0) {
-    return 'Bu markette zaten ürün var; demo verisi eklenmedi.';
+    return 'Bu restoranda zaten ürün var; demo verisi eklenmedi.';
   }
   const now = Date.now();
   const at = (daysAgo: number, hour: number, minute = 0) => {

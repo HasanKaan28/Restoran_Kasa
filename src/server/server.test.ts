@@ -113,7 +113,7 @@ describe('pairing', () => {
     const none = fakeClient({ owner_markets: { data: [] } });
     await expect(
       createPairingCode({ owner: none.client, email: 'x@example.com', password: 'p' }),
-    ).rejects.toThrow('Bu hesabın sahibi olduğu market yok.');
+    ).rejects.toThrow('Bu hesabın sahibi olduğu restoran yok.');
     const wrong = fakeClient({});
     wrong.auth.signInWithPassword.mockResolvedValueOnce({
       error: { message: 'Invalid login credentials' },
@@ -172,7 +172,7 @@ describe('pairing', () => {
         deviceName: 'Kasa 2',
         platform: 'web',
       }),
-    ).rejects.toThrow('K2 kodu bu markette kullanılıyor.');
+    ).rejects.toThrow('K2 kodu bu restoranda kullanılıyor.');
     const invalid = fakeClient({ claim_device: { error: { message: 'pairing_invalid' } } });
     await expect(
       pairDevice({

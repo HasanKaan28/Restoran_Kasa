@@ -140,7 +140,7 @@ function createWindow() {
               dialog.showMessageBox(mainWindow, {
                 type: 'info',
                 title: 'Restoran Kasa',
-                message: `Market Kasa\nSürüm ${app.getVersion()}`,
+                message: `Restoran Kasa\nSürüm ${app.getVersion()}`,
               }),
           },
         ],

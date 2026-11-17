@@ -77,7 +77,7 @@ export function MarketSection({ onDone }: { onDone(message: string): void }): JS
     try {
       await saveMarketSettings(db, { cutoffMinutes: Number(value) }, new Date(), actor);
       setChosen(null);
-      onDone('Market ayarı kaydedildi.');
+      onDone('İşletme ayarı kaydedildi.');
     } finally {
       setSaving(false);
     }
@@ -99,7 +99,7 @@ export function MarketSection({ onDone }: { onDone(message: string): void }): JS
           />
         </div>
         <Button type="submit" disabled={saving || value === String(cutoffMinutes)}>
-          Market ayarını kaydet
+          İşletme ayarını kaydet
         </Button>
       </form>
     </SettingsSection>

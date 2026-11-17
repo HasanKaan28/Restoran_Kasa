@@ -17,9 +17,9 @@ export type Platform = 'windows' | 'android' | 'web';
 
 /** What the server's refusals mean to the person at the register. */
 const MESSAGES: Record<string, string> = {
-  not_owner: 'Bu hesap bu marketin sahibi değil.',
+  not_owner: 'Bu hesap bu restoranın sahibi değil.',
   pairing_invalid: 'Kod geçersiz ya da süresi doldu. Yeni kod üretin.',
-  already_registered: 'Bu kasa zaten bir markete bağlı.',
+  already_registered: 'Bu kasa zaten bir restorana bağlı.',
   bad_device_code: 'Kasa kodu bir harf ve en çok üç harf ya da rakam olmalı (K1, K2).',
   bad_platform: 'Bu cihaz türü desteklenmiyor.',
 };
@@ -30,7 +30,7 @@ export type TakenError = Error & { taken: true };
 
 function explain(message: string, deviceCode?: string): string {
   if (message.includes('device_code_taken')) {
-    return `${deviceCode ?? 'Bu'} kodu bu markette kullanılıyor.`;
+    return `${deviceCode ?? 'Bu'} kodu bu restoranda kullanılıyor.`;
   }
   const known = Object.keys(MESSAGES).find((key) => message.includes(key));
   return known ? (MESSAGES[known] as string) : OFFLINE;
@@ -64,7 +64,7 @@ export async function createPairingCode({
     }
     const markets = (owned.data ?? []) as OwnedMarket[];
     if (markets.length === 0) {
-      throw new Error('Bu hesabın sahibi olduğu market yok.');
+      throw new Error('Bu hesabın sahibi olduğu restoran yok.');
     }
     const market = marketId
       ? markets.find((item) => item.id === marketId)

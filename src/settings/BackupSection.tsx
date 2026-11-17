@@ -52,7 +52,7 @@ export function BackupSection({
     <SettingsSection
       id="backup-heading"
       title="Yedek"
-      description="Marketin bütün verisi tek dosyada: ürünler, satışlar, veresiye, tedarikçiler. Dosyayı bir USB belleğe ya da e-postanıza koyun."
+      description="Restoranın bütün verisi tek dosyada: menü, satışlar, veresiye, tedarikçiler. Dosyayı bir USB belleğe ya da e-postanıza koyun."
       action={
         <Button onClick={() => void takeBackup()} disabled={busy}>
           Yedek al

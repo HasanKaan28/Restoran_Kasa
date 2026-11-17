@@ -143,8 +143,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Restoran Kasa ${{ github.ref_name }}
           body: |
-            - İlk açılışta "Market kur" ile kendi e-postanızla işletmenizi açın, Ayarlar → Masalar'dan masaları ekleyin.
-            - Diğer cihazlarda (garson telefonu, mutfak tableti) aynı e-posta ve şifreyle "Markete giriş yap": her cihaz sıradaki kasa olur (K2, K3…).
+            - İlk açılışta "Restoran kur" ile kendi e-postanızla işletmenizi açın, Ayarlar → Masalar'dan masaları ekleyin.
+            - Diğer cihazlarda (garson telefonu, mutfak tableti) aynı e-posta ve şifreyle "Restorana giriş yap": her cihaz sıradaki kasa olur (K2, K3…).
             - Masaüstü sürümü yeni sürümleri kendisi indirip kurar.
           generate_release_notes: true
           files: |

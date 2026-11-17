@@ -168,8 +168,8 @@ describe('SettingsScreen', () => {
     const { data, kaan } = await team();
     await settingsAs(data, kaan.id);
     await userEvent.selectOptions(await screen.findByLabelText('Gün dönümü'), '02:00');
-    await userEvent.click(screen.getByRole('button', { name: 'Market ayarını kaydet' }));
-    expect(await screen.findByText('Market ayarı kaydedildi.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'İşletme ayarını kaydet' }));
+    expect(await screen.findByText('İşletme ayarı kaydedildi.')).toBeInTheDocument();
     expect(await loadMarketSettings(data.db)).toMatchObject({ cutoffMinutes: 120 });
     const license = screen.getByRole('region', { name: 'Lisans' });
     expect(within(license).getByText(/Bilinmiyor/)).toBeInTheDocument();
@@ -194,7 +194,7 @@ describe('SettingsScreen', () => {
     expect(await within(log).findByText('Ayşe: rol Kasiyer → Yönetici')).toBeInTheDocument();
     // A change made on the screen is logged as the person signed in.
     await userEvent.selectOptions(await screen.findByLabelText('Gün dönümü'), '02:00');
-    await userEvent.click(screen.getByRole('button', { name: 'Market ayarını kaydet' }));
+    await userEvent.click(screen.getByRole('button', { name: 'İşletme ayarını kaydet' }));
     expect(await within(log).findByText('Gün dönümü 00:00 → 02:00')).toBeInTheDocument();
     expect(within(log).getAllByText('Kaan')).toHaveLength(2);
   });

@@ -42,7 +42,7 @@ export async function marketBackup(
 
 const istanbulDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' });
 
-/** `market-kasa-yedek-<market>-<YYYY-MM-DD>.json`, the day as it is in Istanbul. */
+/** `restoran-kasa-yedek-<market>-<YYYY-MM-DD>.json`, the day as it is in Istanbul. */
 export function backupFileName(marketId: string, at: Date): string {
-  return `market-kasa-yedek-${marketId}-${istanbulDay.format(at)}.json`;
+  return `restoran-kasa-yedek-${marketId}-${istanbulDay.format(at)}.json`;
 }

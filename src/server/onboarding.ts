@@ -28,17 +28,17 @@ function explainSignUp(message: string): string {
 
 function explainMarket(message: string): string {
   if (message.includes('too_many_markets')) {
-    return 'Bu hesapla en çok 3 market açılabilir.';
+    return 'Bu hesapla en çok 3 restoran açılabilir.';
   }
   if (message.includes('bad_name')) {
-    return 'Market adı 1–60 karakter olmalı.';
+    return 'Restoran adı 1–60 karakter olmalı.';
   }
   return OFFLINE;
 }
 
 /**
- * The first screen's "Market kur": signs the shop up with its own email (or in, if the email
- * already has an account), opens its market and binds this device as its first register. The
+ * The first screen's "Restoran kur": signs the shop up with its own email (or in, if the email
+ * already has an account), opens the restaurant and binds this device as its first register. The
  * owner's session is dropped at the end; only the register's own session stays on the device.
  */
 export async function openMarket({
@@ -95,7 +95,7 @@ export async function openMarket({
 }
 
 /**
- * "Markete giriş yap" on another device: the owner signs in once, and this device joins their
+ * "Restorana giriş yap" on another device: the owner signs in once, and this device joins their
  * market as the next free register (K2, K3…).
  */
 export async function joinMarket({

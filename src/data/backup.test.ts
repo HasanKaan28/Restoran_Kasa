@@ -61,7 +61,7 @@ describe('backupFileName', () => {
   it('names the file after the market and the day in Istanbul', () => {
     // 23:30 in UTC is already the next day in Istanbul.
     expect(backupFileName('kursunlu-ab12cd', new Date('2026-11-09T23:30:00Z'))).toBe(
-      'market-kasa-yedek-kursunlu-ab12cd-2026-11-10.json',
+      'restoran-kasa-yedek-kursunlu-ab12cd-2026-11-10.json',
     );
   });
 });

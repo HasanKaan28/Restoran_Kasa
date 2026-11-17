@@ -20,8 +20,8 @@ const failed = (error: unknown) =>
     : 'Bağlantı kurulamadı. İnternet bağlantısını kontrol edin.';
 
 /**
- * The app's first screen: open the shop's market with its own email, or sign another device into
- * it. Either way this device becomes one of the market's registers; the password is not kept.
+ * The app's first screen: open the restaurant with its own email, or sign another device into
+ * it. Either way this device becomes one of the restaurant's registers; the password is not kept.
  */
 export function WelcomeScreen({
   current,

@@ -23,7 +23,7 @@ describe('BackupSection', () => {
     );
     expect(save).toHaveBeenCalledTimes(1);
     const [fileName, text] = save.mock.calls[0] as [string, string];
-    expect(fileName).toBe(`market-kasa-yedek-${data.settings.marketId}-2026-11-09.json`);
+    expect(fileName).toBe(`restoran-kasa-yedek-${data.settings.marketId}-2026-11-09.json`);
     const backup = JSON.parse(text);
     expect(backup.format).toBe('market-kasa-backup');
     expect(backup.tables.products).toEqual([expect.objectContaining({ name: 'Süt' })]);
