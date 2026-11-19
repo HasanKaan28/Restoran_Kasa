@@ -11,6 +11,7 @@ import { ROLE_LABELS } from '@/domain/permissions';
 import { AppearanceSection } from './AppearanceSection';
 import { AuditLog } from './AuditLog';
 import { BackupSection } from './BackupSection';
+import { QrMenuSection } from '@/restaurant/QrMenuSection';
 import { TablesSection } from '@/restaurant/TablesSection';
 import { LicenseSection, MarketSection, ReceiptSection, RegisterSection } from './MarketSections';
 import { StaffDialog } from './StaffDialog';
@@ -49,6 +50,7 @@ export function SettingsScreen(): JSX.Element {
         <h1 className="text-xl font-semibold">Ayarlar</h1>
         <MarketSection onDone={(message) => done(message)} />
         <TablesSection onDone={(message) => done(message)} />
+        <QrMenuSection onDone={(message) => toast.show(message)} />
         <RegisterSection />
         <AppearanceSection />
         <ReceiptSection onDone={(message) => done(message)} />
@@ -135,6 +137,7 @@ export function SettingsScreen(): JSX.Element {
 /** `#/settings/<section>` opens Settings at that section, as the setup list's steps do. */
 const SECTIONS: Record<string, string> = {
   masalar: 'tables-heading',
+  'qr-menu': 'qr-heading',
   personel: 'staff-heading',
   fis: 'receipt-heading',
   cihaz: 'register-heading',

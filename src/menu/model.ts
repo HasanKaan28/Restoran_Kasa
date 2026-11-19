@@ -40,9 +40,9 @@ export function readAddress({ search, hash }: { search: string; hash: string }):
   return table ? { slug, table } : { slug };
 }
 
-/** "5" is shown as "Masa 5"; a table already named "Masa 7" stays as it is. */
+/** A table as the floor names it (tabTitle): "5" reads as a count, so it is "Masa 5". */
 export function tableLabel(table: string): string {
-  return /^masa\b/i.test(table) ? table : `Masa ${table}`;
+  return /^\d+$/.test(table) ? `Masa ${table}` : table;
 }
 
 const byName = (a: PublicDish, b: PublicDish) => a.name.localeCompare(b.name, 'tr');

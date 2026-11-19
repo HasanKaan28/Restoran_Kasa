@@ -14,6 +14,7 @@ const ALLOWED: Record<string, string> = {
   'src/customers/StatementView.tsx': 'a customer statement, printed',
   'src/reports/ReportView.tsx': 'a sales report, printed',
   'src/labels/LabelSheet.tsx': 'shelf labels and barcodes, printed',
+  'src/restaurant/TableCards.tsx': 'table cards with the QR menu code, printed',
 };
 
 const TAILWIND_PALETTE =

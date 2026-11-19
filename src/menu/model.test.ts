@@ -41,9 +41,9 @@ describe('the guest menu', () => {
 
   it('names the table as the floor does', () => {
     expect(tableLabel('5')).toBe('Masa 5');
-    expect(tableLabel('B2')).toBe('Masa B2');
+    expect(tableLabel('B2')).toBe('B2');
+    expect(tableLabel('Bahçe 3')).toBe('Bahçe 3');
     expect(tableLabel('Masa 7')).toBe('Masa 7');
-    expect(tableLabel('masa 7')).toBe('masa 7');
   });
 
   it('lays the menu out as the order screen does: categories in order, then the rest', () => {
