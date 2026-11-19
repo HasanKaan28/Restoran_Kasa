@@ -95,4 +95,19 @@ describe('workflows', () => {
     expect(deploy).toContain('cp -r site/. pages/');
     expect(deploy).toContain('path: pages');
   });
+
+  it('serves the same layout from Vercel: the site at the root, the app under app/', () => {
+    const config = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
+      buildCommand: string;
+      outputDirectory: string;
+      redirects: { source: string; destination: string }[];
+    };
+    expect(config.outputDirectory).toBe('out');
+    expect(config.buildCommand).toContain('cp -r site/. out/');
+    expect(config.buildCommand).toContain('cp -r dist/. out/app/');
+    expect(config.redirects).toContainEqual(
+      expect.objectContaining({ source: '/app', destination: '/app/' }),
+    );
+    expect(readFileSync('.gitignore', 'utf8')).toMatch(/^out\/\r?$/m);
+  });
 });
