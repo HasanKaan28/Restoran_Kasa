@@ -37,6 +37,9 @@ export function SetupChecklist(): JSX.Element | null {
   const marketId = settings.marketId;
   const [hidden, setHidden] = useState(() => stored(HIDDEN_KEY, marketId));
   const [receiptSeen, setReceiptSeen] = useState(() => stored(RECEIPT_KEY, marketId));
+  // Open while the floor and the menu are still empty; a slim progress line after that, so the
+  // tables come first. A tap on it shows the steps again.
+  const [shown, setShown] = useState<boolean | null>(null);
   const counts = useLiveQuery(async () => {
     const [tables, products, staff, orders] = await Promise.all([
       db.diningTables.filter((table) => !table.archivedAt).count(),
@@ -87,6 +90,7 @@ export function SetupChecklist(): JSX.Element | null {
     },
   ];
   const finished = steps.filter((step) => step.done).length;
+  const expanded = shown ?? finished < 2;
 
   function hide() {
     store(HIDDEN_KEY, marketId);
@@ -102,6 +106,9 @@ export function SetupChecklist(): JSX.Element | null {
           </h2>
           <p className="text-sm text-text-2">{`${finished} / ${steps.length} adım tamam`}</p>
         </div>
+        <Button variant="ghost" aria-expanded={expanded} onClick={() => setShown(!expanded)}>
+          {expanded ? 'Daralt' : 'Adımlar'}
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -120,49 +127,51 @@ export function SetupChecklist(): JSX.Element | null {
           style={{ width: `${(finished / steps.length) * 100}%` }}
         />
       </div>
-      <ol className="flex flex-col gap-1">
-        {steps.map((step, index) => {
-          const content = (
-            <>
-              <span
-                aria-hidden="true"
-                className={`flex size-8 shrink-0 items-center justify-center rounded-chip font-display text-sm font-bold ${
-                  step.done ? 'bg-success text-surface' : 'border border-line-strong text-text-2'
-                }`}
-              >
-                {step.done ? <Check size={16} strokeWidth={2.5} /> : index + 1}
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className={`font-semibold ${step.done ? 'text-text-2 line-through' : ''}`}>
-                  {step.title}
-                </span>
-                <span className="text-sm text-text-2">{step.detail}</span>
-              </span>
-              <span className="sr-only">{step.done ? '(tamam)' : '(yapılacak)'}</span>
-            </>
-          );
-          return (
-            <li key={step.key}>
-              {step.href && !step.done ? (
-                <a
-                  href={step.href}
-                  onClick={() => {
-                    if (step.key === 'receipt') {
-                      store(RECEIPT_KEY, marketId);
-                      setReceiptSeen(true);
-                    }
-                  }}
-                  className="flex min-h-14 items-center gap-3 rounded-control px-2 py-1.5 no-underline hover:bg-bg"
+      {expanded ? (
+        <ol className="flex flex-col gap-1">
+          {steps.map((step, index) => {
+            const content = (
+              <>
+                <span
+                  aria-hidden="true"
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-chip font-display text-sm font-bold ${
+                    step.done ? 'bg-success text-surface' : 'border border-line-strong text-text-2'
+                  }`}
                 >
-                  {content}
-                </a>
-              ) : (
-                <div className="flex min-h-14 items-center gap-3 px-2 py-1.5">{content}</div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+                  {step.done ? <Check size={16} strokeWidth={2.5} /> : index + 1}
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className={`font-semibold ${step.done ? 'text-text-2 line-through' : ''}`}>
+                    {step.title}
+                  </span>
+                  <span className="text-sm text-text-2">{step.detail}</span>
+                </span>
+                <span className="sr-only">{step.done ? '(tamam)' : '(yapılacak)'}</span>
+              </>
+            );
+            return (
+              <li key={step.key}>
+                {step.href && !step.done ? (
+                  <a
+                    href={step.href}
+                    onClick={() => {
+                      if (step.key === 'receipt') {
+                        store(RECEIPT_KEY, marketId);
+                        setReceiptSeen(true);
+                      }
+                    }}
+                    className="flex min-h-14 items-center gap-3 rounded-control px-2 py-1.5 no-underline hover:bg-bg"
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <div className="flex min-h-14 items-center gap-3 px-2 py-1.5">{content}</div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
       {finished === steps.length ? (
         <Button variant="primary" onClick={hide}>
           Listeyi kapat

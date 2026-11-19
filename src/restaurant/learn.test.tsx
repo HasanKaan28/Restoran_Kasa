@@ -32,6 +32,18 @@ describe('a new owner’s first evening', () => {
     expect(within(setup).getByText('Masaları ekleyin').closest('li')).toHaveTextContent('(tamam)');
   });
 
+  it('folds to a progress line once the floor and the menu exist, so tables come first', async () => {
+    const data = createTestData();
+    await createDiningTable(data.db, { name: '1', area: 'Salon' }, new Date());
+    await createProduct(data.db, { name: 'Ezme', sellPrice: 11000, vatRate: 10 }, new Date());
+    await renderWithData(<TablesScreen />, data);
+    const setup = await screen.findByRole('region', { name: 'Restoranı kuralım' });
+    expect(await within(setup).findByText('2 / 5 adım tamam')).toBeInTheDocument();
+    expect(within(setup).queryByRole('list')).not.toBeInTheDocument();
+    await userEvent.click(within(setup).getByRole('button', { name: 'Adımlar' }));
+    expect(within(setup).getByRole('link', { name: /Personel ve PIN/ })).toBeInTheDocument();
+  });
+
   it('puts the list away for this restaurant on this device', async () => {
     const data = createTestData();
     const { unmount } = await renderWithData(<TablesScreen />, data);
