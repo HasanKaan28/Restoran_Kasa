@@ -99,6 +99,9 @@ Android cloud backups are off (`allowBackup="false"`).
 Release APKs are signed with one release key (repository secrets `ANDROID_KEYSTORE_BASE64`,
 `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`), so each version
 installs over the last one and keeps its data. Lose the key and that stops: back it up.
+`scripts/setup-android-signing.ps1` creates the key once (run it yourself; it refuses when the
+secrets exist), sets the four secrets with `gh` and leaves a backup of the key and its password in
+`Documents\Restoran-Kasa-imza`.
 
 ## Moving from v1
 
