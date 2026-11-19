@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus } from 'lucide-react';
+import { BookOpen, ChevronDown, Plus } from 'lucide-react';
 import { useMemo, useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { useSession } from '@/app/session';
@@ -7,15 +7,22 @@ import { AppShell } from '@/app/AppShell';
 import { listCategories } from '@/data/categories';
 import { findProductByBarcode } from '@/data/products';
 import type { ProductRecord } from '@/data/types';
-import { Button, ChoiceGroup, SelectField, TextField, ToastRegion, useToast } from '@/design';
+import {
+  Button,
+  ChoiceGroup,
+  EmptyState,
+  SelectField,
+  TextField,
+  ToastRegion,
+  useMediaQuery,
+  useToast,
+} from '@/design';
 import { businessDate } from '@/domain/businessDate';
 import { formatTRY } from '@/domain/money';
 import { formatStock } from '@/pos/format';
-import { CameraButton } from '@/pos/CameraButton';
 import { useBarcodeScanner } from '@/pos/keyboard';
-import { LabelDialog } from '@/labels/LabelDialog';
 import { BulkPriceDialog } from './BulkPriceDialog';
-import { CategoriesDialog } from './CategoriesDialog';
+import { CategoryManager } from './CategoriesDialog';
 import { downloadText, productsToCsv } from './exportCsv';
 import { ImportDialog } from './ImportDialog';
 import { ProductFormDialog } from './ProductFormDialog';
@@ -32,10 +39,8 @@ const PAGE_SIZE = 100;
 
 type OpenDialog =
   | { kind: 'product'; product?: ProductRecord; barcode?: string }
-  | { kind: 'categories' }
   | { kind: 'import' }
   | { kind: 'bulkPrice' }
-  | { kind: 'labels' }
   | null;
 
 /** The catalogue: every product with its stock and category, and the way to add or change one. */
@@ -149,7 +154,6 @@ export function ProductsScreen(): JSX.Element {
           >
             Toplu fiyat
           </Button>
-          <Button onClick={() => setDialog({ kind: 'labels' })}>Etiket yazdır</Button>
           <Button onClick={() => setDialog({ kind: 'import' })}>İçe aktar</Button>
           {session.can('admin') ? (
             <Button
@@ -161,8 +165,6 @@ export function ProductsScreen(): JSX.Element {
               Dışa aktar
             </Button>
           ) : null}
-          <Button onClick={() => setDialog({ kind: 'categories' })}>Kategoriler</Button>
-          <CameraButton onScan={(code) => void openByBarcode(code)} />
           <Button
             variant="primary"
             icon={<Plus aria-hidden="true" size={18} />}
@@ -201,15 +203,23 @@ export function ProductsScreen(): JSX.Element {
           onChange={(next) => search(() => setFilter(next))}
         />
 
-        {catalogue ? (
-          <ProductTable
-            rows={rows}
-            limit={limit}
-            empty={catalogue.products.length === 0}
-            onOpen={(product) => setDialog({ kind: 'product', product })}
-            onMore={() => setLimit((current) => current + PAGE_SIZE)}
-          />
-        ) : null}
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0">
+            {catalogue ? (
+              <ProductTable
+                rows={rows}
+                limit={limit}
+                empty={catalogue.products.length === 0}
+                onNew={() => setDialog({ kind: 'product' })}
+                onOpen={(product) => setDialog({ kind: 'product', product })}
+                onMore={() => setLimit((current) => current + PAGE_SIZE)}
+              />
+            ) : null}
+          </div>
+          <div className="max-lg:order-first">
+            <CategoryPanel count={catalogue?.categories.length ?? 0} />
+          </div>
+        </div>
       </AppShell>
 
       {dialog?.kind === 'product' ? (
@@ -221,7 +231,6 @@ export function ProductsScreen(): JSX.Element {
           onSaved={saved}
         />
       ) : null}
-      {dialog?.kind === 'categories' ? <CategoriesDialog open onClose={close} /> : null}
       {dialog?.kind === 'import' ? <ImportDialog open onClose={close} onDone={saved} /> : null}
       {dialog?.kind === 'bulkPrice' ? (
         <BulkPriceDialog
@@ -231,9 +240,50 @@ export function ProductsScreen(): JSX.Element {
           onDone={saved}
         />
       ) : null}
-      {dialog?.kind === 'labels' ? <LabelDialog open onClose={close} /> : null}
       <ToastRegion message={toast.message} />
     </>
+  );
+}
+
+/**
+ * The categories beside the dishes (under them on a narrow screen, folded): adding, renaming,
+ * ordering and deleting them is part of writing the menu, not a dialog away.
+ */
+function CategoryPanel({ count }: { count: number }): JSX.Element {
+  const narrow = useMediaQuery('(max-width: 1023px)');
+  const [open, setOpen] = useState(false);
+  const shown = !narrow || open;
+  return (
+    <section
+      aria-labelledby="categories-heading"
+      className="slip edge-open flex flex-col gap-3 p-4 lg:sticky lg:top-4"
+    >
+      {narrow ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((now) => !now)}
+          className="-m-2 flex min-h-12 items-center gap-2 rounded-control p-2 text-left"
+        >
+          <h2 id="categories-heading" className="mr-auto text-lg font-bold tracking-[-0.01em]">
+            {`Kategoriler · ${count}`}
+          </h2>
+          <ChevronDown
+            aria-hidden="true"
+            size={20}
+            className={`text-text-2 transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        </button>
+      ) : (
+        <div>
+          <h2 id="categories-heading" className="text-lg font-bold tracking-[-0.01em]">
+            Kategoriler
+          </h2>
+          <p className="text-sm text-text-2">Sıra, sipariş ekranındaki sekmelerin sırasıdır.</p>
+        </div>
+      )}
+      {shown ? <CategoryManager /> : null}
+    </section>
   );
 }
 
@@ -241,6 +291,7 @@ function ProductTable({
   rows,
   limit,
   empty,
+  onNew,
   onOpen,
   onMore,
 }: {
@@ -248,19 +299,29 @@ function ProductTable({
   limit: number;
   /** No product at all yet, as opposed to none matching the search. */
   empty: boolean;
+  onNew(): void;
   onOpen(product: ProductRecord): void;
   onMore(): void;
 }): JSX.Element {
   if (rows.length === 0) {
     return empty ? (
-      <div className="flex flex-col gap-1 py-8 text-center text-text-2">
-        <p className="font-semibold text-text">Henüz ürün yok.</p>
-        <p>“Yeni ürün” ile ilk yemeğinizi ekleyin.</p>
-      </div>
+      <EmptyState
+        icon={<BookOpen size={26} strokeWidth={1.75} />}
+        title="Henüz ürün yok."
+        action={
+          <Button variant="primary" icon={<Plus aria-hidden="true" size={18} />} onClick={onNew}>
+            İlk yemeği ekle
+          </Button>
+        }
+      >
+        Önce kategorileri yazın (Izgara, Meze, İçecek), sonra yemekleri fiyatlarıyla ekleyin.
+      </EmptyState>
     ) : (
       <p className="py-8 text-center text-text-2">Aramaya uyan ürün yok.</p>
     );
   }
+  // A kitchen that does not count stock is not shown a column of "0 adet".
+  const tracksStock = rows.some((row) => row.stockMilli !== 0 || row.critical);
   return (
     <div className="flex flex-col gap-3">
       <table className="w-full table-fixed border-collapse text-left">
@@ -276,9 +337,11 @@ function ProductTable({
             <th scope="col" className="w-24 py-2 pr-3 text-right font-medium md:w-32">
               Satış fiyatı
             </th>
-            <th scope="col" className="w-24 py-2 text-right font-medium md:w-32">
-              Stok
-            </th>
+            {tracksStock ? (
+              <th scope="col" className="w-24 py-2 text-right font-medium md:w-32">
+                Stok
+              </th>
+            ) : null}
             <th scope="col" className="hidden w-16 py-2 pl-3 text-right font-medium lg:table-cell">
               KDV
             </th>
@@ -286,7 +349,12 @@ function ProductTable({
         </thead>
         <tbody>
           {rows.slice(0, limit).map((row) => (
-            <ProductTableRow key={row.product.id} row={row} onOpen={onOpen} />
+            <ProductTableRow
+              key={row.product.id}
+              row={row}
+              showStock={tracksStock}
+              onOpen={onOpen}
+            />
           ))}
         </tbody>
       </table>
@@ -302,9 +370,11 @@ function ProductTable({
 
 function ProductTableRow({
   row,
+  showStock,
   onOpen,
 }: {
   row: ProductRow;
+  showStock: boolean;
   onOpen(product: ProductRecord): void;
 }): JSX.Element {
   const { product, stockMilli, categoryName, critical } = row;
@@ -324,16 +394,18 @@ function ProductTableRow({
       </td>
       <td className="hidden py-3 pr-3 text-text-2 md:table-cell">{categoryName ?? '—'}</td>
       <td className="py-3 pr-3 text-right">{formatTRY(product.sellPrice)}</td>
-      <td className={`py-3 text-right ${stockMilli < 0 ? 'text-danger' : ''}`}>
-        {formatStock(stockMilli, product.unit)}
-        {critical ? (
-          <span className="mt-1 block">
-            <span className="rounded-full bg-warning-bg px-2 py-0.5 text-sm font-medium text-warning">
-              Kritik
+      {showStock ? (
+        <td className={`py-3 text-right ${stockMilli < 0 ? 'text-danger' : ''}`}>
+          {formatStock(stockMilli, product.unit)}
+          {critical ? (
+            <span className="mt-1 block">
+              <span className="rounded-full bg-warning-bg px-2 py-0.5 text-sm font-medium text-warning">
+                Kritik
+              </span>
             </span>
-          </span>
-        ) : null}
-      </td>
+          ) : null}
+        </td>
+      ) : null}
       <td className="hidden py-3 pl-3 text-right text-text-2 lg:table-cell">{`%${product.vatRate}`}</td>
     </tr>
   );

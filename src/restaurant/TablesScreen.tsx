@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ShoppingBag } from 'lucide-react';
+import { LayoutGrid, ShoppingBag } from 'lucide-react';
 import { useRef, useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
@@ -14,10 +14,11 @@ import {
   tabBill,
 } from '@/data/restaurant';
 import type { TabRecord } from '@/data/types';
-import { Button, ChoiceGroup, Dialog, ToastRegion, useToast } from '@/design';
+import { Button, ChoiceGroup, Dialog, EmptyState, ToastRegion, useToast } from '@/design';
 import { formatTRY } from '@/domain/money';
 import { MoveDialog } from './MoveDialog';
 import { PayDialog } from './PayDialog';
+import { SetupChecklist } from './SetupChecklist';
 import { TabView } from './TabView';
 import { minutesSince, useNow } from './time';
 
@@ -151,11 +152,26 @@ export function TablesScreen(): JSX.Element {
             onChange={setArea}
           />
         ) : null}
+        {session.can('admin') ? <SetupChecklist /> : null}
         {floor && floor.seated.length === 0 ? (
-          <p className="rounded-control border border-line bg-surface p-5 text-text-2">
-            Henüz masa yok. Ayarlar → Masalar bölümünden masa ekleyin; paket siparişler masasız da
-            alınır.
-          </p>
+          <EmptyState
+            icon={<LayoutGrid size={26} strokeWidth={1.75} />}
+            title="Henüz masa yok"
+            action={
+              session.can('admin') ? (
+                <a
+                  href="#/settings/masalar"
+                  className="inline-flex min-h-touch items-center justify-center rounded-control bg-accent px-5 font-semibold text-on-accent no-underline hover:bg-accent-hover"
+                >
+                  Masaları ekle
+                </a>
+              ) : null
+            }
+          >
+            {session.can('admin')
+              ? 'Masaları ekleyince burada salonunuz gibi dizilir. Paket siparişler masasız da alınır.'
+              : 'Masaları yöneticiniz Ayarlar’dan ekler. Paket siparişler masasız da alınır.'}
+          </EmptyState>
         ) : null}
         <ul
           aria-label="Masalar"

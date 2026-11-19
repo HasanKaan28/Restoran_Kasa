@@ -59,3 +59,38 @@ describe('ProductFormDialog portions and choices', () => {
     expect(await screen.findByText('Porsiyon 1: fiyatı girin.')).toBeInTheDocument();
   });
 });
+
+describe('ProductFormDialog for a new dish', () => {
+  it('asks the restaurant’s questions first and folds the market’s under “Gelişmiş”', async () => {
+    await renderWithData(<ProductFormDialog open onClose={vi.fn()} onSaved={vi.fn()} />);
+    const dialog = await screen.findByRole('dialog', { name: 'Yeni ürün' });
+    const fields = within(dialog)
+      .getAllByRole('textbox')
+      .map((field) => field.getAttribute('id'))
+      .map((id) => dialog.querySelector(`label[for="${id}"]`)?.textContent);
+    expect(fields.slice(0, 2)).toEqual(['Ürün adı', 'Satış fiyatı']);
+    const advanced = within(dialog).getByText('Gelişmiş').closest('details');
+    expect(advanced).not.toHaveAttribute('open');
+    expect(advanced).toContainElement(within(dialog).getByLabelText('Barkod'));
+    // A restaurant's dish is 10 % VAT unless the owner says otherwise.
+    expect(within(dialog).getByRole('radio', { name: '%10' })).toBeChecked();
+  });
+
+  it('makes a category in place and chooses it', async () => {
+    const onSaved = vi.fn();
+    const { data } = await renderWithData(
+      <ProductFormDialog open onClose={vi.fn()} onSaved={onSaved} />,
+    );
+    await userEvent.type(await screen.findByLabelText('Ürün adı'), 'Künefe');
+    await userEvent.type(screen.getByLabelText('Satış fiyatı'), '180');
+    await userEvent.click(screen.getByRole('button', { name: 'Yeni kategori' }));
+    await userEvent.type(screen.getByLabelText('Yeni kategori adı'), 'Tatlı');
+    await userEvent.click(screen.getByRole('button', { name: 'Ekle' }));
+    await waitFor(() => expect(screen.getByLabelText('Kategori')).toHaveDisplayValue('Tatlı'));
+    await userEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('Ürün eklendi.'));
+    const [dish] = await data.db.products.toArray();
+    const [category] = await data.db.categories.toArray();
+    expect(dish?.categoryId).toBe(category?.id);
+  });
+});

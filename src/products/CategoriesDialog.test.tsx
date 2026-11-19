@@ -16,7 +16,7 @@ async function names(db: MarketDb): Promise<string[]> {
 describe('CategoriesDialog', () => {
   it('adds, renames and deletes a category', async () => {
     const { data } = await renderWithData(<CategoriesDialog open onClose={vi.fn()} />);
-    expect(await screen.findByText('Henüz kategori yok.')).toBeInTheDocument();
+    expect(await screen.findByText(/^Henüz kategori yok./)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('Yeni kategori'), 'Ekmek{Enter}');
     const list = await screen.findByRole('list', { name: 'Kategoriler' });
     await waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(1));

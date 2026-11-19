@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus } from 'lucide-react';
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
 import { APP_VERSION } from '@/app/version';
@@ -27,6 +27,8 @@ export function SettingsScreen(): JSX.Element {
   const [dialog, setDialog] = useState<{ kind: 'new' } | { kind: 'edit'; id: string } | null>(null);
   const editing =
     dialog?.kind === 'edit' ? people?.find((person) => person.id === dialog.id) : null;
+
+  useSectionFromAddress();
 
   function done(message: string) {
     setDialog(null);
@@ -128,4 +130,29 @@ export function SettingsScreen(): JSX.Element {
       <ToastRegion message={toast.message} />
     </>
   );
+}
+
+/** `#/settings/<section>` opens Settings at that section, as the setup list's steps do. */
+const SECTIONS: Record<string, string> = {
+  masalar: 'tables-heading',
+  personel: 'staff-heading',
+  fis: 'receipt-heading',
+  cihaz: 'register-heading',
+};
+
+function useSectionFromAddress(): void {
+  useEffect(() => {
+    function scroll() {
+      const part = window.location.hash.split('/')[2] ?? '';
+      const heading = document.getElementById(SECTIONS[part] ?? '');
+      heading?.closest('section')?.scrollIntoView?.({ block: 'start' });
+    }
+    // After the sections have rendered their first time.
+    const frame = requestAnimationFrame(scroll);
+    window.addEventListener('hashchange', scroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('hashchange', scroll);
+    };
+  }, []);
 }

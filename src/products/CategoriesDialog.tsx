@@ -10,16 +10,35 @@ import {
   renameCategory,
   reorderCategories,
 } from '@/data/categories';
-import { DuplicateCategoryError } from '@/data/errors';
 import type { CategoryRecord } from '@/data/types';
 import { Button, Dialog, TextField } from '@/design';
+import { saveCategoryName as saveName } from './categoryName';
 
 export type CategoriesDialogProps = { open: boolean; onClose(): void };
 
 type Editing = { kind: 'rename'; id: string; name: string } | { kind: 'delete'; id: string } | null;
 
-/** Adds, renames, orders and deletes the categories; their order is the register's. */
+/** The categories in a dialog, for screens that keep them out of sight. */
 export function CategoriesDialog({ open, onClose }: CategoriesDialogProps): JSX.Element {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title="Kategoriler"
+      description={ORDER_NOTE}
+    >
+      <CategoryManager />
+    </Dialog>
+  );
+}
+
+const ORDER_NOTE = 'Sıra, sipariş ekranındaki kategori sekmelerinin sırasıdır.';
+
+/**
+ * Adds, renames, orders and deletes the categories, in place: the field to add one comes first,
+ * each row moves up or down, is renamed or deleted (its dishes stay, without a category).
+ */
+export function CategoryManager(): JSX.Element {
   const { db } = useData();
   const categories = useLiveQuery(() => listCategories(db), [db]);
   const [newName, setNewName] = useState('');
@@ -83,17 +102,32 @@ export function CategoriesDialog({ open, onClose }: CategoriesDialogProps): JSX.
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => !next && onClose()}
-      title="Kategoriler"
-      description="Sıra, kasadaki düğmelerin sırasıdır."
-    >
-      {categories?.length === 0 ? <p className="text-text-2">Henüz kategori yok.</p> : null}
+    <div className="flex flex-col gap-3">
+      <form className="flex items-end gap-2" onSubmit={(event) => void add(event)}>
+        <div className="min-w-0 flex-1">
+          <TextField
+            label="Yeni kategori"
+            placeholder="Ör. Izgara, Meze, İçecek"
+            autoComplete="off"
+            maxLength={MAX_CATEGORY_NAME_LENGTH}
+            value={newName}
+            error={addError}
+            onChange={(event) => setNewName(event.target.value)}
+          />
+        </div>
+        <Button type="submit" className={addError ? 'mb-7' : ''}>
+          Ekle
+        </Button>
+      </form>
+      {categories?.length === 0 ? (
+        <p className="text-text-2">
+          Henüz kategori yok. Sipariş ekranında her kategori bir sekme olur.
+        </p>
+      ) : null}
       {categories && categories.length > 0 ? (
         <ul
           aria-label="Kategoriler"
-          className="flex flex-col divide-y divide-line rounded-control border border-line"
+          className="flex flex-col divide-y divide-line rounded-plate border border-line bg-surface"
         >
           {categories.map((category, index) => (
             <li key={category.id} className="flex flex-col gap-2 p-2">
@@ -165,34 +199,8 @@ export function CategoriesDialog({ open, onClose }: CategoriesDialogProps): JSX.
           ))}
         </ul>
       ) : null}
-      <form className="flex flex-col gap-2" onSubmit={(event) => void add(event)}>
-        <TextField
-          label="Yeni kategori"
-          autoComplete="off"
-          maxLength={MAX_CATEGORY_NAME_LENGTH}
-          value={newName}
-          error={addError}
-          onChange={(event) => setNewName(event.target.value)}
-        />
-        <Button type="submit">Ekle</Button>
-      </form>
-    </Dialog>
+    </div>
   );
-}
-
-/** Saves a name and returns the message for the field, or nothing when it was saved. */
-async function saveName(save: () => Promise<unknown>, name: string): Promise<string | undefined> {
-  if (name.trim() === '') {
-    return 'Kategori adı gerekli.';
-  }
-  try {
-    await save();
-    return undefined;
-  } catch (error) {
-    return error instanceof DuplicateCategoryError
-      ? 'Bu adda bir kategori var.'
-      : 'Kategori kaydedilemedi.';
-  }
 }
 
 function deleteQuestion(name: string, products: number): string {

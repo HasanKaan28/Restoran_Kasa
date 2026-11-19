@@ -1,11 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createCategory, deleteCategory } from '@/data/categories';
+import { describe, expect, it, vi } from 'vitest';
+import { createCategory, deleteCategory, listCategories } from '@/data/categories';
 import { createProduct, deleteProduct } from '@/data/products';
 import { recordStockMovement } from '@/data/stock';
 import type { ProductRecord } from '@/data/types';
-import { fakeCamera, removeCamera } from '@/test/camera';
 import { createTestData, renderWithData } from '@/test/renderWithData';
 import { scan } from '@/test/scan';
 import { ProductsScreen } from './ProductsScreen';
@@ -18,8 +17,6 @@ function shownNames(): (string | null)[] {
     .queryAllByRole('button')
     .map((button) => button.textContent);
 }
-
-afterEach(removeCamera);
 
 describe('ProductsScreen', () => {
   it('lists products with their stock, unit and category', async () => {
@@ -95,10 +92,30 @@ describe('ProductsScreen', () => {
     expect(screen.getByRole('row', { name: /Simit/ })).toHaveTextContent('Kritik');
   });
 
-  it('opens the label printer', async () => {
+  it('writes the categories in place, beside the dishes', async () => {
+    const { data } = await renderWithData(<ProductsScreen />);
+    const panel = await screen.findByRole('region', { name: 'Kategoriler' });
+    // Typed and added with the button: a fast burst ending in Enter reads as a barcode scan here.
+    await userEvent.type(within(panel).getByLabelText('Yeni kategori'), 'Izgara');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Ekle' }));
+    await within(panel).findByRole('button', { name: 'Sil: Izgara' });
+    await userEvent.type(within(panel).getByLabelText('Yeni kategori'), 'Meze');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Ekle' }));
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Yukarı taşı: Meze' }));
+    await waitFor(async () =>
+      expect((await listCategories(data.db)).map((category) => category.name)).toEqual([
+        'Meze',
+        'Izgara',
+      ]),
+    );
+    // The market's label printer and camera are not part of the restaurant's menu.
+    expect(screen.queryByRole('button', { name: 'Etiket yazdır' })).not.toBeInTheDocument();
+  });
+
+  it('offers the first dish when the menu is empty', async () => {
     await renderWithData(<ProductsScreen />);
-    await userEvent.click(screen.getByRole('button', { name: 'Etiket yazdır' }));
-    expect(await screen.findByRole('dialog', { name: 'Etiket yazdır' })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: 'İlk yemeği ekle' }));
+    expect(await screen.findByRole('dialog', { name: 'Yeni ürün' })).toBeInTheDocument();
   });
 
   it('opens a product when its barcode is scanned', async () => {
@@ -311,18 +328,5 @@ describe('ProductsScreen', () => {
     expect(await screen.findByText('Aramaya uyan ürün yok.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('radio', { name: 'Tümü' }));
     expect(shownNames()).toEqual(['Ayran', 'Eski Gazoz']);
-  });
-
-  it('opens the product the camera reads', async () => {
-    fakeCamera([['8690000000017']]);
-    const data = createTestData();
-    await createProduct(
-      data.db,
-      { barcode: '8690000000017', name: 'Süt', sellPrice: 4250, vatRate: 1 },
-      at,
-    );
-    await renderWithData(<ProductsScreen />, data);
-    await userEvent.click(screen.getByRole('button', { name: 'Kamerayla okut' }));
-    expect(await screen.findByRole('dialog', { name: 'Ürünü düzenle' })).toBeInTheDocument();
   });
 });

@@ -117,7 +117,8 @@ export function draftOf(product?: ProductRecord, barcode?: string): ProductDraft
     unit: product?.unit ?? 'piece',
     sellPrice: product ? formatPriceInput(product.sellPrice) : '',
     buyPrice: product && product.buyPrice > 0 ? formatPriceInput(product.buyPrice) : '',
-    vatRate: product?.vatRate ?? 1,
+    // A restaurant's dishes and soft drinks are mostly 10 %; drinks with alcohol are 20 %.
+    vatRate: product?.vatRate ?? 10,
     criticalLevel:
       product && product.criticalLevelMilli > 0 ? formatQtyInput(product.criticalLevelMilli) : '',
     isQuick: product?.isQuick ?? false,
