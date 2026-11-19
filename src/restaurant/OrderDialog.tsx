@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type JSX } from 'react';
+import { useId, useState, type FormEvent, type JSX } from 'react';
 import type { OrderInput } from '@/data/restaurant';
 import type { ProductRecord } from '@/data/types';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
@@ -26,6 +26,9 @@ export function OrderDialog({
   const [note, setNote] = useState('');
   const [hold, setHold] = useState(false);
   const [error, setError] = useState<string>();
+  const formId = useId();
+  const price =
+    product.portions?.find((item) => item.label === portion)?.price ?? product.sellPrice;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,8 +47,17 @@ export function OrderDialog({
   }
 
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()} title={product.name}>
-      <form className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+    <Dialog
+      open
+      onOpenChange={(next) => !next && onClose()}
+      title={product.name}
+      footer={
+        <Button type="submit" form={formId} variant="primary" size="lg">
+          {`Ekle · ${formatTRY(price)}`}
+        </Button>
+      }
+    >
+      <form id={formId} className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
         {product.portions && product.portions.length > 0 ? (
           <ChoiceGroup<string>
             legend="Porsiyon"
@@ -69,7 +81,7 @@ export function OrderDialog({
             name={`choice-${index}`}
             wrap
             options={[
-              ...(group.required ? [] : [{ value: NONE, label: 'Farketmez' }]),
+              ...(group.required ? [] : [{ value: NONE, label: 'Fark etmez' }]),
               ...group.choices.map((choice) => ({ value: choice, label: choice })),
             ]}
             value={chosen[index] ?? NONE}
@@ -98,9 +110,6 @@ export function OrderDialog({
             {error}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" size="lg">
-          Ekle
-        </Button>
       </form>
     </Dialog>
   );

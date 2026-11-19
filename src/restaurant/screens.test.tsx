@@ -41,7 +41,7 @@ describe('the waiter’s floor', () => {
     expect(await within(order).findByText('2 · Gönderilmedi')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('Kalan tutar')).toHaveTextContent('₺940,00'));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Gönder (2)' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mutfağa gönder (2)' }));
     await waitFor(async () => expect(await kitchenTickets(data.db, 'kitchen')).toHaveLength(1));
     expect(await kitchenTickets(data.db, 'bar')).toHaveLength(1);
 
@@ -83,7 +83,7 @@ describe('the kitchen’s screen', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
     const menu = await screen.findByRole('region', { name: 'Menü' });
     await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Gönder (1)' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (1)' }));
     await waitFor(async () => expect(await kitchenTickets(data.db, 'kitchen')).toHaveLength(1));
     document.body.innerHTML = '';
 

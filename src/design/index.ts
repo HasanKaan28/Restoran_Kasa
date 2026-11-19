@@ -8,3 +8,4 @@ export { TextField, type TextFieldProps } from './TextField';
 export { ToastRegion, type ToastRegionProps } from './ToastRegion';
 export { useToast, type ToastAction } from './useToast';
 export { useBottomBar } from './useBottomBar';
+export { useMediaQuery } from './useMediaQuery';

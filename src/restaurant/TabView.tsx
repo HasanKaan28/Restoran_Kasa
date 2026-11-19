@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Minus, Plus, X } from 'lucide-react';
+import { ArrowLeft, ChevronUp, Ellipsis } from 'lucide-react';
 import { useEffect, useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
@@ -23,39 +23,42 @@ import {
   voidItem,
   type OrderInput,
 } from '@/data/restaurant';
-import { normalizeForSearch } from '@/data/text';
 import type { ProductRecord, TabItemRecord } from '@/data/types';
-import { Button, ChoiceGroup, Dialog, TextField, ToastRegion, useToast } from '@/design';
+import {
+  Button,
+  Dialog,
+  TextField,
+  ToastRegion,
+  useBottomBar,
+  useMediaQuery,
+  useToast,
+} from '@/design';
 import { formatTRY } from '@/domain/money';
-import { formatLineQty } from '@/pos/format';
+import { MenuBrowser } from './MenuBrowser';
 import { MoveDialog } from './MoveDialog';
 import { OrderDialog } from './OrderDialog';
+import { OrderLines, type OrderLineActions } from './OrderLines';
 import { PayDialog } from './PayDialog';
 
-const ALL = '';
-
-const STATUS_LABELS: Record<TabItemRecord['status'], string> = {
-  new: 'Gönderilmedi',
-  held: 'Sırada',
-  sent: 'Hazırlanıyor',
-  ready: 'Hazır',
-  void: 'İptal',
-};
+const PHONE = '(max-width: 767px)';
 
 /**
- * One tab: the menu on one side, the order on the other. Lines are taken (a dish with portions
- * or choices asks for them), then sent to the kitchen and the bar in one go, or kept back for
- * the next course and fired later. A sent line can be repeated, made a treat or voided with a
- * reason. Asking for the bill locks the tab until it is paid or unlocked.
+ * One tab: the menu, and the order as the adisyon lists it. Lines are taken (a dish with portions
+ * or choices asks for them), then sent to the kitchen and the bar in one go, or kept back for the
+ * next course and fired later. A sent line can be repeated, made a treat or voided with a reason.
+ * Asking for the bill locks the tab until it is paid or unlocked.
+ *
+ * From 768 px the menu and the order sit side by side. On a phone the menu fills the screen and
+ * a bar under the thumb holds the total, sending and the bill; the order opens from it as a sheet.
  */
 export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }): JSX.Element {
   const { db, settings, runner } = useData();
   const status = useSyncStatus(runner);
   const session = useSession();
   const toast = useToast();
-  const [category, setCategory] = useState(ALL);
-  const [term, setTerm] = useState('');
-  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const phone = useMediaQuery(PHONE);
+  const [sheet, setSheet] = useState<'order' | 'more' | null>(null);
+  const [lineFor, setLineFor] = useState<TabItemRecord | null>(null);
   const [voiding, setVoiding] = useState<TabItemRecord | null>(null);
   const [dialog, setDialog] = useState<'pay' | 'move' | null>(null);
   const [ordering, setOrdering] = useState<ProductRecord | null>(null);
@@ -74,20 +77,12 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   );
   const bill = useLiveQuery(() => tabBill(db, tabId), [db, tabId]);
   const categories = useLiveQuery(() => listCategories(db), [db]);
-  const needle = normalizeForSearch(term);
   const products = useLiveQuery(
     async () =>
-      (
-        await db.products
-          .filter(
-            (product) =>
-              !product.deletedAt &&
-              (category === ALL || product.categoryId === category) &&
-              (needle === '' || normalizeForSearch(product.name).includes(needle)),
-          )
-          .toArray()
-      ).sort((a, b) => a.name.localeCompare(b.name, 'tr')),
-    [db, category, needle],
+      (await db.products.filter((product) => !product.deletedAt).toArray()).sort((a, b) =>
+        a.name.localeCompare(b.name, 'tr'),
+      ),
+    [db],
   );
 
   const gone = tab === null || (tab !== undefined && tab.record.status !== 'open');
@@ -101,7 +96,13 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   const fresh = (items ?? []).filter((item) => item.status === 'new');
   const held = (items ?? []).filter((item) => item.status === 'held');
   const paid = (items ?? []).filter((item) => item.paidSaleId);
+  const shown = (items ?? []).filter((item) => !item.paidSaleId);
   const billRequested = tab?.record.billRequestedAt !== undefined;
+  const amounts = new Map((bill?.lines ?? []).map((line) => [line.item.id, line.amount]));
+  const taken = new Map<string, number>();
+  for (const item of fresh) {
+    taken.set(item.productId, (taken.get(item.productId) ?? 0) + item.qtyMilli / 1000);
+  }
 
   async function order(product: ProductRecord) {
     if (billRequested) {
@@ -131,8 +132,17 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
       } else {
         await addTabItem(db, tabId, product, { qtyMilli: 1000 }, waiter, new Date());
       }
+      confirmAdded(product.name, same ? same.qtyMilli / 1000 + 1 : 1);
     } catch {
       toast.show('Ürün eklenemedi.');
+    }
+  }
+
+  /** On a phone the order is out of sight: a short toast and a tick of the motor confirm a tap. */
+  function confirmAdded(name: string, count: number) {
+    if (phone) {
+      toast.show(`${name} · ${count}`);
+      navigator.vibrate?.(10);
     }
   }
 
@@ -144,6 +154,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
         ? `${count - holding} kalem gönderildi, ${holding} kalem sırada.`
         : `${count} kalem gönderildi.`,
     );
+    navigator.vibrate?.(10);
     void runner.run();
   }
 
@@ -151,6 +162,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
     try {
       await addTabItem(db, tabId, product, input, waiter, new Date());
       setOrdering(null);
+      confirmAdded(product.name, input.qtyMilli / 1000);
     } catch {
       toast.show('Ürün eklenemedi.');
     }
@@ -176,6 +188,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   }
 
   async function toggleBillRequest() {
+    setSheet(null);
     if (billRequested) {
       await cancelBillRequest(db, tabId, new Date());
       toast.show('Kilit açıldı; sipariş eklenebilir.');
@@ -186,14 +199,43 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
     void runner.run();
   }
 
-  async function step(item: TabItemRecord, delta: number) {
-    const next = item.qtyMilli + delta;
-    if (next <= 0) {
-      await removeNewItem(db, item.id, new Date());
-    } else {
-      await changeNewItem(db, item.id, { qtyMilli: next }, new Date());
-    }
-  }
+  const lineActions: OrderLineActions = {
+    step: (item, delta) => {
+      const next = item.qtyMilli + delta;
+      void (next <= 0
+        ? removeNewItem(db, item.id, new Date())
+        : changeNewItem(db, item.id, { qtyMilli: next }, new Date()));
+    },
+    remove: (item) => void removeNewItem(db, item.id, new Date()),
+    note: (item, note) => void changeNewItem(db, item.id, { note }, new Date()),
+    hold: (item, hold) => void setHold(db, item.id, hold, new Date()),
+    open: (item) => setLineFor(item),
+  };
+
+  const sendLabel = `Mutfağa gönder (${fresh.length})`;
+  const actions = (
+    <OrderActions
+      total={bill?.total ?? 0}
+      fresh={fresh.length}
+      held={held.length}
+      canPay={session.can('sell')}
+      sendLabel={sendLabel}
+      onSend={() => void send()}
+      onFire={() => void fire()}
+      onPay={() => setDialog('pay')}
+    />
+  );
+  const orderContent = (
+    <>
+      <OrderLines items={shown} amounts={amounts} actions={lineActions} />
+      {items && items.length === 0 ? (
+        <p className="py-2 text-text-2">Menüden ürün seçin; seçtikleriniz burada toplanır.</p>
+      ) : null}
+      {paid.length > 0 ? (
+        <p className="text-sm text-text-2">{`${paid.length} kalem ödendi.`}</p>
+      ) : null}
+    </>
+  );
 
   return (
     <>
@@ -206,220 +248,136 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
         activeNav="tables"
         immersive
       >
-        <div className="flex flex-wrap items-center gap-3">
-          <Button icon={<ArrowLeft aria-hidden="true" size={18} />} onClick={() => void leave()}>
-            Masalar
+        <div className="flex items-center gap-2">
+          <Button
+            variant={phone ? 'ghost' : 'secondary'}
+            className={phone ? '-ml-2 size-12 min-h-0 px-0' : ''}
+            icon={<ArrowLeft aria-hidden="true" size={phone ? 22 : 18} />}
+            onClick={() => void leave()}
+          >
+            <span className={phone ? 'sr-only' : ''}>Masalar</span>
           </Button>
-          <h1 className="mr-auto text-xl font-semibold">{tab?.title ?? ''}</h1>
-          {held.length > 0 ? (
-            <Button variant="primary" onClick={() => void fire()}>
-              {`Sıradakileri gönder (${held.length})`}
-            </Button>
-          ) : null}
-          <Button onClick={() => void toggleBillRequest()}>
-            {billRequested ? 'Kilidi aç' : 'Hesap iste'}
-          </Button>
-          <Button onClick={() => setDialog('move')}>Taşı / birleştir</Button>
+          <h1 className="mr-auto min-w-0 truncate text-title font-bold tracking-[-0.02em]">
+            {tab?.title ?? ''}
+          </h1>
+          {phone ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-12"
+              aria-label="Masa işlemleri"
+              icon={<Ellipsis aria-hidden="true" size={22} />}
+              onClick={() => setSheet('more')}
+            />
+          ) : (
+            <>
+              <Button onClick={() => void toggleBillRequest()}>
+                {billRequested ? 'Kilidi aç' : 'Hesap iste'}
+              </Button>
+              <Button onClick={() => setDialog('move')}>Taşı / birleştir</Button>
+            </>
+          )}
         </div>
         {billRequested ? (
-          <p
+          <div
             role="status"
-            className="rounded-control border border-accent bg-accent/10 p-3 font-medium"
+            className="slip edge-bill flex flex-wrap items-center gap-3 bg-warning-bg p-3"
           >
-            Hesap istendi. Yeni sipariş için “Kilidi aç”a basın.
-          </p>
+            <p className="flex-1 font-medium">
+              Hesap istendi. Yeni sipariş için “Kilidi aç”a basın.
+            </p>
+            {phone ? (
+              <Button variant="secondary" onClick={() => void toggleBillRequest()}>
+                Kilidi aç
+              </Button>
+            ) : null}
+          </div>
         ) : null}
-        <div className="grid gap-4 lg:grid-cols-[1fr_24rem]">
-          <section aria-label="Menü" className="flex min-w-0 flex-col gap-3">
-            <TextField
-              label="Menüde ara"
-              autoComplete="off"
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-            />
-            {categories && categories.length > 0 ? (
-              <ChoiceGroup<string>
-                legend="Kategori"
-                name="menuCategory"
-                wrap
-                options={[
-                  { value: ALL, label: 'Tümü' },
-                  ...categories.map((item) => ({ value: item.id, label: item.name })),
-                ]}
-                value={category}
-                onChange={setCategory}
-              />
-            ) : null}
-            <ul className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-2">
-              {(products ?? []).map((product) => (
-                <li key={product.id}>
-                  <button
-                    type="button"
-                    onClick={() => void order(product)}
-                    className="flex min-h-20 w-full flex-col justify-between rounded-control border border-line bg-surface p-2.5 text-left hover:bg-bg"
-                  >
-                    <span className="font-medium break-words">{product.name}</span>
-                    <span className="font-display text-sm font-medium text-text-2">
-                      {formatTRY(product.sellPrice)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
 
-          <section
-            aria-label="Adisyon"
-            className="flex flex-col gap-3 rounded-control border border-line bg-surface p-3"
-          >
-            <ul className="flex flex-col divide-y divide-line">
-              {(items ?? [])
-                .filter((item) => !item.paidSaleId)
-                .map((item) => (
-                  <li key={item.id} className="flex flex-col gap-1 py-2">
-                    <div className="flex items-start gap-2">
-                      <div
-                        className={`min-w-0 flex-1 ${item.status === 'void' ? 'line-through opacity-60' : ''}`}
-                      >
-                        <p className="font-medium break-words">{itemLabel(item)}</p>
-                        <p className="text-sm text-text-2">
-                          {`${formatLineQty(item.qtyMilli, item.unit)} · ${item.status === 'new' && item.hold ? 'Sonra gönderilecek' : STATUS_LABELS[item.status]}${item.complimentary ? ' · İkram' : ''}`}
-                        </p>
-                        {item.options ? (
-                          <p className="text-sm text-text-2">{item.options.join(' · ')}</p>
-                        ) : null}
-                        {item.note ? (
-                          <p className="text-sm text-text-2">{`Not: ${item.note}`}</p>
-                        ) : null}
-                        {item.voidReason && item.status === 'void' ? (
-                          <p className="text-sm text-text-2">{item.voidReason}</p>
-                        ) : null}
-                      </div>
-                      {item.status === 'new' ? (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Bir azalt: ${item.name}`}
-                            icon={<Minus aria-hidden="true" size={16} />}
-                            onClick={() => void step(item, -1000)}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Bir artır: ${item.name}`}
-                            icon={<Plus aria-hidden="true" size={16} />}
-                            onClick={() => void step(item, 1000)}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Çıkar: ${item.name}`}
-                            icon={<X aria-hidden="true" size={16} />}
-                            onClick={() => void removeNewItem(db, item.id, new Date())}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                    {item.status === 'new' ? (
-                      noteFor === item.id ? (
-                        <TextField
-                          label={`Not: ${item.name}`}
-                          autoFocus
-                          defaultValue={item.note ?? ''}
-                          onBlur={(event) => {
-                            void changeNewItem(
-                              db,
-                              item.id,
-                              { note: event.target.value },
-                              new Date(),
-                            );
-                            setNoteFor(null);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.currentTarget.blur();
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="ghost" onClick={() => setNoteFor(item.id)}>
-                            Not ekle
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            aria-pressed={item.hold === true}
-                            onClick={() => void setHold(db, item.id, !item.hold, new Date())}
-                          >
-                            {item.hold ? 'Şimdi gönder' : 'Sonra gönder'}
-                          </Button>
-                        </div>
-                      )
-                    ) : item.status !== 'void' ? (
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="ghost"
-                          disabled={billRequested}
-                          onClick={() =>
-                            void repeatItem(db, item.id, waiter, new Date()).catch(() =>
-                              toast.show('Tekrarlanamadı.'),
-                            )
-                          }
-                        >
-                          Tekrarla
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          disabled={!session.can('discount')}
-                          onClick={() =>
-                            void setComplimentary(db, item.id, !item.complimentary, new Date())
-                          }
-                        >
-                          {item.complimentary ? 'İkramı kaldır' : 'İkram'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          disabled={!session.can('voidSale')}
-                          onClick={() => setVoiding(item)}
-                        >
-                          İptal
-                        </Button>
-                      </div>
-                    ) : null}
-                  </li>
-                ))}
-            </ul>
-            {items && items.length === 0 ? (
-              <p className="text-text-2">Menüden ürün seçin.</p>
-            ) : null}
-            {paid.length > 0 ? (
-              <p className="text-sm text-text-2">{`${paid.length} kalem ödendi.`}</p>
-            ) : null}
-          </section>
+        <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+          <MenuBrowser
+            // Both at once: dishes laid out before their categories would jump into sections.
+            products={categories ? (products ?? []) : []}
+            categories={categories ?? []}
+            taken={taken}
+            onPick={(product) => void order(product)}
+          />
+          {phone ? null : (
+            <section
+              aria-label="Adisyon"
+              className="slip perforated edge-open sticky top-4 flex max-h-[calc(100dvh-2rem)] flex-col self-start"
+            >
+              <h2 className="px-4 pt-4 text-lg font-bold tracking-[-0.01em]">Adisyon</h2>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">{orderContent}</div>
+              <div className="border-t border-line p-4">{actions}</div>
+            </section>
+          )}
         </div>
-        {/* Always in reach, on a phone too: the menu can be long, the total and sending are not. */}
-        <div className="sticky bottom-0 z-20 -mx-4 -mb-4 flex items-center gap-2 border-t border-line-strong bg-surface px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:gap-3 md:-mx-6 md:-mb-5 md:px-6 xl:-mx-8 xl:px-8">
-          <span className="hidden font-semibold sm:inline">Kalan</span>
-          <span
-            aria-label="Kalan tutar"
-            className="mr-auto font-display text-xl font-bold tracking-[-0.02em] sm:text-2xl"
-          >
-            {formatTRY(bill?.total ?? 0)}
-          </span>
-          <Button
-            variant="primary"
-            size="lg"
-            disabled={fresh.length === 0}
-            onClick={() => void send()}
-          >
-            {`Gönder (${fresh.length})`}
-          </Button>
-          <Button size="lg" disabled={!session.can('sell')} onClick={() => setDialog('pay')}>
-            Hesap
-          </Button>
-        </div>
+        {phone ? (
+          <PhoneOrderBar
+            total={bill?.total ?? 0}
+            lines={shown.length}
+            fresh={fresh.length}
+            canPay={session.can('sell')}
+            sendLabel={sendLabel}
+            onOpen={() => setSheet('order')}
+            onSend={() => void send()}
+            onPay={() => setDialog('pay')}
+          />
+        ) : null}
       </AppShell>
+
+      {sheet === 'order' ? (
+        <Dialog
+          open
+          onOpenChange={(next) => !next && setSheet(null)}
+          title="Adisyon"
+          footer={actions}
+        >
+          <section aria-label="Adisyon">{orderContent}</section>
+        </Dialog>
+      ) : null}
+      {sheet === 'more' ? (
+        <Dialog open onOpenChange={(next) => !next && setSheet(null)} title={tab?.title ?? ''}>
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => void toggleBillRequest()}>
+              {billRequested ? 'Kilidi aç' : 'Hesap iste'}
+            </Button>
+            <Button
+              onClick={() => {
+                setSheet(null);
+                setDialog('move');
+              }}
+            >
+              Taşı / birleştir
+            </Button>
+          </div>
+        </Dialog>
+      ) : null}
+      {lineFor ? (
+        <LineSheet
+          item={lineFor}
+          amount={amounts.get(lineFor.id)}
+          canRepeat={!billRequested}
+          canTreat={session.can('discount')}
+          canVoid={session.can('voidSale')}
+          onClose={() => setLineFor(null)}
+          onRepeat={() => {
+            setLineFor(null);
+            void repeatItem(db, lineFor.id, waiter, new Date()).catch(() =>
+              toast.show('Tekrarlanamadı.'),
+            );
+          }}
+          onTreat={() => {
+            setLineFor(null);
+            void setComplimentary(db, lineFor.id, !lineFor.complimentary, new Date());
+          }}
+          onVoid={() => {
+            setLineFor(null);
+            setVoiding(lineFor);
+          }}
+        />
+      ) : null}
       {ordering ? (
         <OrderDialog
           product={ordering}
@@ -444,6 +402,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           onClose={() => setDialog(null)}
           onPaid={(message, closed) => {
             setDialog(null);
+            setSheet(null);
             toast.show(message);
             void runner.run();
             if (closed) {
@@ -466,8 +425,177 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           }}
         />
       ) : null}
-      <ToastRegion message={toast.message} />
+      <ToastRegion message={toast.message} action={toast.action} onDismiss={toast.dismiss} />
     </>
+  );
+}
+
+/** The total left, holding back the next course, sending and the bill. */
+function OrderActions({
+  total,
+  fresh,
+  held,
+  canPay,
+  sendLabel,
+  onSend,
+  onFire,
+  onPay,
+}: {
+  total: number;
+  fresh: number;
+  held: number;
+  canPay: boolean;
+  sendLabel: string;
+  onSend(): void;
+  onFire(): void;
+  onPay(): void;
+}): JSX.Element {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="font-semibold text-text-2">Kalan</span>
+        <span
+          aria-label="Kalan tutar"
+          className="font-display text-figure font-bold tracking-[-0.02em]"
+        >
+          {formatTRY(total)}
+        </span>
+      </div>
+      {held > 0 ? <Button onClick={onFire}>{`Sıradakileri gönder (${held})`}</Button> : null}
+      <Button
+        variant="primary"
+        size="lg"
+        aria-label={sendLabel}
+        disabled={fresh === 0}
+        onClick={onSend}
+      >
+        Mutfağa gönder
+        <CountBadge count={fresh} />
+      </Button>
+      <Button disabled={!canPay} onClick={onPay}>
+        Hesap
+      </Button>
+    </div>
+  );
+}
+
+/** A phone's bar under the thumb: the total opens the order, beside sending and the bill. */
+function PhoneOrderBar({
+  total,
+  lines,
+  fresh,
+  canPay,
+  sendLabel,
+  onOpen,
+  onSend,
+  onPay,
+}: {
+  total: number;
+  lines: number;
+  fresh: number;
+  canPay: boolean;
+  sendLabel: string;
+  onOpen(): void;
+  onSend(): void;
+  onPay(): void;
+}): JSX.Element {
+  const bar = useBottomBar<HTMLDivElement>();
+  return (
+    <>
+      {/* Keeps the end of the menu clear of the fixed bar. */}
+      <div aria-hidden="true" className="h-24" />
+      <div
+        ref={bar}
+        className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-line-strong bg-surface px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] shadow-raised"
+      >
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Adisyonu aç, ${lines} kalem`}
+          className="flex min-h-12 min-w-0 flex-1 items-center gap-1.5 rounded-control pr-1 text-left hover:bg-bg"
+        >
+          <ChevronUp aria-hidden="true" size={18} className="shrink-0 text-text-2" />
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span
+              aria-label="Kalan tutar"
+              className="truncate font-display text-lg font-bold tracking-[-0.02em]"
+            >
+              {formatTRY(total)}
+            </span>
+            <span className="truncate text-meta text-text-2">{`Adisyon · ${lines}`}</span>
+          </span>
+        </button>
+        <Button
+          variant="primary"
+          className="px-3.5"
+          aria-label={sendLabel}
+          disabled={fresh === 0}
+          onClick={onSend}
+        >
+          Gönder
+          <CountBadge count={fresh} />
+        </Button>
+        <Button className="px-3.5" disabled={!canPay} onClick={onPay}>
+          Hesap
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function CountBadge({ count }: { count: number }): JSX.Element | null {
+  return count > 0 ? (
+    <span
+      key={count}
+      aria-hidden="true"
+      className="flex h-6 min-w-6 animate-bump items-center justify-center rounded-chip bg-on-accent px-1.5 font-display text-sm font-bold text-accent"
+    >
+      {count}
+    </span>
+  ) : null;
+}
+
+/** A sent line's actions: one more of the same, a treat, or a void with its reason. */
+function LineSheet({
+  item,
+  amount,
+  canRepeat,
+  canTreat,
+  canVoid,
+  onClose,
+  onRepeat,
+  onTreat,
+  onVoid,
+}: {
+  item: TabItemRecord;
+  amount: number | undefined;
+  canRepeat: boolean;
+  canTreat: boolean;
+  canVoid: boolean;
+  onClose(): void;
+  onRepeat(): void;
+  onTreat(): void;
+  onVoid(): void;
+}): JSX.Element {
+  return (
+    <Dialog
+      open
+      onOpenChange={(next) => !next && onClose()}
+      title={itemLabel(item)}
+      {...(amount !== undefined ? { description: formatTRY(amount) } : {})}
+    >
+      <div className="flex flex-col gap-2">
+        <Button disabled={!canRepeat} onClick={onRepeat}>
+          Tekrarla
+        </Button>
+        <Button disabled={!canTreat} onClick={onTreat}>
+          {item.complimentary ? 'İkramı kaldır' : 'İkram'}
+        </Button>
+        <Button variant="danger" disabled={!canVoid} onClick={onVoid}>
+          İptal
+        </Button>
+      </div>
+    </Dialog>
   );
 }
 

@@ -93,7 +93,9 @@ export function Dialog({
           </div>
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain px-5 pt-2 pb-5">
             {description ? (
-              <RadixDialog.Description className="text-text-2">{description}</RadixDialog.Description>
+              <RadixDialog.Description className="text-text-2">
+                {description}
+              </RadixDialog.Description>
             ) : null}
             {children}
           </div>

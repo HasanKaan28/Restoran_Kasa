@@ -43,11 +43,13 @@ describe('ordering a dish that asks', () => {
     const menu = await openTable(/^S1, boş/);
     await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Adana kebap' });
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Ekle' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: /^Ekle/ }));
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Acı seçin.');
     await userEvent.click(within(dialog).getByRole('radio', { name: /Yarım/ }));
+    // The button says what the chosen portion costs.
+    expect(within(dialog).getByRole('button', { name: /^Ekle/ })).toHaveTextContent('₺250,00');
     await userEvent.click(within(dialog).getByRole('radio', { name: 'Acısız' }));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Ekle' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: /^Ekle/ }));
 
     const order = await screen.findByRole('region', { name: 'Adisyon' });
     expect(await within(order).findByText('Adana kebap (Yarım)')).toBeInTheDocument();
@@ -64,8 +66,8 @@ describe('ordering a dish that asks', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Adana kebap' });
     await userEvent.click(within(dialog).getByRole('radio', { name: 'Acılı' }));
     await userEvent.click(within(dialog).getByRole('checkbox', { name: /Sonra gönder/ }));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Ekle' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Gönder (2)' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: /^Ekle/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
 
     const fire = await screen.findByRole('button', { name: 'Sıradakileri gönder (1)' });
     let [ticket] = await kitchenTickets(data.db, 'kitchen');

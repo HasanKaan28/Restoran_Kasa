@@ -3,7 +3,7 @@ import { useState, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { useMarketSettings } from '@/app/marketSettings';
 import { useSession } from '@/app/session';
-import { payTabItems, tabBill } from '@/data/restaurant';
+import { itemLabel, payTabItems, tabBill } from '@/data/restaurant';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
 import { formatTRY, parseTRY } from '@/domain/money';
 import { formatLineQty } from '@/pos/format';
@@ -90,7 +90,33 @@ export function PayDialog({
   }
 
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()} title="Hesap" size="lg">
+    <Dialog
+      open
+      onOpenChange={(next) => !next && onClose()}
+      title="Hesap"
+      size="lg"
+      footer={
+        <div className="flex items-center gap-4">
+          <div className="flex min-w-0 flex-1 flex-col leading-tight">
+            <span className="text-sm font-semibold text-text-2">Ödenecek</span>
+            <span
+              aria-label="Ödenecek tutar"
+              className="truncate font-display text-figure font-bold tracking-[-0.02em]"
+            >
+              {formatTRY(total)}
+            </span>
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            disabled={busy || (lines.length > 0 && chosenIds.length === 0)}
+            onClick={() => void pay()}
+          >
+            {lines.length === 0 ? 'Masayı kapat' : 'Ödemeyi al'}
+          </Button>
+        </div>
+      }
+    >
       <div className="flex flex-col gap-4">
         {lines.length === 0 ? (
           <p className="text-text-2">Ödenecek kalem yok. Masa kapatılabilir.</p>
@@ -115,19 +141,18 @@ export function PayDialog({
                     }
                     className="size-5 accent-accent"
                   />
-                  <span className="flex-1">{`${formatLineQty(item.qtyMilli, item.unit)} × ${item.name}${item.complimentary ? ' (ikram)' : ''}`}</span>
+                  <span className="flex min-w-0 flex-1 flex-col py-1.5">
+                    <span>{`${formatLineQty(item.qtyMilli, item.unit)} × ${itemLabel(item)}${item.complimentary ? ' (ikram)' : ''}`}</span>
+                    {item.options ? (
+                      <span className="text-sm text-text-2">{item.options.join(' · ')}</span>
+                    ) : null}
+                  </span>
                   <span className="font-display font-semibold">{formatTRY(amount)}</span>
                 </label>
               </li>
             ))}
           </ul>
         )}
-        <div className="flex items-baseline justify-between">
-          <span className="text-lg font-semibold">Ödenecek</span>
-          <span aria-label="Ödenecek tutar" className="font-display text-figure font-bold tracking-[-0.02em]">
-            {formatTRY(total)}
-          </span>
-        </div>
         {lines.length > 0 ? (
           <>
             <div className="flex flex-wrap items-end gap-3">
@@ -172,14 +197,6 @@ export function PayDialog({
             {error}
           </p>
         ) : null}
-        <Button
-          variant="primary"
-          size="lg"
-          disabled={busy || (lines.length > 0 && chosenIds.length === 0)}
-          onClick={() => void pay()}
-        >
-          {lines.length === 0 ? 'Masayı kapat' : 'Ödemeyi al'}
-        </Button>
       </div>
     </Dialog>
   );
