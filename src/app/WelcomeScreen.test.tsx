@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DEVICE } from './device';
-import { reopenWelcome, shouldWelcome } from './welcome';
-import { WelcomeScreen } from './WelcomeScreen';
+import { forgetSkippedWelcome, shouldWelcome } from './welcome';
+import { ServerMissingScreen, WelcomeScreen } from './WelcomeScreen';
 
 const claimed = {
   marketId: 'kursunlu-ab12cd',
@@ -11,7 +11,6 @@ const claimed = {
   deviceId: 'd1',
   deviceCode: 'K1',
 };
-const server = { url: 'https://x.supabase.co', key: 'sb_publishable_x' };
 
 function setup(overrides: Partial<Parameters<typeof WelcomeScreen>[0]> = {}) {
   const props = {
@@ -19,7 +18,6 @@ function setup(overrides: Partial<Parameters<typeof WelcomeScreen>[0]> = {}) {
     open: vi.fn(async () => ({ claimed })),
     join: vi.fn(async () => ({ claimed: { ...claimed, deviceCode: 'K2' } })),
     onDone: vi.fn(),
-    onSkip: vi.fn(),
     ...overrides,
   };
   render(<WelcomeScreen {...props} />);
@@ -116,18 +114,24 @@ describe('WelcomeScreen', () => {
     expect(join).toHaveBeenLastCalledWith(expect.objectContaining({ marketId: 'b' }));
   });
 
-  it('lets the shop try the app without a server', async () => {
-    const props = setup();
-    await userEvent.click(screen.getByRole('button', { name: 'İnternetsiz dene' }));
-    expect(props.onSkip).toHaveBeenCalled();
+  it('offers no way to use the app without an account', () => {
+    setup();
+    expect(screen.queryByRole('button', { name: /dene/i })).toBeNull();
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Restoran kur',
+      'Restorana giriş yap',
+    ]);
   });
 
-  it('appears only on a server build, before pairing, until skipped', () => {
-    const storage = { getItem: () => null };
-    expect(shouldWelcome(DEFAULT_DEVICE, server, storage)).toBe(true);
-    expect(shouldWelcome(DEFAULT_DEVICE, null, storage)).toBe(false);
-    expect(shouldWelcome({ ...DEFAULT_DEVICE, paired: true }, server, storage)).toBe(false);
-    expect(shouldWelcome(DEFAULT_DEVICE, server, { getItem: () => '1' })).toBe(false);
+  it('appears on every device that is not yet paired', () => {
+    expect(shouldWelcome(DEFAULT_DEVICE)).toBe(true);
+    expect(shouldWelcome({ ...DEFAULT_DEVICE, paired: true })).toBe(false);
+  });
+
+  it('says the server is missing instead of opening the app', () => {
+    render(<ServerMissingScreen />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Sunucu ayarlı değil');
+    expect(screen.queryByRole('button')).toBeNull();
   });
 
   it('greets with the Market Kasa logo', () => {
@@ -135,14 +139,9 @@ describe('WelcomeScreen', () => {
     expect(document.querySelector('main img[src$="logo.svg"]')).not.toBeNull();
   });
 
-  it('comes back once the shop asks for it after trying offline', () => {
+  it('clears the flag an earlier offline try left behind', () => {
     const stored = new Map([['rk.welcomeSkipped', '1']]);
-    const storage = {
-      getItem: (key: string) => stored.get(key) ?? null,
-      removeItem: (key: string) => void stored.delete(key),
-    };
-    expect(shouldWelcome(DEFAULT_DEVICE, server, storage)).toBe(false);
-    reopenWelcome(storage);
-    expect(shouldWelcome(DEFAULT_DEVICE, server, storage)).toBe(true);
+    forgetSkippedWelcome({ removeItem: (key: string) => void stored.delete(key) });
+    expect(stored.has('rk.welcomeSkipped')).toBe(false);
   });
 });

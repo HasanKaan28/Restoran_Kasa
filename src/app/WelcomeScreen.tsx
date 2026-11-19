@@ -11,7 +11,6 @@ export type WelcomeScreenProps = {
   open(input: Credentials & { marketName: string }): Promise<OnboardingResult>;
   join(input: Credentials & { marketId?: string }): Promise<OnboardingResult>;
   onDone(settings: DeviceSettings): void;
-  onSkip(): void;
 };
 
 const failed = (error: unknown) =>
@@ -23,13 +22,7 @@ const failed = (error: unknown) =>
  * The app's first screen: open the restaurant with its own email, or sign another device into
  * it. Either way this device becomes one of the restaurant's registers; the password is not kept.
  */
-export function WelcomeScreen({
-  current,
-  open,
-  join,
-  onDone,
-  onSkip,
-}: WelcomeScreenProps): JSX.Element {
+export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProps): JSX.Element {
   const [mode, setMode] = useState<'choose' | 'open' | 'join'>('choose');
   const [marketName, setMarketName] = useState('');
   const [email, setEmail] = useState('');
@@ -135,9 +128,6 @@ export function WelcomeScreen({
               Restoranı ilk kez kuruyorsanız “Restoran kur”. Başka bir cihazda kurduysanız aynı
               e-posta ve şifreyle “Restorana giriş yap”: bu cihaz o restoranın yeni kasası olur.
             </p>
-            <Button variant="ghost" onClick={onSkip}>
-              İnternetsiz dene
-            </Button>
           </div>
         ) : null}
 
@@ -217,6 +207,24 @@ export function WelcomeScreen({
             </Button>
           </form>
         ) : null}
+      </div>
+    </main>
+  );
+}
+
+/** A build without a server cannot create or reach an account, so it opens nothing. */
+export function ServerMissingScreen(): JSX.Element {
+  return (
+    <main className="flex min-h-dvh items-center justify-center bg-bg p-4">
+      <div className="flex w-full max-w-md flex-col gap-4 rounded-control border border-line bg-surface p-6">
+        <div className="flex items-center gap-3">
+          <Logo className="size-11" />
+          <h1 className="text-xl font-semibold">Restoran Kasa</h1>
+        </div>
+        <p role="alert" className="font-medium text-danger">
+          Sunucu ayarlı değil. Uygulama hesapsız kullanılamaz; güncel sürümü yükleyin ya da destekle
+          iletişime geçin.
+        </p>
       </div>
     </main>
   );

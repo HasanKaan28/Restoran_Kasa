@@ -1,9 +1,14 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
+import { DEFAULT_DEVICE, saveDeviceSettings } from './device';
 
 describe('App', () => {
+  beforeEach(() => {
+    saveDeviceSettings({ ...DEFAULT_DEVICE, paired: true });
+  });
+
   afterEach(() => {
     window.location.hash = '';
   });

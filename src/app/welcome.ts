@@ -1,30 +1,18 @@
-import type { ServerConfig } from '@/server/config';
 import type { DeviceSettings } from './device';
 
-/** Set once the shop chooses to try the app without a server; the screen then stays away. */
-export const WELCOME_SKIPPED = 'rk.welcomeSkipped';
+/** What an earlier version stored when a shop chose to try the app without an account. */
+const OLD_SKIP_FLAG = 'rk.welcomeSkipped';
 
-/** The first screen shows on a build with a server, on a device not yet bound to a market. */
-export function shouldWelcome(
-  settings: DeviceSettings,
-  server: ServerConfig | null,
-  storage: Pick<Storage, 'getItem'>,
-): boolean {
-  if (!server || settings.paired) {
-    return false;
-  }
-  try {
-    return storage.getItem(WELCOME_SKIPPED) !== '1';
-  } catch {
-    return true;
-  }
+/** The first screen shows on every device not yet bound to a restaurant: no use without an account. */
+export function shouldWelcome(settings: DeviceSettings): boolean {
+  return !settings.paired;
 }
 
-/** Brings the first screen back on the next start, after the shop chose to try offline. */
-export function reopenWelcome(storage: Pick<Storage, 'removeItem'>): void {
+/** Drops the flag an earlier version kept for "try without a server"; it no longer opens anything. */
+export function forgetSkippedWelcome(storage: Pick<Storage, 'removeItem'>): void {
   try {
-    storage.removeItem(WELCOME_SKIPPED);
+    storage.removeItem(OLD_SKIP_FLAG);
   } catch {
-    // Without storage the flag was never kept, so the screen shows anyway.
+    // Without storage the flag was never kept.
   }
 }

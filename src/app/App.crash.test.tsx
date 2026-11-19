@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HELD_STORAGE_KEY } from '@/pos/held';
 import { App } from './App';
+import { DEFAULT_DEVICE, saveDeviceSettings } from './device';
 
 vi.mock('@/products/ProductsScreen', () => ({
   ProductsScreen: () => {
@@ -11,6 +12,10 @@ vi.mock('@/products/ProductsScreen', () => ({
 }));
 
 describe('App after a crash', () => {
+  beforeEach(() => {
+    saveDeviceSettings({ ...DEFAULT_DEVICE, paired: true });
+  });
+
   afterEach(() => {
     window.location.hash = '';
     vi.restoreAllMocks();

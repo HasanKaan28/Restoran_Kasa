@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '@/app/App';
+import { DEFAULT_DEVICE, saveDeviceSettings } from '@/app/device';
 import { createProduct } from '@/data/products';
 import { recordSale } from '@/data/sales';
 import { createStaff } from '@/data/staff';
@@ -54,6 +55,7 @@ describe('ReportsScreen', () => {
   });
 
   it('opens from the menu', async () => {
+    saveDeviceSettings({ ...DEFAULT_DEVICE, paired: true });
     render(<App />);
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
     await userEvent.click(within(nav).getByRole('link', { name: 'Raporlar' }));

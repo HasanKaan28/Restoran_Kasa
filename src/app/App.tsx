@@ -12,8 +12,8 @@ import { deviceClient, ownerClient } from '@/server/client';
 import { SERVER } from '@/server/config';
 import { joinMarket, openMarket } from '@/server/onboarding';
 import { currentPlatform } from '@/server/pairing';
-import { WELCOME_SKIPPED, shouldWelcome } from './welcome';
-import { WelcomeScreen } from './WelcomeScreen';
+import { forgetSkippedWelcome, shouldWelcome } from './welcome';
+import { ServerMissingScreen, WelcomeScreen } from './WelcomeScreen';
 import { UpdateOverlay } from './UpdateOverlay';
 import { updateTarget } from '@/settings/updates';
 
@@ -30,10 +30,12 @@ export function App(): JSX.Element {
 
 function AppContent(): JSX.Element {
   const [data] = useState(() => createAppData(loadDeviceSettings()));
-  const [welcome, setWelcome] = useState(() =>
-    shouldWelcome(data.settings, SERVER, window.localStorage),
-  );
+  const welcome = shouldWelcome(data.settings);
   const route = useRoute();
+
+  useEffect(() => {
+    forgetSkippedWelcome(window.localStorage);
+  }, []);
 
   useEffect(() => {
     void data.runner.run();
@@ -42,6 +44,9 @@ function AppContent(): JSX.Element {
   }, [data]);
 
   const server = SERVER;
+  if (welcome && !server) {
+    return <ServerMissingScreen />;
+  }
   if (welcome && server) {
     const platform = currentPlatform();
     return (
@@ -67,14 +72,6 @@ function AppContent(): JSX.Element {
           if (finishPairing(next)) {
             window.location.reload();
           }
-        }}
-        onSkip={() => {
-          try {
-            window.localStorage.setItem(WELCOME_SKIPPED, '1');
-          } catch {
-            // Without storage the screen returns on the next start; the shop can skip again.
-          }
-          setWelcome(false);
         }}
       />
     );
