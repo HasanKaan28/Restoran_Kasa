@@ -48,12 +48,20 @@ try {
     $key = Join-Path $work 'key.pem'
     $cert = Join-Path $work 'cert.pem'
     $p12 = Join-Path $backup 'restoran-kasa-release.p12'
+    # openssl writes progress dots to stderr; Windows PowerShell 5.1 turns that into a terminating
+    # error under 'Stop', so the native calls run under 'Continue' and are judged by exit code.
+    $ErrorActionPreference = 'Continue'
     & $openssl req -x509 -newkey rsa:4096 -sha256 -days 10950 -nodes -keyout $key -out $cert `
-        -subj '/CN=Restoran Kasa/O=Restoran Kasa/C=TR' 2>$null
-    if ($LASTEXITCODE -ne 0) { throw 'Anahtar üretilemedi (openssl req).' }
+        -subj '/CN=Restoran Kasa/O=Restoran Kasa/C=TR' 2>&1 | Out-Null
+    $reqExit = $LASTEXITCODE
     $env:RK_SIGN_PASS = $password
-    & $openssl pkcs12 -export -inkey $key -in $cert -name $alias -out $p12 -passout env:RK_SIGN_PASS
-    if ($LASTEXITCODE -ne 0) { throw 'Anahtar dosyası yazılamadı (openssl pkcs12).' }
+    if ($reqExit -eq 0) {
+        & $openssl pkcs12 -export -inkey $key -in $cert -name $alias -out $p12 -passout env:RK_SIGN_PASS 2>&1 | Out-Null
+    }
+    $p12Exit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($reqExit -ne 0) { throw 'Anahtar üretilemedi (openssl req).' }
+    if ($p12Exit -ne 0 -or -not (Test-Path $p12)) { throw 'Anahtar dosyası yazılamadı (openssl pkcs12).' }
 } finally {
     Remove-Item Env:RK_SIGN_PASS -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
