@@ -124,7 +124,7 @@ export function ReportsScreen(): JSX.Element {
         </div>
         <div className="flex-[1_1_180px]">
           <SelectField
-            label="Kasa"
+            label="Cihaz"
             options={registerOptions}
             value={register}
             onChange={(event) => setRegister(event.target.value)}

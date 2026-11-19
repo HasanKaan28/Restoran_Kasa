@@ -32,10 +32,10 @@ describe('PairDialog', () => {
   it('pairs with a code and saves the register', async () => {
     const props = setup();
     await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'abcd2345');
-    await userEvent.clear(screen.getByLabelText('Kasa kodu'));
-    await userEvent.type(screen.getByLabelText('Kasa kodu'), 'k2');
-    await userEvent.clear(screen.getByLabelText('Kasa adı'));
-    await userEvent.type(screen.getByLabelText('Kasa adı'), 'Kasa 2');
+    await userEvent.clear(screen.getByLabelText('Cihaz kodu'));
+    await userEvent.type(screen.getByLabelText('Cihaz kodu'), 'k2');
+    await userEvent.clear(screen.getByLabelText('Cihaz adı'));
+    await userEvent.type(screen.getByLabelText('Cihaz adı'), 'Kasa 2');
     await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
 
     expect(props.claim).toHaveBeenCalledWith({
@@ -57,7 +57,7 @@ describe('PairDialog', () => {
     const props = setup({ pendingCount: 12 });
     expect(screen.getByRole('radio', { name: 'Boş başla' })).toBeChecked();
     await userEvent.click(
-      screen.getByRole('radio', { name: 'Bu kasadaki 12 işlemi restorana gönder' }),
+      screen.getByRole('radio', { name: 'Bu cihazdaki 12 işlemi restorana gönder' }),
     );
     await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD2345');
     await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
@@ -135,13 +135,13 @@ describe('PairDialog recovery', () => {
       )
       .mockResolvedValueOnce(claimed);
     const props = setup({ claim });
-    await userEvent.clear(screen.getByLabelText('Kasa kodu'));
-    await userEvent.type(screen.getByLabelText('Kasa kodu'), 'K2');
+    await userEvent.clear(screen.getByLabelText('Cihaz kodu'));
+    await userEvent.type(screen.getByLabelText('Cihaz kodu'), 'K2');
     await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD2345');
     await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
     await userEvent.click(
       await screen.findByRole('checkbox', {
-        name: 'K2 kasasının yerine geç (eski kasa iptal edilir)',
+        name: 'K2 cihazının yerine geç (eski cihaz iptal edilir)',
       }),
     );
     await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));

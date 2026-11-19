@@ -177,7 +177,7 @@ export function ProductsScreen(): JSX.Element {
             <TextField
               label="Ürün ara"
               type="search"
-              placeholder="Ad ya da barkod"
+              placeholder="Yemek ya da içecek ara"
               autoComplete="off"
               spellCheck={false}
               value={text}
@@ -255,7 +255,7 @@ function ProductTable({
     return empty ? (
       <div className="flex flex-col gap-1 py-8 text-center text-text-2">
         <p className="font-semibold text-text">Henüz ürün yok.</p>
-        <p>“Yeni ürün” ile başlayın ya da bir barkod okutun.</p>
+        <p>“Yeni ürün” ile ilk yemeğinizi ekleyin.</p>
       </div>
     ) : (
       <p className="py-8 text-center text-text-2">Aramaya uyan ürün yok.</p>

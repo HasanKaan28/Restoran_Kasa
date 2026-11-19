@@ -62,7 +62,7 @@ export function SettingsScreen(): JSX.Element {
                 Personel
               </h2>
               <p className="text-sm text-text-2">
-                Her kişi kasaya kendi PIN'iyle girer; izinler rolden gelir, kişiye göre
+                Her kişi uygulamaya kendi PIN'iyle girer; izinler rolden gelir, kişiye göre
                 değiştirilebilir.
               </p>
             </div>
@@ -76,7 +76,7 @@ export function SettingsScreen(): JSX.Element {
           </div>
           {people === undefined ? null : people.length === 0 ? (
             <p className="text-text-2">
-              Henüz personel yok. İlk eklenen kişi sahip olur; ondan sonra kasa PIN ile açılır.
+              Henüz personel yok. İlk eklenen kişi sahip olur; ondan sonra uygulama PIN ile açılır.
             </p>
           ) : (
             <ul className="flex flex-col divide-y divide-line">

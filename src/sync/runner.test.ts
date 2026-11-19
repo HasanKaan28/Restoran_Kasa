@@ -42,7 +42,11 @@ describe('createSyncRunner', () => {
   it('reports an error and keeps the pending count', async () => {
     server.failNextPush();
     const runner = createSyncRunner({ db, transport: server, isOnline: () => true, now });
-    expect(await runner.run()).toEqual({ state: 'error', pendingCount: 1, error: 'network down' });
+    expect(await runner.run()).toEqual({
+      state: 'error',
+      pendingCount: 1,
+      error: 'Eşitlenemedi; birazdan yeniden denenecek. Kayıtlar cihazda güvende.',
+    });
   });
 
   it('never rejects, even when the database is closed', async () => {

@@ -124,7 +124,7 @@ export function PairDialog({
       open
       onOpenChange={(next) => !next && onClose()}
       title="Sunucuya bağla"
-      description="Bağlanan kasalar aynı restoranın satışını, stoğunu ve veresiyesini görür."
+      description="Bağlanan cihazlar aynı restoranın masalarını, menüsünü ve satışlarını görür."
     >
       {owner ? (
         <form
@@ -132,7 +132,7 @@ export function PairDialog({
           onSubmit={(event) => void makeCode(event)}
         >
           <p className="text-sm text-text-2">
-            Sahip hesabıyla bir kez giriş yapılır; şifre bu kasada saklanmaz.
+            Sahip hesabıyla bir kez giriş yapılır; şifre bu cihazda saklanmaz.
           </p>
           <TextField
             label="E-posta"
@@ -191,27 +191,27 @@ export function PairDialog({
         {made ? <p className="font-medium">{made}</p> : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <TextField
-            label="Kasa kodu"
+            label="Cihaz kodu"
             autoComplete="off"
             maxLength={4}
             value={deviceCode}
             onChange={(event) => setDeviceCode(event.target.value.toUpperCase())}
           />
           <TextField
-            label="Kasa adı"
+            label="Cihaz adı"
             value={deviceName}
             onChange={(event) => setDeviceName(event.target.value)}
           />
         </div>
         {pendingCount > 0 ? (
           <ChoiceGroup<'empty' | 'send'>
-            legend="Bu kasada yapılmış işlemler"
+            legend="Bu cihazda yapılmış işlemler"
             name="keep-data"
             value={keepData}
             onChange={setKeepData}
             options={[
               { value: 'empty', label: 'Boş başla' },
-              { value: 'send', label: `Bu kasadaki ${pendingCount} işlemi restorana gönder` },
+              { value: 'send', label: `Bu cihazdaki ${pendingCount} işlemi restorana gönder` },
             ]}
           />
         ) : null}
@@ -223,7 +223,7 @@ export function PairDialog({
               onChange={(event) => setTakeover(event.target.checked)}
               className="size-5"
             />
-            {`${deviceCode.trim().toUpperCase()} kasasının yerine geç (eski kasa iptal edilir)`}
+            {`${deviceCode.trim().toUpperCase()} cihazının yerine geç (eski cihaz iptal edilir)`}
           </label>
         ) : null}
         {error ? (

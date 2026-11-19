@@ -131,7 +131,7 @@ export function KitchenScreen(): JSX.Element {
                         : 'text-text-2'
                   }
                 >
-                  {waiting ? `${minutes} dk` : 'Sırada'}
+                  {waiting ? `${minutes} dk` : 'Bekliyor'}
                 </span>
               </div>
               <ul className="flex flex-col gap-1">
@@ -158,7 +158,7 @@ export function KitchenScreen(): JSX.Element {
               </ul>
               {ticket.held.length > 0 ? (
                 <div className="flex flex-col gap-1 rounded-control bg-bg p-2 text-text-2">
-                  <span className="text-sm font-medium">Sıradaki servis</span>
+                  <span className="text-sm font-medium">Bekleyen (sonraki servis)</span>
                   {ticket.held.map((item) => (
                     <span key={item.id}>
                       {`${formatLineQty(item.qtyMilli, item.unit)} × ${itemLabel(item)}${

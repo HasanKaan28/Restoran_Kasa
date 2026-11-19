@@ -86,7 +86,7 @@ export function MarketSection({ onDone }: { onDone(message: string): void }): JS
     <SettingsSection
       id="market-heading"
       title="İşletme"
-      description="Bütün kasalarda aynıdır. Gün dönümünden önceki satışlar bir önceki güne yazılır; yazılmış kayıtlar değişmez."
+      description="Restoranın bütün cihazlarında aynıdır. Gün dönümünden önceki satışlar bir önceki güne yazılır; yazılmış kayıtlar değişmez."
     >
       <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => void save(event)}>
         <div className="w-40">
@@ -140,7 +140,7 @@ export function RegisterSection(): JSX.Element {
       // The drawer and the Z belong to the code: a new code would leave the open drawer behind.
       if (await currentCashSession(db, settings.deviceCode)) {
         setMessage({
-          text: 'Kasa açık: önce gün sonunu (Z) alın, sonra kodu değiştirin.',
+          text: 'Bu cihazda gün kapanmadı: önce gün sonunu alın, sonra kodu değiştirin.',
           error: true,
         });
         return;
@@ -149,7 +149,7 @@ export function RegisterSection(): JSX.Element {
       if (code !== warnedCode && (await reportRegisters(db)).includes(code)) {
         setWarnedCode(code);
         setMessage({
-          text: `${code} koduyla daha önce satış yapılmış. Bu kod başka bir kasanınsa fiş numaraları karışır; yine de kullanmak için yeniden kaydedin.`,
+          text: `${code} koduyla daha önce satış yapılmış. Bu kod başka bir cihazınsa fiş numaraları karışır; yine de kullanmak için yeniden kaydedin.`,
           error: true,
         });
         return;
@@ -160,7 +160,7 @@ export function RegisterSection(): JSX.Element {
       saved
         ? { text: 'Kaydedildi. Uygulama yeniden açıldığında geçerli olur.', error: false }
         : {
-            text: 'Kaydedilemedi: adlar 1–60 karakter, kasa kodu bir harf ve en çok üç harf ya da rakam olmalı (K1, K2).',
+            text: 'Kaydedilemedi: adlar 1-60 karakter, cihaz kodu bir harf ve en çok üç harf ya da rakam olmalı (K1, K2).',
             error: true,
           },
     );
@@ -169,8 +169,8 @@ export function RegisterSection(): JSX.Element {
   return (
     <SettingsSection
       id="register-heading"
-      title="Bu kasa"
-      description="Fişte ve raporlarda görünen adlar ile fiş numarasının başındaki kasa kodu."
+      title="Bu cihaz"
+      description="Fişte ve raporlarda görünen adlar ile fiş numarasının başındaki cihaz kodu."
       action={
         <PairingAction
           config={SERVER}
@@ -207,12 +207,12 @@ export function RegisterSection(): JSX.Element {
             onChange={(event) => setMarketName(event.target.value)}
           />
           <TextField
-            label="Kasa adı"
+            label="Cihaz adı"
             value={deviceName}
             onChange={(event) => setDeviceName(event.target.value)}
           />
           <TextField
-            label="Kasa kodu"
+            label="Cihaz kodu"
             autoComplete="off"
             maxLength={4}
             readOnly={paired}
@@ -221,7 +221,7 @@ export function RegisterSection(): JSX.Element {
           />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit">Kasayı kaydet</Button>
+          <Button type="submit">Cihazı kaydet</Button>
           {message ? (
             <p role="status" className={message.error ? 'text-danger' : 'text-text-2'}>
               {message.text}

@@ -48,6 +48,19 @@ describe('SettingsScreen', () => {
     expect(within(section).getByRole('button', { name: 'Yedek al' })).toBeEnabled();
   });
 
+  it('speaks the restaurant’s roles and permissions, not the market’s', async () => {
+    const { data, kaan } = await team();
+    await settingsAs(data, kaan.id);
+    await userEvent.click(await screen.findByRole('button', { name: /Ayşe/ }));
+    const dialog = await screen.findByRole('dialog', { name: /Ayşe/ });
+    expect(within(dialog).getByRole('option', { name: 'Garson' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('option', { name: 'Mutfak / Bar' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('checkbox', { name: 'İkram, indirim' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('checkbox', { name: /Veresiye/ })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('checkbox', { name: /Tedarikçi/ })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('checkbox', { name: /Mal kabul/ })).not.toBeInTheDocument();
+  });
+
   it('adds the first person as the owner and signs them in', async () => {
     const data = createTestData();
     await settingsAs(data);
@@ -124,13 +137,13 @@ describe('SettingsScreen', () => {
     const { data, kaan } = await team();
     await openCashSession(data.db, { deviceCode: 'K1', openingCash: 5000 }, new Date());
     await settingsAs(data, kaan.id);
-    const register = await screen.findByRole('region', { name: 'Bu kasa' });
-    await userEvent.clear(within(register).getByLabelText('Kasa kodu'));
-    await userEvent.type(within(register).getByLabelText('Kasa kodu'), 'K3');
-    await userEvent.click(within(register).getByRole('button', { name: 'Kasayı kaydet' }));
+    const register = await screen.findByRole('region', { name: 'Bu cihaz' });
+    await userEvent.clear(within(register).getByLabelText('Cihaz kodu'));
+    await userEvent.type(within(register).getByLabelText('Cihaz kodu'), 'K3');
+    await userEvent.click(within(register).getByRole('button', { name: 'Cihazı kaydet' }));
     expect(
       await within(register).findByText(
-        'Kasa açık: önce gün sonunu (Z) alın, sonra kodu değiştirin.',
+        'Bu cihazda gün kapanmadı: önce gün sonunu alın, sonra kodu değiştirin.',
       ),
     ).toBeInTheDocument();
     expect(localStorage.getItem('rk.device')).toBeNull();
@@ -147,17 +160,17 @@ describe('SettingsScreen', () => {
       lines: [{ productId: tea.id, qtyMilli: 1000 }],
       payments: [{ method: 'card', amount: 1000 }],
     });
-    await userEvent.clear(within(register).getByLabelText('Kasa kodu'));
-    await userEvent.type(within(register).getByLabelText('Kasa kodu'), 'K2');
-    await userEvent.click(within(register).getByRole('button', { name: 'Kasayı kaydet' }));
+    await userEvent.clear(within(register).getByLabelText('Cihaz kodu'));
+    await userEvent.type(within(register).getByLabelText('Cihaz kodu'), 'K2');
+    await userEvent.click(within(register).getByRole('button', { name: 'Cihazı kaydet' }));
     expect(
       await within(register).findByText(
-        'K2 koduyla daha önce satış yapılmış. Bu kod başka bir kasanınsa fiş numaraları karışır; yine de kullanmak için yeniden kaydedin.',
+        'K2 koduyla daha önce satış yapılmış. Bu kod başka bir cihazınsa fiş numaraları karışır; yine de kullanmak için yeniden kaydedin.',
       ),
     ).toBeInTheDocument();
     expect(localStorage.getItem('rk.device')).toBeNull();
     // It may be this register's own old code: saved on the second try.
-    await userEvent.click(within(register).getByRole('button', { name: 'Kasayı kaydet' }));
+    await userEvent.click(within(register).getByRole('button', { name: 'Cihazı kaydet' }));
     expect(
       await within(register).findByText('Kaydedildi. Uygulama yeniden açıldığında geçerli olur.'),
     ).toBeInTheDocument();
@@ -173,12 +186,12 @@ describe('SettingsScreen', () => {
     expect(await loadMarketSettings(data.db)).toMatchObject({ cutoffMinutes: 120 });
     const license = screen.getByRole('region', { name: 'Lisans' });
     expect(within(license).getByText(/Bilinmiyor/)).toBeInTheDocument();
-    const register = screen.getByRole('region', { name: 'Bu kasa' });
-    await userEvent.clear(within(register).getByLabelText('Kasa adı'));
-    await userEvent.type(within(register).getByLabelText('Kasa adı'), 'Ön kasa');
-    await userEvent.clear(within(register).getByLabelText('Kasa kodu'));
-    await userEvent.type(within(register).getByLabelText('Kasa kodu'), 'K2');
-    await userEvent.click(within(register).getByRole('button', { name: 'Kasayı kaydet' }));
+    const register = screen.getByRole('region', { name: 'Bu cihaz' });
+    await userEvent.clear(within(register).getByLabelText('Cihaz adı'));
+    await userEvent.type(within(register).getByLabelText('Cihaz adı'), 'Ön kasa');
+    await userEvent.clear(within(register).getByLabelText('Cihaz kodu'));
+    await userEvent.type(within(register).getByLabelText('Cihaz kodu'), 'K2');
+    await userEvent.click(within(register).getByRole('button', { name: 'Cihazı kaydet' }));
     expect(await screen.findByText(/yeniden açıldığında/)).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('rk.device') ?? '{}')).toMatchObject({
       deviceName: 'Ön kasa',
@@ -191,7 +204,7 @@ describe('SettingsScreen', () => {
     await updateStaff(data.db, ayse.id, { role: 'manager' }, new Date(), actor);
     await settingsAs(data, kaan.id);
     const log = await screen.findByRole('region', { name: 'İz kaydı' });
-    expect(await within(log).findByText('Ayşe: rol Kasiyer → Yönetici')).toBeInTheDocument();
+    expect(await within(log).findByText('Ayşe: rol Garson → Yönetici')).toBeInTheDocument();
     // A change made on the screen is logged as the person signed in.
     await userEvent.selectOptions(await screen.findByLabelText('Gün dönümü'), '02:00');
     await userEvent.click(screen.getByRole('button', { name: 'İşletme ayarını kaydet' }));

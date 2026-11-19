@@ -1,6 +1,7 @@
 import type { MarketDb } from '@/data/db';
 import { pendingCount } from '@/data/outbox';
 import { syncOnce } from './engine';
+import { plainSyncError } from './syncError';
 import type { SyncTransport } from './protocol';
 
 export type SyncState = 'online' | 'offline' | 'pending' | 'error';
@@ -84,11 +85,12 @@ export function createSyncRunner({
         lastSyncedAt: now().toISOString(),
       });
     } catch (error) {
+      console.warn('Eşitleme başarısız', error);
       return publish({
         state: 'error',
         pendingCount: await pendingCount(db).catch(() => current.pendingCount),
         lastSyncedAt,
-        error: error instanceof Error ? error.message : String(error),
+        error: plainSyncError(error),
       });
     }
   };

@@ -45,7 +45,7 @@ export function AuditLog(): JSX.Element {
                 Kişi
               </th>
               <th scope="col" className="py-2 pr-3 font-medium">
-                Kasa
+                Cihaz
               </th>
               <th scope="col" className="py-2 font-medium">
                 İşlem

@@ -2,9 +2,10 @@ export type Role = 'cashier' | 'stock' | 'manager' | 'owner';
 
 export const ROLES: readonly Role[] = ['cashier', 'stock', 'manager', 'owner'];
 
+/** The keys are the market's (stored with every person); the names are the restaurant's. */
 export const ROLE_LABELS: Record<Role, string> = {
-  cashier: 'Kasiyer',
-  stock: 'Stok',
+  cashier: 'Garson',
+  stock: 'Mutfak / Bar',
   manager: 'Yönetici',
   owner: 'Sahip',
 };
@@ -32,23 +33,38 @@ export const PERMISSIONS = [
 export type Permission = (typeof PERMISSIONS)[number];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
-  sell: 'Satış, bekletme',
+  sell: 'Hesap alma, ödeme',
   creditSale: 'Veresiye satış (limit içinde)',
   overLimit: 'Limit aşımı onayı',
-  discount: 'İndirim',
+  discount: 'İkram, indirim',
   returnWithReceipt: 'Fişli iade',
-  voidSale: 'Fişsiz iade, satış iptali',
+  voidSale: 'Gönderilmiş ürünü iptal, satış iptali',
   collect: 'Tahsilat',
   addProduct: 'Kasada yeni ürün ekleme',
-  editProducts: 'Ürün düzenleme, fiyat değiştirme',
+  editProducts: 'Menü düzenleme, fiyat değiştirme',
   seeCost: 'Alış fiyatı ve kârı görme',
   stock: 'Mal kabul, sayım',
   suppliers: 'Tedarikçi işlemleri',
   reports: 'Raporlar',
-  closeDay: 'Gün sonu (Z)',
+  closeDay: 'Gün sonu',
   invoice: 'Fatura kesme',
   admin: 'Personel, cihaz, ayar, dışa aktarma',
 };
+
+/**
+ * What the restaurant's staff screen offers, in its order. The rest (credit sales, returns,
+ * stock, suppliers, invoices) are the market's: kept on each person, not shown here.
+ */
+export const RESTAURANT_PERMISSIONS: readonly Permission[] = [
+  'sell',
+  'discount',
+  'voidSale',
+  'editProducts',
+  'seeCost',
+  'reports',
+  'closeDay',
+  'admin',
+];
 
 const CASHIER: readonly Permission[] = [
   'sell',

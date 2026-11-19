@@ -8,7 +8,7 @@ import { formatLineQty } from '@/pos/format';
 
 const STATUS_LABELS: Record<TabItemRecord['status'], string> = {
   new: 'Gönderilmedi',
-  held: 'Sırada',
+  held: 'Bekliyor',
   sent: 'Hazırlanıyor',
   ready: 'Hazır',
   void: 'İptal',
@@ -54,7 +54,7 @@ export function OrderLines({
             <p className={`text-sm font-medium ${STATUS_TONES[item.status] ?? 'text-text-2'}`}>
               {`${formatLineQty(item.qtyMilli, item.unit)} · ${
                 item.status === 'new' && item.hold
-                  ? 'Sonra gönderilecek'
+                  ? 'Bekletiliyor'
                   : STATUS_LABELS[item.status]
               }${item.complimentary ? ' · İkram' : ''}`}
             </p>
@@ -134,9 +134,10 @@ export function OrderLines({
                   <Button
                     variant="ghost"
                     aria-pressed={item.hold === true}
+                    className="aria-pressed:bg-warning-bg aria-pressed:text-warning"
                     onClick={() => actions.hold(item, !item.hold)}
                   >
-                    {item.hold ? 'Şimdi gönder' : 'Sonra gönder'}
+                    Beklet
                   </Button>
                 </>
               )}

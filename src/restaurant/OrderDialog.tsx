@@ -103,7 +103,7 @@ export function OrderDialog({
             onChange={(event) => setHold(event.target.checked)}
             className="size-5 accent-accent"
           />
-          Sonra gönder (sıradaki servis)
+          Beklet (sonraki servis)
         </label>
         {error ? (
           <p role="alert" className="font-medium text-danger">

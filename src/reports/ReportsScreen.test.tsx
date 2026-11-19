@@ -88,11 +88,11 @@ describe('ReportsScreen', () => {
     expect(await netSales('₺90,00')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('radio', { name: 'Dün' }));
     expect(await netSales('₺270,00')).toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByLabelText('Kasa'), 'K2');
+    await userEvent.selectOptions(screen.getByLabelText('Cihaz'), 'K2');
     expect(await netSales('₺270,00')).toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByLabelText('Kasa'), 'K1');
+    await userEvent.selectOptions(screen.getByLabelText('Cihaz'), 'K1');
     expect(await netSales('₺0,00')).toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByLabelText('Kasa'), 'Tümü');
+    await userEvent.selectOptions(screen.getByLabelText('Cihaz'), 'Tümü');
     await userEvent.click(screen.getByRole('radio', { name: 'Bugün' }));
     expect(await netSales('₺90,00')).toBeInTheDocument();
     // A custom range starts from the days on screen; each step shows a figure the last did not.

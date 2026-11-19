@@ -32,7 +32,7 @@ describe('SessionProvider', () => {
       </SessionProvider>,
       data,
     );
-    expect(await screen.findByRole('heading', { name: 'Kim kasada?' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Kim çalışıyor?' })).toBeInTheDocument();
     expect(screen.queryByText('Kasa ekranı')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Ayşe/ }));
     await userEvent.type(screen.getByLabelText('PIN'), '0000');
@@ -67,7 +67,7 @@ describe('SessionProvider', () => {
     );
     expect(await screen.findByText('Ayşe')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Kilitle' }));
-    expect(await screen.findByRole('heading', { name: 'Kim kasada?' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Kim çalışıyor?' })).toBeInTheDocument();
     expect(localStorage.getItem('rk.staff')).toBeNull();
   });
 
@@ -82,6 +82,6 @@ describe('SessionProvider', () => {
     );
     expect(await screen.findByText('Kasa ekranı')).toBeInTheDocument();
     await archiveStaff(data.db, ayse.id, new Date());
-    expect(await screen.findByRole('heading', { name: 'Kim kasada?' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Kim çalışıyor?' })).toBeInTheDocument();
   });
 });

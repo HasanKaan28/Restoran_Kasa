@@ -106,7 +106,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
 
   async function order(product: ProductRecord) {
     if (billRequested) {
-      toast.show('Hesap istendi. Sipariş eklemek için önce kilidi açın.');
+      toast.show('Hesap istendi. Sipariş eklemek için önce “Siparişe aç”a basın.');
       return;
     }
     // A dish that asks for a portion or a choice opens its own window.
@@ -151,7 +151,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
     const count = await sendTab(db, tabId, new Date());
     toast.show(
       holding > 0
-        ? `${count - holding} kalem gönderildi, ${holding} kalem sırada.`
+        ? `${count - holding} kalem gönderildi, ${holding} kalem bekliyor.`
         : `${count} kalem gönderildi.`,
     );
     navigator.vibrate?.(10);
@@ -183,7 +183,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
 
   async function fire() {
     const count = await fireHeld(db, tabId, new Date());
-    toast.show(`Sıradaki ${count} kalem gönderildi.`);
+    toast.show(`Bekleyen ${count} kalem gönderildi.`);
     void runner.run();
   }
 
@@ -191,7 +191,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
     setSheet(null);
     if (billRequested) {
       await cancelBillRequest(db, tabId, new Date());
-      toast.show('Kilit açıldı; sipariş eklenebilir.');
+      toast.show('Siparişe açıldı.');
     } else {
       await requestBill(db, tabId, new Date());
       toast.show('Hesap istendi.');
@@ -272,7 +272,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           ) : (
             <>
               <Button onClick={() => void toggleBillRequest()}>
-                {billRequested ? 'Kilidi aç' : 'Hesap iste'}
+                {billRequested ? 'Siparişe aç' : 'Hesap iste'}
               </Button>
               <Button onClick={() => setDialog('move')}>Taşı / birleştir</Button>
             </>
@@ -284,11 +284,11 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
             className="slip edge-bill flex flex-wrap items-center gap-3 bg-warning-bg p-3"
           >
             <p className="flex-1 font-medium">
-              Hesap istendi. Yeni sipariş için “Kilidi aç”a basın.
+              Hesap istendi: adisyon kilitli. Yeni sipariş için “Siparişe aç”a basın.
             </p>
             {phone ? (
               <Button variant="secondary" onClick={() => void toggleBillRequest()}>
-                Kilidi aç
+                Siparişe aç
               </Button>
             ) : null}
           </div>
@@ -341,7 +341,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
         <Dialog open onOpenChange={(next) => !next && setSheet(null)} title={tab?.title ?? ''}>
           <div className="flex flex-col gap-2">
             <Button onClick={() => void toggleBillRequest()}>
-              {billRequested ? 'Kilidi aç' : 'Hesap iste'}
+              {billRequested ? 'Siparişe aç' : 'Hesap iste'}
             </Button>
             <Button
               onClick={() => {
@@ -461,7 +461,7 @@ function OrderActions({
           {formatTRY(total)}
         </span>
       </div>
-      {held > 0 ? <Button onClick={onFire}>{`Sıradakileri gönder (${held})`}</Button> : null}
+      {held > 0 ? <Button onClick={onFire}>{`Bekleyenleri gönder (${held})`}</Button> : null}
       <Button
         variant="primary"
         size="lg"

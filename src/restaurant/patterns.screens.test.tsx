@@ -65,11 +65,11 @@ describe('ordering a dish that asks', () => {
     await userEvent.click(within(menu).getByRole('button', { name: /Adana kebap/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Adana kebap' });
     await userEvent.click(within(dialog).getByRole('radio', { name: 'Acılı' }));
-    await userEvent.click(within(dialog).getByRole('checkbox', { name: /Sonra gönder/ }));
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: /Beklet/ }));
     await userEvent.click(within(dialog).getByRole('button', { name: /^Ekle/ }));
     await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
 
-    const fire = await screen.findByRole('button', { name: 'Sıradakileri gönder (1)' });
+    const fire = await screen.findByRole('button', { name: 'Bekleyenleri gönder (1)' });
     let [ticket] = await kitchenTickets(data.db, 'kitchen');
     expect(ticket?.items.map((item) => item.name)).toEqual(['Ezme']);
     await userEvent.click(fire);
@@ -137,9 +137,9 @@ describe('asking for the bill', () => {
     const menu = await openTable(/^S1, hesap istendi/);
     await userEvent.click(await within(menu).findByRole('button', { name: /Ezme/ }));
     expect(
-      await screen.findByText('Hesap istendi. Sipariş eklemek için önce kilidi açın.'),
+      await screen.findByText('Hesap istendi. Sipariş eklemek için önce “Siparişe aç”a basın.'),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Kilidi aç' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Siparişe aç' }));
     await waitFor(async () =>
       expect((await data.db.tabs.get(tab.id))?.billRequestedAt).toBeUndefined(),
     );

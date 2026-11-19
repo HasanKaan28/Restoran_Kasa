@@ -9,6 +9,7 @@ import {
   can,
   PERMISSION_LABELS,
   PERMISSIONS,
+  RESTAURANT_PERMISSIONS,
   ROLE_LABELS,
   ROLE_PERMISSIONS,
   ROLES,
@@ -220,7 +221,9 @@ export function StaffDialog({
           ) : null}
           <div className="grid gap-x-4 sm:grid-cols-2">
             {/* Staff, devices, settings and exports are the owners' alone, never a person's own. */}
-            {PERMISSIONS.filter((permission) => permission !== 'admin' || role === 'owner').map(
+            {RESTAURANT_PERMISSIONS.filter(
+              (permission) => permission !== 'admin' || role === 'owner',
+            ).map(
               (permission) => {
                 const changed =
                   overrides[permission] !== undefined &&

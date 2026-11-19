@@ -68,7 +68,7 @@ export function SignInScreen({
       <section className="flex w-full max-w-[420px] flex-col gap-5 rounded-control border border-line bg-surface p-6">
         <header className="flex flex-col gap-1">
           <p className="text-sm text-text-2">{`${settings.marketName} · ${settings.deviceName}`}</p>
-          <h1 className="text-xl font-semibold">Kim kasada?</h1>
+          <h1 className="text-xl font-semibold">Kim çalışıyor?</h1>
         </header>
         {chosen === null ? (
           <ul className="grid grid-cols-2 gap-2">

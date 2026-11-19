@@ -96,7 +96,7 @@ export function TablesScreen(): JSX.Element {
   async function toggleBill(tab: TabRecord) {
     if (tab.billRequestedAt) {
       await cancelBillRequest(db, tab.id, new Date());
-      toast.show('Kilit açıldı.');
+      toast.show('Siparişe açıldı.');
     } else {
       await requestBill(db, tab.id, new Date());
       toast.show('Hesap istendi.');
@@ -258,7 +258,7 @@ export function TablesScreen(): JSX.Element {
             {actions.tab ? (
               <>
                 <Button onClick={() => void toggleBill(actions.tab as TabRecord)}>
-                  {actions.tab.billRequestedAt ? 'Kilidi aç' : 'Hesap iste'}
+                  {actions.tab.billRequestedAt ? 'Siparişe aç' : 'Hesap iste'}
                 </Button>
                 <Button
                   disabled={!session.can('sell')}
