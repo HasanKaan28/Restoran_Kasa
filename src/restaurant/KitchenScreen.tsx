@@ -114,12 +114,14 @@ export function KitchenScreen(): JSX.Element {
             <li
               key={ticket.tab.id}
               aria-label={ticket.title}
-              className={`flex flex-col gap-2 rounded-control border bg-surface p-3 ${
-                late ? 'border-danger' : slow ? 'border-warning bg-warning-bg' : 'border-line'
+              className={`slip perforated flex flex-col gap-2 p-3 pt-4 ${
+                late ? 'edge-late' : slow ? 'edge-bill bg-warning-bg' : 'edge-open'
               }`}
             >
               <div className="flex items-baseline justify-between">
-                <span className="text-xl font-semibold">{ticket.title}</span>
+                <span className="font-display text-2xl font-bold tracking-[-0.02em]">
+                  {ticket.title}
+                </span>
                 <span
                   className={
                     late

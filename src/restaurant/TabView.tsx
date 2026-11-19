@@ -258,7 +258,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
                     className="flex min-h-20 w-full flex-col justify-between rounded-control border border-line bg-surface p-2.5 text-left hover:bg-bg"
                   >
                     <span className="font-medium break-words">{product.name}</span>
-                    <span className="font-mono text-sm text-text-2">
+                    <span className="font-display text-sm font-medium text-text-2">
                       {formatTRY(product.sellPrice)}
                     </span>
                   </button>
@@ -281,7 +281,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
                         className={`min-w-0 flex-1 ${item.status === 'void' ? 'line-through opacity-60' : ''}`}
                       >
                         <p className="font-medium break-words">{itemLabel(item)}</p>
-                        <p className="font-mono text-sm text-text-2">
+                        <p className="text-sm text-text-2">
                           {`${formatLineQty(item.qtyMilli, item.unit)} · ${item.status === 'new' && item.hold ? 'Sonra gönderilecek' : STATUS_LABELS[item.status]}${item.complimentary ? ' · İkram' : ''}`}
                         </p>
                         {item.options ? (
@@ -402,7 +402,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           <span className="hidden font-semibold sm:inline">Kalan</span>
           <span
             aria-label="Kalan tutar"
-            className="mr-auto font-mono text-xl font-bold sm:text-2xl"
+            className="mr-auto font-display text-xl font-bold tracking-[-0.02em] sm:text-2xl"
           >
             {formatTRY(bill?.total ?? 0)}
           </span>

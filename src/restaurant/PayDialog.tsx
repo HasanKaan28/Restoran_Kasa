@@ -116,7 +116,7 @@ export function PayDialog({
                     className="size-5 accent-accent"
                   />
                   <span className="flex-1">{`${formatLineQty(item.qtyMilli, item.unit)} × ${item.name}${item.complimentary ? ' (ikram)' : ''}`}</span>
-                  <span className="font-mono">{formatTRY(amount)}</span>
+                  <span className="font-display font-semibold">{formatTRY(amount)}</span>
                 </label>
               </li>
             ))}
@@ -124,7 +124,7 @@ export function PayDialog({
         )}
         <div className="flex items-baseline justify-between">
           <span className="text-lg font-semibold">Ödenecek</span>
-          <span aria-label="Ödenecek tutar" className="font-mono text-3xl font-bold">
+          <span aria-label="Ödenecek tutar" className="font-display text-figure font-bold tracking-[-0.02em]">
             {formatTRY(total)}
           </span>
         </div>

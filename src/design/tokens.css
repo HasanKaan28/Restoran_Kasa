@@ -26,12 +26,8 @@
   --color-scrim: rgb(42 36 32 / 0.45);
   /* Behind a camera picture: dark in both themes. */
   --color-media: #2a2420;
-
-  --radius-control: 8px;
-  --radius-chip: 6px;
-
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* The soft shadow under a sheet or a toast (shape.css). */
+  --color-shadow: rgb(42 36 32 / 0.18);
 }
 
 :root {
@@ -64,6 +60,7 @@
     --color-warning-bg: #3a2d14;
     --color-scrim: rgb(0 0 0 / 0.6);
     --color-media: #0f0d0b;
+    --color-shadow: rgb(0 0 0 / 0.55);
   }
 }
 
@@ -88,6 +85,7 @@
     --color-warning-bg: #3a2d14;
     --color-scrim: rgb(0 0 0 / 0.6);
     --color-media: #0f0d0b;
+    --color-shadow: rgb(0 0 0 / 0.55);
   }
 }
 

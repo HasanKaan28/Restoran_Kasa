@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -53,5 +53,21 @@ describe('Dialog', () => {
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     await waitFor(() => expect(opener).toHaveFocus());
+  });
+
+  it('keeps its footer buttons apart from the scrolling content', () => {
+    render(
+      <Dialog
+        open
+        onOpenChange={() => {}}
+        title="Hesap"
+        footer={<button type="button">Ödemeyi al</button>}
+      >
+        <p>Satırlar</p>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Hesap' });
+    const pay = within(dialog).getByRole('button', { name: 'Ödemeyi al' });
+    expect(within(dialog).getByText('Satırlar').parentElement).not.toContainElement(pay);
   });
 });

@@ -5,5 +5,6 @@ export { Kbd } from './Kbd';
 export { Logo } from './Logo';
 export { SelectField, type SelectFieldProps } from './SelectField';
 export { TextField, type TextFieldProps } from './TextField';
-export { ToastRegion } from './ToastRegion';
-export { useToast } from './useToast';
+export { ToastRegion, type ToastRegionProps } from './ToastRegion';
+export { useToast, type ToastAction } from './useToast';
+export { useBottomBar } from './useBottomBar';

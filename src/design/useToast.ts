@@ -1,20 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const DEFAULT_DURATION_MS = 4000;
+/** A toast that offers an action (usually "Geri al") stays long enough to reach it. */
+const ACTION_DURATION_MS = 6000;
+
+export type ToastAction = { label: string; onAction(): void };
 
 /** One short message at a time; a new message replaces the old one and restarts the timer. */
 export function useToast(durationMs: number = DEFAULT_DURATION_MS): {
   message: string | null;
-  show(message: string): void;
+  action: ToastAction | undefined;
+  show(message: string, action?: ToastAction): void;
+  dismiss(): void;
 } {
-  const [message, setMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; action?: ToastAction } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  const dismiss = useCallback(() => {
+    clearTimeout(timer.current);
+    setToast(null);
+  }, []);
+
   const show = useCallback(
-    (next: string) => {
+    (message: string, action?: ToastAction) => {
       clearTimeout(timer.current);
-      setMessage(next);
-      timer.current = setTimeout(() => setMessage(null), durationMs);
+      setToast(action ? { message, action } : { message });
+      timer.current = setTimeout(
+        () => setToast(null),
+        action ? Math.max(durationMs, ACTION_DURATION_MS) : durationMs,
+      );
     },
     [durationMs],
   );
@@ -24,5 +38,5 @@ export function useToast(durationMs: number = DEFAULT_DURATION_MS): {
     return () => clearTimeout(pending.current);
   }, []);
 
-  return { message, show };
+  return { message: toast?.message ?? null, action: toast?.action, show, dismiss };
 }

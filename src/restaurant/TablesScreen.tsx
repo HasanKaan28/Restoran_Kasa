@@ -187,18 +187,22 @@ export function TablesScreen(): JSX.Element {
                       ? `${billAsked ? 'hesap istendi' : 'dolu'}, ${formatTRY(table.total)}`
                       : 'boş'
                   }`}
-                  className={`flex min-h-28 w-full touch-manipulation flex-col justify-between rounded-control border p-3 text-left select-none ${
+                  className={`slip flex min-h-28 w-full touch-manipulation flex-col justify-between p-3 text-left transition-transform select-none active:scale-[0.98] ${
                     billAsked
-                      ? 'border-warning bg-warning-bg'
-                      : busy
-                        ? 'border-accent bg-accent/10'
-                        : 'border-line bg-surface hover:bg-bg'
-                  } ${table.ready > 0 ? 'ring-2 ring-success' : ''}`}
+                      ? 'edge-bill bg-warning-bg'
+                      : table.ready > 0
+                        ? 'edge-ready bg-accent/10'
+                        : busy
+                          ? 'edge-open bg-accent/10'
+                          : 'edge-quiet hover:bg-bg'
+                  }`}
                 >
-                  <span className="text-lg font-semibold">{table.name}</span>
+                  <span className="font-display text-2xl leading-none font-bold tracking-[-0.02em]">
+                    {table.name}
+                  </span>
                   {busy ? (
                     <span className="flex flex-col text-sm">
-                      <span className="font-mono text-base font-semibold">
+                      <span className="font-display text-base font-semibold">
                         {formatTRY(table.total)}
                       </span>
                       <span className="text-text-2">{`${minutes} dk`}</span>
