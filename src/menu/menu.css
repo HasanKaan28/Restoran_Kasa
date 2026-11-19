@@ -1,0 +1,10 @@
+/*
+ * The guest menu's styles: the app's tokens and shape, with utilities generated only from the
+ * menu's own files, so the page carries none of the register's CSS. It follows the device's
+ * light or dark setting (tokens.css), and prints black on white.
+ */
+@import 'tailwindcss' source(none);
+@source './';
+@source not './**/*.test.ts';
+@import '../design/tokens.css';
+@import '../design/shape.css';

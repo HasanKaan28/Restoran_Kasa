@@ -12,6 +12,16 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
+  build: {
+    rollupOptions: {
+      // The app, and the guests' QR menu as a page of its own: dist/menu.html loads only its
+      // small bundle and never opens the register's data, pairing or service worker.
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        menu: fileURLToPath(new URL('./menu.html', import.meta.url)),
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

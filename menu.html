@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4EEE6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C1815" />
+    <!-- A restaurant's menu behind its own link: kept out of search engines, and the link (the
+         part after #) never leaves the phone in a referrer. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="description" content="Restoranın menüsü" />
+    <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+    <title>Menü</title>
+  </head>
+  <body>
+    <div id="menu"></div>
+    <noscript>Menüyü görmek için tarayıcınızda JavaScript açık olmalı.</noscript>
+    <script type="module" src="/src/menu/main.ts"></script>
+  </body>
+</html>

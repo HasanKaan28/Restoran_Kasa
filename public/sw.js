@@ -57,20 +57,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (request.mode === 'navigate') {
+    // The guests' QR menu (menu.html) is a page of its own under the same scope: it is kept
+    // apart, so opening it never replaces the app's kept copy, nor does offline open the app.
+    const page = url.pathname.endsWith('/menu.html') ? './menu.html' : './index.html';
     // The page first from the network, so a new release is seen; the kept copy when offline.
     event.respondWith(
       fetch(request)
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            void caches.open(CACHE).then((cache) => cache.put('./index.html', copy));
+            void caches.open(CACHE).then((cache) => cache.put(page, copy));
           }
           return response;
         })
         .catch(() =>
           caches
             .open(CACHE)
-            .then((cache) => cache.match('./index.html'))
+            .then((cache) => cache.match(page))
             .then((cached) => cached || Response.error()),
         ),
     );
