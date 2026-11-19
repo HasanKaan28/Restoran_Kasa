@@ -92,6 +92,33 @@ describe('leaving an empty table', () => {
   });
 });
 
+describe('the open tab’s address', () => {
+  it('opens a table at #/tables/<id>, and the phone’s back gesture returns to the floor', async () => {
+    const { data } = await restaurant();
+    await renderWithData(<TablesScreen />, data);
+    const menu = await openTable(/^S1, boş/);
+    await userEvent.click(await within(menu).findByRole('button', { name: /Ezme/ }));
+    const [tab] = await data.db.tabs.where('status').equals('open').toArray();
+    expect(window.location.hash).toBe(`#/tables/${tab?.id}`);
+
+    window.history.back();
+    expect(await screen.findByRole('button', { name: /^S1, dolu/ })).toBeInTheDocument();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('reopens the tab its address names, as after a reload', async () => {
+    const { data, table, ezme } = await restaurant();
+    const tab = await openTab(data.db, { tableId: table.id, deviceCode: 'K1' }, new Date());
+    await addTabItem(data.db, tab.id, ezme, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
+    window.history.replaceState(null, '', `#/tables/${tab.id}`);
+    await renderWithData(<TablesScreen />, data);
+    expect(await screen.findByRole('heading', { name: 'S1' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Masalar' }));
+    expect(await screen.findByRole('button', { name: /^S1, dolu/ })).toBeInTheDocument();
+    expect(window.location.hash).toBe('#/tables');
+  });
+});
+
 describe('asking for the bill', () => {
   it('marks the table, locks the tab, and unlocks it again', async () => {
     const { data, table, ezme } = await restaurant();
@@ -127,7 +154,8 @@ describe('the kitchen’s counts and recall', () => {
 
     const counts = await screen.findByRole('list', { name: 'Toplam' });
     expect(counts).toHaveTextContent('Ezme ×2');
-    await userEvent.click(screen.getByRole('button', { name: 'Hepsi hazır' }));
+    // The tickets and the counts are separate reads: wait for the ticket's button too.
+    await userEvent.click(await screen.findByRole('button', { name: 'Hepsi hazır' }));
     expect(await screen.findByText('Bekleyen sipariş yok.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Son hazırı geri al' }));
     expect(await screen.findByRole('listitem', { name: 'S1' })).toBeInTheDocument();

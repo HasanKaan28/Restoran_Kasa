@@ -204,6 +204,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
         pendingCount={status.pendingCount}
         syncError={status.error}
         activeNav="tables"
+        immersive
       >
         <div className="flex flex-wrap items-center gap-3">
           <Button icon={<ArrowLeft aria-hidden="true" size={18} />} onClick={() => void leave()}>
@@ -398,7 +399,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           </section>
         </div>
         {/* Always in reach, on a phone too: the menu can be long, the total and sending are not. */}
-        <div className="sticky bottom-0 z-20 -mx-5 -mb-4 flex items-center gap-2 border-t border-line-strong bg-surface px-5 py-3 sm:gap-3">
+        <div className="sticky bottom-0 z-20 -mx-4 -mb-4 flex items-center gap-2 border-t border-line-strong bg-surface px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:gap-3 md:-mx-6 md:-mb-5 md:px-6 xl:-mx-8 xl:px-8">
           <span className="hidden font-semibold sm:inline">Kalan</span>
           <span
             aria-label="Kalan tutar"

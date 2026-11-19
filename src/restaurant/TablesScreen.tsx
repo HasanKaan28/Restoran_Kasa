@@ -3,6 +3,7 @@ import { ShoppingBag } from 'lucide-react';
 import { useRef, useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
+import { leaveTabScreen, openTabScreen, useTabId } from '@/app/route';
 import { useSession } from '@/app/session';
 import {
   cancelBillRequest,
@@ -43,7 +44,7 @@ export function TablesScreen(): JSX.Element {
   const toast = useToast();
   const now = useNow();
   const [area, setArea] = useState(ALL);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const openId = useTabId();
   const [actions, setActions] = useState<FloorTable | null>(null);
   const [tabDialog, setTabDialog] = useState<{ kind: 'pay' | 'move'; tabId: string } | null>(null);
   const pressTimer = useRef<number | undefined>(undefined);
@@ -76,7 +77,7 @@ export function TablesScreen(): JSX.Element {
   }, [db]);
 
   if (openId) {
-    return <TabView tabId={openId} onClose={() => setOpenId(null)} />;
+    return <TabView tabId={openId} onClose={leaveTabScreen} />;
   }
 
   // A press held half a second opens the table's actions instead of the tab.
@@ -115,7 +116,7 @@ export function TablesScreen(): JSX.Element {
       tableId ? { tableId, ...waiter } : { label: `Paket ${takeawayCount + 1}`, ...waiter },
       new Date(),
     );
-    setOpenId(tab.id);
+    openTabScreen(tab.id);
   }
 
   return (
@@ -229,7 +230,7 @@ export function TablesScreen(): JSX.Element {
             <ul className="flex flex-wrap gap-2">
               {floor.takeaway.map(({ tab, total, ready }) => (
                 <li key={tab.id}>
-                  <Button onClick={() => setOpenId(tab.id)}>
+                  <Button onClick={() => openTabScreen(tab.id)}>
                     {`${tab.label ?? 'Paket'} · ${formatTRY(total)}${ready > 0 ? ` · ${ready} hazır` : ''}`}
                   </Button>
                 </li>

@@ -10,4 +10,6 @@ afterEach(async () => {
   cleanup();
   await disposeTestData();
   localStorage.clear();
+  // An open tab lives in the address (#/tables/<id>): each test starts on the floor.
+  window.history.replaceState(null, '', window.location.pathname);
 });
