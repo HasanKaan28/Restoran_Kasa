@@ -1,6 +1,6 @@
 # Restoran Kasa
 
-**Site:** https://restorankasa.vercel.app/ · **Web app:** https://restorankasa.vercel.app/app/ · **GitHub Pages copy:** [site](https://hasankaan28.github.io/Restoran_Kasa/) / [app](https://hasankaan28.github.io/Restoran_Kasa/app/) · **Downloads:** [latest release](https://github.com/HasanKaan28/Restoran_Kasa/releases/latest)
+**Site:** https://restorankasa.vercel.app/ · **Web app:** https://restorankasa.vercel.app/app/ · **Old address:** [GitHub Pages app](https://hasankaan28.github.io/Restoran_Kasa/app/) (its front page sends people to the site) · **Downloads:** [latest release](https://github.com/HasanKaan28/Restoran_Kasa/releases/latest)
 
 An offline-first restaurant and bar point of sale: tables, tabs (adisyon), a kitchen and bar
 screen, and the register behind them. It is built on [Market Kasa v2](https://github.com/HasanKaan28/Market_Kasa)
@@ -8,8 +8,9 @@ screen, and the register behind them. It is built on [Market Kasa v2](https://gi
 codebase runs as a web app (PWA, for waiters' phones and tablets), a Windows desktop app
 (Electron) and an Android app (Capacitor).
 
-> **Status:** `1.0.0`. Restoran Kasa has its own Supabase project. The GitHub Pages copy still
-> runs against the old shared project for existing registers, until they are moved.
+> **Status:** `1.0.0`. Restoran Kasa has its own Supabase project and its own address. The web app
+> is still served on GitHub Pages too, for registers set up there before the move (browser data is
+> kept per address); both copies sync with the same project.
 
 ## What it does
 
@@ -145,7 +146,8 @@ Two workflows run on GitHub Actions:
   Pages; a run by hand deploys only with **deploy_pages** ticked.
 
 The Vercel project builds `main` on every push with its own environment variables (site at `/`,
-app at `/app/`); GitHub Pages is still deployed only from `v2-release.yml`.
+app at `/app/`); GitHub Pages is still deployed only from `v2-release.yml`, with the app under
+`app/` and a front page (`.github/pages/index.html`) that sends visitors to the Vercel site.
 
 No workflow deploys anything on a push to a branch. v1's workflow, which redeployed Pages and
 republished releases on every push to `main`, is removed on `v2`.

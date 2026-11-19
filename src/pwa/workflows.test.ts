@@ -89,11 +89,16 @@ describe('workflows', () => {
     expect(web).toMatch(/refs\/tags\/[\s\S]*VITE_SUPABASE_URL[\s\S]*exit 1/);
   });
 
-  it('publishes the site at the root and the app under app/', () => {
+  it('keeps the app on GitHub Pages and sends the front page to the Vercel site', () => {
     const deploy = job(readFileSync(`${DIR}/v2-release.yml`, 'utf8'), 'deploy-pages');
     expect(deploy).toContain('path: pages/app');
-    expect(deploy).toContain('cp -r site/. pages/');
+    expect(deploy).not.toContain('cp -r site/. pages/');
+    expect(deploy).toContain('cp .github/pages/index.html pages/index.html');
     expect(deploy).toContain('path: pages');
+    const front = readFileSync('.github/pages/index.html', 'utf8');
+    expect(front).toContain('https://restorankasa.vercel.app/');
+    expect(front).toMatch(/<meta http-equiv="refresh"/);
+    expect(front).toMatch(/rel="canonical" href="https:\/\/restorankasa\.vercel\.app\/"/);
   });
 
   it('serves the same layout from Vercel: the site at the root, the app under app/', () => {

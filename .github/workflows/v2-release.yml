@@ -167,15 +167,16 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # The site (site/) is the front page; the app itself opens under app/.
+      # The site lives on Vercel (restorankasa.vercel.app); the front page here only sends people
+      # there. The app stays under app/ for registers already set up on this address.
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: site
+          sparse-checkout: .github/pages
       - uses: actions/download-artifact@v4
         with:
           name: market-kasa-web
           path: pages/app
-      - run: cp -r site/. pages/
+      - run: cp .github/pages/index.html pages/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
