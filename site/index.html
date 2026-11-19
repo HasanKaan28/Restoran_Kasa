@@ -16,11 +16,14 @@
         var t = localStorage.getItem('rk.site.theme');
         if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
       } catch (e) {}
+      document.documentElement.classList.add('js');
     </script>
     <link rel="icon" href="img/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="img/apple-touch-icon.png" />
     <link rel="preload" href="fonts/bricolage-grotesque-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="fonts/instrument-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
   </head>
   <body>
     <a class="skip" href="#icerik">İçeriğe geç</a>
@@ -52,7 +55,7 @@
 
     <main id="icerik">
       <section class="hero">
-        <div class="wrap hero__grid">
+        <div class="wrap wrap--wide hero__grid">
           <div class="hero__copy">
             <p class="eyebrow">Restoran, ocakbaşı, kafe ve bar için</p>
             <h1>Sipariş masada alınır, mutfakta <em>anında</em> görünür.</h1>
@@ -71,26 +74,90 @@
             </div>
           </div>
 
-          <!-- The page's anchor: the register and the waiter's phone on one counter, lit from below. -->
-          <figure class="stage">
-            <div class="stage__screen">
-              <img
-                src="img/masalar.png"
-                width="1440"
-                height="900"
-                fetchpriority="high"
-                alt="Masalar ekranı: salon ve bahçe masaları, dolu masalarda adisyon toplamı, açık kalma süresi ve hazır bekleyen kalemler."
-              />
+          <!-- The page's anchor: a working miniature of the product. The register shows the floor,
+               the waiter's phone holds the open tab, the kitchen tablet gets what the phone sends.
+               site.js fills and runs it; the boxes keep their size so nothing shifts. -->
+          <section class="pos" data-pos data-view="floor" aria-labelledby="pos-title">
+            <h2 class="sr-only" id="pos-title">Canlı demo: masalar, garsonun telefonu ve mutfak ekranı</h2>
+            <p class="sr-only" id="pos-help">
+              Bir masaya dokunun, menüden yemek ekleyin ve Mutfağa gönder'e basın. Mutfak ekranında Hepsi hazır'a
+              basınca masa yeşil çerçevelenir.
+            </p>
+
+            <div class="dev dev--screen pos__screen" data-tilt="1">
+              <div class="dev__glass app">
+                <div class="app__bar">
+                  <span class="app__title">Masalar</span>
+                  <div class="seg-app" role="group" aria-label="Bölüm" data-areas></div>
+                  <span class="sync" data-sync><span class="sync__dot" aria-hidden="true"></span>Çevrimiçi</span>
+                </div>
+                <ul class="floor" data-floor aria-label="Masalar"></ul>
+                <p class="app__legend" aria-hidden="true">
+                  <span class="legend legend--open">Dolu</span><span class="legend legend--ready">Hazır bekliyor</span><span class="legend">Boş</span>
+                </p>
+              </div>
             </div>
-            <div class="stage__phone">
-              <img
-                src="img/telefon.png"
-                width="390"
-                height="844"
-                alt="Telefonda adisyon: ızgara kategorisi, ürünler ve altta toplam, Gönder ve Hesap."
-              />
+
+            <div class="dev dev--phone pos__phone" data-tilt="2.2">
+              <span class="dev__ear" aria-hidden="true"></span>
+              <div class="dev__glass app phone">
+                <div class="phone__floor">
+                  <div class="app__bar">
+                    <span class="app__title">Masalar</span>
+                    <span class="sync" data-sync><span class="sync__dot" aria-hidden="true"></span>Çevrimiçi</span>
+                  </div>
+                  <div class="seg-app seg-app--wide" role="group" aria-label="Bölüm" data-areas></div>
+                  <ul class="floor floor--phone" data-floor aria-label="Masalar"></ul>
+                </div>
+
+                <div class="order" data-order hidden>
+                  <div class="order__head">
+                    <button class="order__back" type="button" data-back aria-label="Masalara dön">
+                      <!-- Tabler Icons (MIT): chevron-left. -->
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6" /></svg>
+                    </button>
+                    <div class="order__title">
+                      <strong data-order-title>Masa</strong>
+                      <span data-order-meta></span>
+                    </div>
+                  </div>
+                  <div class="order__cats" role="group" aria-label="Kategori" data-cats></div>
+                  <div class="order__menu" role="group" aria-label="Menü" data-menu></div>
+                  <ul class="order__lines" data-lines aria-label="Adisyon"></ul>
+                  <div class="order__foot">
+                    <div class="order__sum">
+                      <span>Toplam</span>
+                      <strong data-total>₺0</strong>
+                    </div>
+                    <button class="btn-app btn-app--primary" type="button" data-send disabled>Mutfağa gönder</button>
+                  </div>
+                </div>
+
+                <div class="order-empty" data-order-empty>
+                  <p>Bir masaya dokunun.<br />Adisyonu burada açılır.</p>
+                </div>
+              </div>
             </div>
-          </figure>
+
+            <div class="dev dev--tablet pos__kitchen" data-tilt="1.6">
+              <div class="dev__glass app">
+                <div class="app__bar">
+                  <span class="app__title" data-station-title>Mutfak</span>
+                  <div class="seg-app" role="group" aria-label="İstasyon" data-stations></div>
+                </div>
+                <ol class="tickets" data-tickets aria-label="Bekleyen siparişler"></ol>
+                <p class="tickets__empty" data-tickets-empty hidden>Bekleyen sipariş yok.</p>
+              </div>
+            </div>
+
+            <div class="pos__foot">
+              <p class="pos__status" data-status role="status" aria-live="off">Canlı demo. Bir masaya dokunun ve deneyin.</p>
+              <button class="pos__play" type="button" data-play data-playing="false" hidden>
+                <span data-play-label>Demoyu durdur</span>
+              </button>
+            </div>
+            <span class="pos__finger" data-finger aria-hidden="true"></span>
+          </section>
         </div>
       </section>
 
@@ -99,12 +166,40 @@
           <h2>Bir akşam serviste olan her şey</h2>
           <p class="section-lead">Büyük düğmeler, az ekran, hızlı sipariş. Garson ilk akşam öğrenir.</p>
           <ul class="bento">
-            <li class="tile tile--shot tile--adisyon reveal">
+            <li class="tile tile--adisyon reveal">
               <div class="tile__text">
                 <h3>Adisyon</h3>
                 <p>Kategorili menü ve arama, notlu sipariş (acısız, az pişmiş), aynı yemeğe ikinci dokunuşta adet artar. Tek tuşla mutfağa ve bara gönderilir.</p>
               </div>
-              <img src="img/adisyon.png" width="1440" height="900" loading="lazy" alt="Adisyon ekranı: solda kategorili menü, sağda masanın siparişi, durumları ve ikram; altta kalan tutar, Gönder ve Hesap." />
+              <!-- A slice of the tab as the app draws it: the state next to every line. -->
+              <div class="tile__ui app" aria-hidden="true">
+                <div class="mini-lines">
+                  <div class="mini-line">
+                    <span class="mini-line__name">2 × Adana kebap<em>acısız</em></span>
+                    <span class="mini-line__state is-ready">Hazır</span>
+                    <span class="mini-line__sum">₺900</span>
+                  </div>
+                  <div class="mini-line">
+                    <span class="mini-line__name">1 × Kuzu şiş<em>az pişmiş</em></span>
+                    <span class="mini-line__state is-cooking">Hazırlanıyor</span>
+                    <span class="mini-line__sum">₺520</span>
+                  </div>
+                  <div class="mini-line">
+                    <span class="mini-line__name">3 × Ayran</span>
+                    <span class="mini-line__state is-ready">Hazır</span>
+                    <span class="mini-line__sum">₺150</span>
+                  </div>
+                  <div class="mini-line is-new">
+                    <span class="mini-line__name">1 × Künefe</span>
+                    <span class="mini-line__state">Gönderilmedi</span>
+                    <span class="mini-line__sum">₺180</span>
+                  </div>
+                </div>
+                <div class="mini-foot">
+                  <span>Toplam <b>₺1.750</b></span>
+                  <span class="btn-app btn-app--primary">Mutfağa gönder (1)</span>
+                </div>
+              </div>
             </li>
             <li class="tile tile--accent tile--mutfak reveal">
               <h3>Mutfak ve bar ekranı</h3>
@@ -114,12 +209,17 @@
               <h3>Masalar</h3>
               <p>Salon, bahçe, teras. Her masada adisyon toplamı, kaç dakikadır açık olduğu ve servise hazır bekleyenler; hazırı olan masa yeşil çerçevelenir.</p>
             </li>
-            <li class="tile tile--shot tile--hesap reveal">
+            <li class="tile tile--hesap reveal">
               <div class="tile__text">
                 <h3>Hesap</h3>
                 <p>Hepsi birden ya da kalem kalem bölerek; kişi başı tutar, nakitte para üstü, kart. Her ödeme fiş olur, gün sonu (Z) ve raporlara geçer.</p>
               </div>
-              <img src="img/hesap.png" width="1440" height="900" loading="lazy" alt="Hesap penceresi: kalemler seçilerek bölünüyor, kişi başı tutar ve ödeme yolu." />
+              <!-- The pay window's three answers: what is due, per head, and the change. -->
+              <dl class="tile__ui app mini-pay" aria-hidden="true">
+                <div class="mini-pay__row mini-pay__row--big"><dt>Ödenecek</dt><dd>₺1.180</dd></div>
+                <div class="mini-pay__row"><dt>Kişi sayısı 3</dt><dd>Kişi başı ₺394</dd></div>
+                <div class="mini-pay__row"><dt>Nakit, alınan ₺1.200</dt><dd class="mini-pay__change">Para üstü ₺20</dd></div>
+              </dl>
             </li>
             <li class="tile tile--ikram reveal">
               <h3>İkram ve iptal</h3>
@@ -133,32 +233,230 @@
         </div>
       </section>
 
-      <section id="telefon" class="section section--raised">
-        <div class="wrap phone">
-          <figure class="phone__shot">
-            <div class="tablet">
-              <img src="img/mutfak.png" width="1440" height="900" loading="lazy" alt="Mutfak ekranı: masa masa bekleyen siparişler, notları ve bekleme süreleri." />
-            </div>
-            <figcaption>Mutfaktaki tablet: en çok bekleyen en üstte; dokun, hazır.</figcaption>
-          </figure>
-          <div class="phone__copy">
-            <h2>Garsonun telefonu, mutfağın tableti, kasa: aynı masalar</h2>
-            <ol class="steps">
-              <li class="reveal">
-                <h3>Kasayı kurun</h3>
-                <p>Kasa bilgisayarında “Restoran kur” ile kendi e-postanızla işletmenizi açın, Ayarlar → Masalar'dan masaları ekleyin, Menü'de her ürünün mutfakta mı barda mı hazırlandığını seçin.</p>
-              </li>
-              <li class="reveal">
-                <h3>Garsonu ve mutfağı bağlayın</h3>
-                <p>Telefona Android uygulamasını kurun ya da tarayıcıda açıp ana ekrana ekleyin; aynı e-posta ve şifreyle “Restorana giriş yap”. Mutfaktaki tablette Mutfak / Bar ekranını açın.</p>
-              </li>
-              <li class="reveal">
-                <h3>Servise başlayın</h3>
-                <p>Garsonun gönderdiği sipariş mutfakta belirir, “hazır” garsona döner, hesap kasada ya da masada alınır. İnternet kesilirse her cihaz çalışmayı sürdürür; gelince eşitlenir.</p>
-              </li>
-            </ol>
-            <p class="note">Şifre telefonda ya da kasada saklanmaz. Kaybolan bir cihazı işletme sahibi kapatabilir.</p>
+      <!-- One order through three screens. On wide screens the device column stays put while the
+           steps scroll past it; on phones and with reduced motion the three stack. -->
+      <section id="telefon" class="section section--raised" aria-labelledby="story-title">
+        <div class="wrap">
+          <h2 id="story-title" class="story__title">Garsonun telefonu, mutfağın tableti, kasa: aynı masalar</h2>
+          <div class="story" data-story>
+            <article class="story__step" data-step="0">
+              <h3>Garson siparişi masada alır</h3>
+              <p>Menü kategori kategori, arama da var. Not, porsiyon ve seçim bir dokunuş; aynı yemeğe bir daha dokununca adet artar. Hepsi tek tuşla gider.</p>
+            </article>
+            <figure class="story__frame" data-frame="0" aria-hidden="true">
+              <div class="dev dev--phone story__phone">
+                <span class="dev__ear"></span>
+                <div class="dev__glass app phone sf1">
+                  <div class="order__head">
+                    <span class="order__back order__back--ghost">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6" /></svg>
+                    </span>
+                    <div class="order__title"><strong>Masa 7</strong><span>Salon · 3 dk</span></div>
+                  </div>
+                  <div class="order__cats">
+                    <span class="chip-app is-on">Izgara</span><span class="chip-app">Pide</span><span class="chip-app">Meze</span><span class="chip-app">İçecek</span>
+                  </div>
+                  <div class="order__menu">
+                    <span class="dish">Adana kebap<span class="dish__price">₺450</span><span class="dish__qty">2</span></span>
+                    <span class="dish">Urfa kebap<span class="dish__price">₺450</span><span class="dish__qty">1</span></span>
+                    <span class="dish">Kuzu şiş<span class="dish__price">₺520</span><span class="dish__qty">1</span></span>
+                    <span class="dish">Izgara köfte<span class="dish__price">₺380</span></span>
+                  </div>
+                  <ul class="order__lines sf1__lines">
+                    <li class="line" data-st="new"><span class="line__main"><b>2 × Adana kebap</b><span class="line__note">acısız</span></span><span class="line__side"><span class="line__sum">₺900</span><span class="line__state line__state--swap"><span class="is-new">Gönderilmedi</span><span class="is-sent">Hazırlanıyor</span></span></span></li>
+                    <li class="line" data-st="new"><span class="line__main"><b>1 × Urfa kebap</b><span class="line__opt">Yarım porsiyon</span></span><span class="line__side"><span class="line__sum">₺250</span><span class="line__state line__state--swap"><span class="is-new">Gönderilmedi</span><span class="is-sent">Hazırlanıyor</span></span></span></li>
+                    <li class="line" data-st="new"><span class="line__main"><b>1 × Kuzu şiş</b><span class="line__opt">Az pişmiş</span></span><span class="line__side"><span class="line__sum">₺520</span><span class="line__state line__state--swap"><span class="is-new">Gönderilmedi</span><span class="is-sent">Hazırlanıyor</span></span></span></li>
+                    <li class="line" data-st="new"><span class="line__main"><b>3 × Ayran</b></span><span class="line__side"><span class="line__sum">₺150</span><span class="line__state line__state--swap"><span class="is-new">Gönderilmedi</span><span class="is-sent">Hazırlanıyor</span></span></span></li>
+                  </ul>
+                  <div class="order__foot">
+                    <div class="order__sum"><span>Toplam</span><strong>₺1.820</strong></div>
+                    <span class="btn-app btn-app--primary sf1__send">Mutfağa gönder (4)</span>
+                  </div>
+                  <span class="sf1__toast">Mutfağa ve bara gönderildi</span>
+                </div>
+              </div>
+            </figure>
+
+            <article class="story__step" data-step="1">
+              <h3>Mutfak ve bar kendi ekranında görür</h3>
+              <p>Her istasyon yalnız kendi siparişini görür, en çok bekleyen en üstte. Bekleyen sipariş önce sarıya, 15 dakikada kırmızıya döner. “Hepsi hazır” garsona döner.</p>
+            </article>
+            <figure class="story__frame" data-frame="1" aria-hidden="true">
+              <div class="dev dev--tablet story__tablet">
+                <div class="dev__glass app sf2">
+                  <div class="app__bar">
+                    <span class="app__title">Mutfak</span>
+                    <span class="seg-app"><span class="seg-app__btn is-on">Mutfak 3</span><span class="seg-app__btn">Bar 1</span></span>
+                  </div>
+                  <ol class="tickets tickets--static">
+                    <li class="tk tk--late sf2__done">
+                      <div class="tk__head"><span class="tk__title">Masa 1</span><span class="tk__min">16 dk</span></div>
+                      <ul class="tk__items">
+                        <li class="tk__item sf2__tick"><span>2 × Adana kebap</span><span class="tk__note">acısız</span></li>
+                        <li class="tk__item sf2__tick"><span>1 × Ezme</span></li>
+                      </ul>
+                      <span class="btn-app btn-app--primary tk__all sf2__all">Hepsi hazır</span>
+                      <span class="tk__stamp">Hazır · garsona gitti</span>
+                    </li>
+                    <li class="tk tk--slow">
+                      <div class="tk__head"><span class="tk__title">Paket 1</span><span class="tk__min">11 dk</span></div>
+                      <ul class="tk__items">
+                        <li class="tk__item"><span>6 × Lahmacun</span><span class="tk__note">2'si acısız</span></li>
+                      </ul>
+                      <span class="btn-app btn-app--primary tk__all">Hepsi hazır</span>
+                    </li>
+                    <li class="tk sf2__new">
+                      <div class="tk__head"><span class="tk__title">Masa 7</span><span class="tk__min">0 dk</span></div>
+                      <ul class="tk__items">
+                        <li class="tk__item"><span>2 × Adana kebap</span><span class="tk__note">acısız</span></li>
+                        <li class="tk__item"><span>1 × Urfa kebap</span><span class="tk__opt">Yarım porsiyon</span></li>
+                        <li class="tk__item"><span>1 × Kuzu şiş</span><span class="tk__opt">Az pişmiş</span></li>
+                      </ul>
+                      <span class="btn-app btn-app--primary tk__all">Hepsi hazır</span>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            </figure>
+
+            <article class="story__step" data-step="2">
+              <h3>Hesap kasada ya da masada alınır</h3>
+              <p>Hepsi birden, kalem kalem ya da kişi sayısına bölerek; nakit ya da kart. Her ödeme gün sonu (Z) ve raporlara geçer. Yandaki hesabı siz bölün.</p>
+            </article>
+            <figure class="story__frame story__frame--live" data-frame="2">
+              <figcaption class="sr-only">Deneyin: Masa 5'in hesabını kalem kalem ya da eşit bölün.</figcaption>
+              <div class="dev dev--tablet story__bill">
+                <div class="dev__glass app bill" data-bill>
+                  <div class="bill__head">
+                    <strong>Hesap · Masa 5</strong>
+                    <span data-bill-total>Toplam ₺1.860</span>
+                  </div>
+                  <fieldset class="seg-app seg-app--wide bill__mode">
+                    <legend class="sr-only">Bölme şekli</legend>
+                    <label class="seg-app__btn"><input type="radio" name="bill-mode" value="items" checked /><span>Kalem kalem</span></label>
+                    <label class="seg-app__btn"><input type="radio" name="bill-mode" value="equal" /><span>Eşit böl</span></label>
+                  </fieldset>
+
+                  <div class="bill__panel" data-panel="items">
+                    <p class="bill__hint">Bir kişinin yediklerini işaretleyin, ödemesini alın.</p>
+                    <ul class="bill__lines" data-bill-lines aria-label="Kalemler"></ul>
+                  </div>
+
+                  <div class="bill__panel" data-panel="equal" hidden>
+                    <div class="stepper">
+                      <span class="stepper__label" id="heads-label">Kişi sayısı</span>
+                      <div class="stepper__ctrl" role="group" aria-labelledby="heads-label">
+                        <button type="button" class="stepper__btn" data-heads="-1" aria-label="Bir kişi az">−</button>
+                        <output class="stepper__value" data-heads-value aria-live="polite">3</output>
+                        <button type="button" class="stepper__btn" data-heads="1" aria-label="Bir kişi fazla">+</button>
+                      </div>
+                    </div>
+                    <p class="bill__each">Kişi başı <strong data-each>₺620</strong></p>
+                    <ol class="shares" data-shares aria-label="Paylar"></ol>
+                  </div>
+
+                  <div class="bill__pay">
+                    <div class="bill__due">
+                      <span>Ödenecek</span>
+                      <strong data-due>₺0</strong>
+                    </div>
+                    <fieldset class="seg-app bill__method">
+                      <legend class="sr-only">Ödeme</legend>
+                      <label class="seg-app__btn"><input type="radio" name="bill-method" value="Nakit" checked /><span>Nakit</span></label>
+                      <label class="seg-app__btn"><input type="radio" name="bill-method" value="Kart" /><span>Kart</span></label>
+                    </fieldset>
+                    <button type="button" class="btn-app btn-app--primary" data-pay disabled>Ödemeyi al</button>
+                  </div>
+                  <div class="bill__left">
+                    <span>Kalan <strong data-left>₺1.860</strong></span>
+                    <button type="button" class="bill__reset" data-bill-reset>Baştan</button>
+                  </div>
+                  <p class="sr-only" role="status" data-bill-status></p>
+                </div>
+              </div>
+            </figure>
           </div>
+        </div>
+      </section>
+
+      <!-- The outage, played out: the switch cuts the line, orders stack up on the phone, and the
+           line coming back sends them all on to the register and the kitchen. -->
+      <section id="internet" class="section offline" aria-labelledby="offline-title">
+        <div class="wrap offline__grid">
+          <div class="offline__copy">
+            <h2 id="offline-title">İnternet gitti. Servis sürüyor.</h2>
+            <p class="section-lead">
+              Her cihaz sipariş almaya ve satış yapmaya devam eder; işlemler önce cihaza yazılır. İnternet
+              gelince hepsi kendiliğinden gönderilir, kasalar eşitlenir.
+            </p>
+            <div class="offline__controls">
+              <button class="net" type="button" role="switch" aria-checked="true" aria-labelledby="net-name" data-net>
+                <span class="net__track" aria-hidden="true"><span class="net__thumb"></span></span>
+                <span class="net__label"><span id="net-name">İnternet</span> <b data-net-label aria-hidden="true">açık</b></span>
+              </button>
+              <button class="btn btn--line btn--compact" type="button" data-add-order>Sipariş al</button>
+            </div>
+            <p class="sr-only" role="status" data-net-status></p>
+          </div>
+
+          <div class="flow" data-flow data-online="true">
+            <div class="dev dev--phone flow__phone">
+              <span class="dev__ear" aria-hidden="true"></span>
+              <div class="dev__glass app node node--phone">
+              <div class="node__head">
+                <span class="node__name">Garsonun telefonu</span>
+                <span class="sync" data-flow-sync><span class="sync__dot" aria-hidden="true"></span><span data-flow-sync-text>Çevrimiçi</span></span>
+              </div>
+              <p class="node__count"><b data-queue-count>0</b> <span data-queue-word>sipariş sırada</span></p>
+              <ul class="queue" data-queue aria-label="Gönderilmeyi bekleyen siparişler"></ul>
+              <p class="queue__empty" data-queue-empty>Alınan sipariş hemen kasaya ve mutfağa gider.</p>
+              </div>
+            </div>
+
+            <div class="wire" aria-hidden="true">
+              <span class="wire__line"></span>
+              <span class="wire__cut">
+                <!-- Tabler Icons (MIT): wifi-off. -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18l.01 0" /><path d="M9.172 15.172a4 4 0 0 1 5.656 0" /><path d="M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2" /><path d="M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374" /><path d="M3 3l18 18" /></svg>
+              </span>
+            </div>
+
+            <div class="dev dev--tablet flow__kitchen">
+              <div class="dev__glass app node node--kitchen">
+              <div class="node__head">
+                <span class="node__name">Kasa ve mutfak</span>
+                <span class="node__sync" data-kitchen-sync>Eşit</span>
+              </div>
+              <p class="node__count"><b data-arrived-count>3</b> sipariş geldi</p>
+              <ul class="arrived" data-arrived aria-label="Mutfağa ulaşan siparişler">
+                <li class="arrived__item"><span>Masa 3</span><span>3 × Lahmacun</span></li>
+                <li class="arrived__item"><span>Bahçe 1</span><span>2 × Künefe</span></li>
+                <li class="arrived__item"><span>Masa 5</span><span>2 × Kuzu şiş</span></li>
+              </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="kurulum" class="section section--raised" aria-labelledby="setup-title">
+        <div class="wrap">
+          <h2 id="setup-title">Üç adımda kurulum</h2>
+          <ol class="steps">
+            <li class="reveal">
+              <h3>Kasayı kurun</h3>
+              <p>Kasa bilgisayarında “Restoran kur” ile kendi e-postanızla işletmenizi açın, Ayarlar → Masalar'dan masaları ekleyin, Menü'de her ürünün mutfakta mı barda mı hazırlandığını seçin.</p>
+            </li>
+            <li class="reveal">
+              <h3>Garsonu ve mutfağı bağlayın</h3>
+              <p>Telefona Android uygulamasını kurun ya da tarayıcıda açıp ana ekrana ekleyin; aynı e-posta ve şifreyle “Restorana giriş yap”. Mutfaktaki tablette Mutfak / Bar ekranını açın.</p>
+            </li>
+            <li class="reveal">
+              <h3>Servise başlayın</h3>
+              <p>Garsonun gönderdiği sipariş mutfakta belirir, “hazır” garsona döner, hesap kasada ya da masada alınır. İnternet kesilirse her cihaz çalışmayı sürdürür; gelince eşitlenir.</p>
+            </li>
+          </ol>
+          <p class="note">Şifre telefonda ya da kasada saklanmaz. Kaybolan bir cihazı işletme sahibi kapatabilir.</p>
         </div>
       </section>
 
@@ -232,38 +530,5 @@
         <a href="https://github.com/HasanKaan28/Restoran_Kasa/releases">Tüm sürümler</a>
       </div>
     </footer>
-    <script>
-      // Theme switch. Pressed means dark. Choosing what the system already shows forgets the
-      // saved choice, so the page follows the system again.
-      (function () {
-        var root = document.documentElement;
-        var button = document.querySelector('.theme');
-        var system = window.matchMedia('(prefers-color-scheme: dark)');
-        var metas = document.querySelectorAll('meta[name="theme-color"]');
-        function current() {
-          return root.getAttribute('data-theme') || (system.matches ? 'dark' : 'light');
-        }
-        function sync() {
-          var dark = current() === 'dark';
-          button.setAttribute('aria-pressed', String(dark));
-          button.title = dark ? 'Açık temaya geç' : 'Koyu temaya geç';
-          for (var i = 0; i < metas.length; i++) metas[i].content = dark ? '#1C1815' : '#F6ECDC';
-        }
-        button.addEventListener('click', function () {
-          var next = current() === 'dark' ? 'light' : 'dark';
-          var followsSystem = next === (system.matches ? 'dark' : 'light');
-          if (followsSystem) root.removeAttribute('data-theme');
-          else root.setAttribute('data-theme', next);
-          try {
-            if (followsSystem) localStorage.removeItem('rk.site.theme');
-            else localStorage.setItem('rk.site.theme', next);
-          } catch (e) {}
-          sync();
-        });
-        if (system.addEventListener) system.addEventListener('change', sync);
-        button.hidden = false;
-        sync();
-      })();
-    </script>
   </body>
 </html>

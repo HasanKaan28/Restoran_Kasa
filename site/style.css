@@ -1,7 +1,7 @@
 /* Restoran Kasa site in the logo's colours: terracotta accent, cream and charcoal, a touch of
    olive, in a light and a dark theme. Condensed Bricolage Grotesque headlines over Instrument
-   Sans. The anchor is the hero counter: the register's screen and the waiter's phone, lit from
-   below like a grill. */
+   Sans. The anchor is the hero: a working miniature of the product (the register's floor, the
+   waiter's phone, the kitchen tablet) drawn in the app's own colours, lit from below like a grill. */
 
 @font-face {
   font-family: 'Bricolage Grotesque';
@@ -40,7 +40,9 @@
 
 /* Two themes from the logo's colours: terracotta #A9432B, cream #F6ECDC, charcoal #2A2420,
    olive #6E7A3A. Light is cream with charcoal type; dark is the charcoal "service night".
-   An explicit choice from the toggle sets data-theme on <html>; otherwise the system decides. */
+   An explicit choice from the toggle sets data-theme on <html>; otherwise the system decides.
+   The --app-* tokens are the app's own (src/design/tokens.css), so the demos inside the device
+   frames look like the product, not like the page. */
 :root {
   --bg: #f6ecdc;
   --bg-2: #efe2cd;
@@ -61,11 +63,31 @@
   --frame: #2a2420;
   --frame-line: #2a2420;
   --shadow: 0 2px 6px rgb(42 36 32 / 10%), 0 30px 60px -24px rgb(42 36 32 / 40%);
+  --shadow-soft: 0 1px 2px rgb(42 36 32 / 6%), 0 18px 40px -28px rgb(42 36 32 / 35%);
+
+  --app-bg: #f4eee6;
+  --app-surface: #fffdf9;
+  --app-line: #e5dccf;
+  --app-line-strong: #bfb09d;
+  --app-text: #2a2420;
+  --app-text-2: #584d45;
+  --app-accent: #a9432b;
+  --app-accent-soft: rgb(169 67 43 / 10%);
+  --app-on-accent: #fffaf3;
+  --app-success: #4a6120;
+  --app-success-bg: #ecf0da;
+  --app-warning: #7c5400;
+  --app-warning-bg: #faefd5;
+  --app-danger: #b0173e;
+  --app-danger-bg: #fbe7eb;
+
   --radius: 14px;
   --radius-inner: 10px;
   --display: 'Bricolage Grotesque', 'Arial Narrow', system-ui, sans-serif;
   --sans: 'Instrument Sans', system-ui, sans-serif;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -86,6 +108,22 @@
     --frame: #14110f;
     --frame-line: #3f3630;
     --shadow: 0 2px 6px rgb(10 8 6 / 40%), 0 30px 60px -24px rgb(10 8 6 / 75%);
+    --shadow-soft: 0 1px 2px rgb(10 8 6 / 30%), 0 18px 40px -28px rgb(10 8 6 / 70%);
+    --app-bg: #1c1815;
+    --app-surface: #27221e;
+    --app-line: #3a322c;
+    --app-line-strong: #62564c;
+    --app-text: #ece3d6;
+    --app-text-2: #c8bbac;
+    --app-accent: #db7c5e;
+    --app-accent-soft: rgb(219 124 94 / 13%);
+    --app-on-accent: #1c1815;
+    --app-success: #a9c46b;
+    --app-success-bg: #2a331b;
+    --app-warning: #e6b95b;
+    --app-warning-bg: #3a2d14;
+    --app-danger: #f38ba8;
+    --app-danger-bg: #3f1d25;
     color-scheme: dark;
   }
 }
@@ -106,6 +144,22 @@
   --frame: #14110f;
   --frame-line: #3f3630;
   --shadow: 0 2px 6px rgb(10 8 6 / 40%), 0 30px 60px -24px rgb(10 8 6 / 75%);
+  --shadow-soft: 0 1px 2px rgb(10 8 6 / 30%), 0 18px 40px -28px rgb(10 8 6 / 70%);
+  --app-bg: #1c1815;
+  --app-surface: #27221e;
+  --app-line: #3a322c;
+  --app-line-strong: #62564c;
+  --app-text: #ece3d6;
+  --app-text-2: #c8bbac;
+  --app-accent: #db7c5e;
+  --app-accent-soft: rgb(219 124 94 / 13%);
+  --app-on-accent: #1c1815;
+  --app-success: #a9c46b;
+  --app-success-bg: #2a331b;
+  --app-warning: #e6b95b;
+  --app-warning-bg: #3a2d14;
+  --app-danger: #f38ba8;
+  --app-danger-bg: #3f1d25;
   color-scheme: dark;
 }
 
@@ -113,6 +167,9 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
 }
 html {
   scroll-behavior: smooth;
@@ -134,6 +191,10 @@ img {
 a {
   color: inherit;
 }
+button {
+  font: inherit;
+  color: inherit;
+}
 :focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 3px;
@@ -149,7 +210,7 @@ h3 {
   text-wrap: balance;
 }
 h1 {
-  font-size: clamp(2.6rem, 1.5rem + 3.6vw, 4.6rem);
+  font-size: clamp(2.5rem, 1.4rem + 3.4vw, 4.2rem);
   font-weight: 750;
   letter-spacing: -0.015em;
 }
@@ -172,10 +233,24 @@ p {
   margin: 0;
   text-wrap: pretty;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
 .wrap {
   width: min(1200px, 100% - 32px);
   margin-inline: auto;
+}
+.wrap--wide {
+  width: min(1320px, 100% - 32px);
 }
 .skip {
   position: absolute;
@@ -243,7 +318,8 @@ p {
   }
 }
 
-/* Buttons: interactive things are pills, containers are 14 px. */
+/* Buttons: interactive things are pills, containers are 14 px. A press always answers with a
+   small squash; the lift on hover is kept to devices that really hover. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -255,16 +331,23 @@ p {
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
   transition:
-    transform 0.15s var(--ease),
+    transform 0.16s var(--ease-out),
     background-color 0.15s ease,
-    border-color 0.15s ease;
+    border-color 0.15s ease,
+    box-shadow 0.2s ease;
 }
-.btn:hover {
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+  .btn--primary:hover {
+    box-shadow: 0 10px 22px -12px var(--glow);
+  }
 }
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 .btn--primary {
   background: var(--accent);
@@ -276,6 +359,7 @@ p {
 .btn--line {
   border-color: var(--line-strong);
   color: var(--text);
+  background: transparent;
 }
 .btn--line:hover {
   border-color: var(--text);
@@ -285,6 +369,15 @@ p {
   padding: 0 18px;
   background: var(--text);
   color: var(--bg);
+}
+.btn--compact {
+  min-height: 46px;
+  padding: 0 20px;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
 }
 /* Theme switch: a 40 px round button next to the download pill. */
 .theme {
@@ -298,13 +391,18 @@ p {
   background: transparent;
   color: var(--text);
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.16s var(--ease-out);
 }
 .theme[hidden] {
   display: none;
 }
 .theme:hover {
   border-color: var(--text);
+}
+.theme:active {
+  transform: scale(0.94);
 }
 .theme svg {
   width: 20px;
@@ -331,21 +429,32 @@ p {
 .link:hover {
   text-decoration: underline;
 }
+.link span {
+  transition: transform 0.2s var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .link:hover span {
+    transform: translateX(3px);
+  }
+}
 
-/* Hero */
+/* Hero: copy on the left, the live demo on the right from 1180 px; stacked below that. */
 .hero {
   position: relative;
-  display: grid;
-  align-content: center;
-  min-height: min(calc(100dvh - 65px), 880px);
-  padding: clamp(40px, 5vw, 72px) 0 clamp(64px, 7vw, 96px);
+  padding: clamp(36px, 5vw, 64px) 0 clamp(56px, 7vw, 96px);
   overflow: clip;
 }
 .hero__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: clamp(32px, 4vw, 64px);
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(40px, 6vw, 64px);
+}
+.hero__copy {
+  min-width: 0;
+  max-width: 40rem;
+}
+.hero h1 {
+  max-width: 15ch;
 }
 .eyebrow {
   margin-bottom: 20px;
@@ -367,75 +476,969 @@ p {
   gap: 12px;
   margin-top: 36px;
 }
-
-/* The counter: the register's screen bleeds off the right edge, the phone stands in front,
-   a terracotta glow sits under both. */
-.stage {
-  position: relative;
-  margin: 0;
-  padding: 0 0 12% 10%;
+@media (min-width: 1180px) {
+  .hero {
+    display: grid;
+    align-content: center;
+    min-height: min(calc(100dvh - 65px), 920px);
+    padding: 36px 0 44px;
+  }
+  .hero__grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: center;
+  }
+  .hero h1 {
+    max-width: none;
+    font-size: clamp(2.8rem, 1.2rem + 2.6vw, 4rem);
+  }
 }
-.stage::before {
+
+/* ---------------------------------------------------------------------------------------------
+   The live demo. Three devices on one counter: the register's screen at the back, the waiter's
+   phone in front of it on the left, the kitchen tablet on the right. Under 760 px it becomes the
+   waiter's phone alone (floor and tab as two views) with the kitchen tablet below it.
+   --------------------------------------------------------------------------------------------- */
+.pos {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 800px;
+  margin-inline: auto;
+  perspective: 1600px;
+}
+.pos::before {
   content: '';
   position: absolute;
-  inset: 20% -40% -25% -10%;
-  background: radial-gradient(50% 45% at 50% 70%, var(--glow), transparent 75%);
+  inset: 25% -20% -10% -10%;
+  background: radial-gradient(50% 45% at 50% 60%, var(--glow), transparent 75%);
   filter: blur(24px);
   pointer-events: none;
 }
-.stage__screen {
+@media (min-width: 1180px) {
+  .pos {
+    margin-inline: 0;
+  }
+}
+
+/* Device frames: a dark bezel around the app's own background. */
+.dev {
   position: relative;
-  width: 128%;
-  padding: 8px;
-  border-radius: var(--radius);
   background: var(--frame);
   border: 1px solid var(--frame-line);
-  box-shadow: var(--shadow);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    var(--shadow);
+  transform-style: preserve-3d;
 }
-.stage__screen img {
+.dev__glass {
+  position: relative;
+  overflow: hidden;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+.dev--screen {
+  border-radius: 18px;
+  padding: 8px;
+}
+.dev--screen .dev__glass {
+  border-radius: 11px;
+}
+.dev--phone {
+  border-radius: 34px;
+  padding: 7px;
+}
+.dev--phone .dev__glass {
+  border-radius: 27px;
+}
+.dev__ear {
+  position: absolute;
+  z-index: 2;
+  top: 13px;
+  left: 50%;
+  width: 54px;
+  height: 6px;
+  margin-left: -27px;
+  border-radius: 6px;
+  background: var(--frame);
+}
+.dev--tablet {
+  border-radius: 22px;
+  padding: 9px;
+}
+.dev--tablet .dev__glass {
+  border-radius: 14px;
+}
+
+@media (min-width: 760px) {
+  .pos {
+    display: grid;
+    grid-template-columns: minmax(0, 38fr) minmax(0, 62fr);
+    column-gap: 20px;
+  }
+  .pos__screen {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    margin-left: 8%;
+  }
+  .pos__phone {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    margin-top: -64px;
+    z-index: 2;
+  }
+  .pos__kitchen {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 22px;
+  }
+  .pos__foot {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: end;
+  }
+  .pos .phone__floor {
+    display: none;
+  }
+}
+@media (max-width: 759px) {
+  .pos {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .pos__screen {
+    display: none;
+  }
+  .pos__phone {
+    width: min(100%, 360px);
+  }
+  .pos__kitchen,
+  .pos__foot {
+    width: 100%;
+    max-width: 520px;
+  }
+  .order-empty {
+    display: none !important;
+  }
+  .pos[data-view='floor'] .order {
+    display: none !important;
+  }
+  .pos[data-view='order'] .phone__floor {
+    display: none;
+  }
+}
+
+/* The app inside the frames: the product's type sizes, 10 px controls, 12 px plates. */
+.app {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.3;
+}
+.app button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.app :focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
   border-radius: 8px;
 }
-.stage__phone {
+.app__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 14px 8px;
+}
+.app__title {
+  margin-right: auto;
+  font: 700 16px/1 var(--display);
+  font-stretch: 85%;
+}
+.app__legend {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 14px;
+  height: 56px;
+  padding: 6px 14px 0;
+  font-size: 11.5px;
+  color: var(--app-text-2);
+}
+.legend::before {
+  content: '';
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border-radius: 3px;
+  border: 1px solid var(--app-line-strong);
+  border-left-width: 3px;
+  background: var(--app-surface);
+}
+.legend--open::before {
+  border-color: var(--app-line);
+  border-left-color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+.legend--ready::before {
+  border-color: var(--app-success);
+  background: var(--app-accent-soft);
+}
+
+/* Segmented choice (areas, stations, bill mode): the chosen one is charcoal on cream. */
+.seg-app {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 0;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  background: var(--app-surface);
+  min-inline-size: 0;
+}
+.seg-app--wide {
+  display: flex;
+  margin: 0 12px 8px;
+}
+.seg-app--wide > * {
+  flex: 1;
+}
+.seg-app__btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--app-text-2);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.seg-app__btn[aria-pressed='true'],
+.seg-app__btn.is-on,
+.seg-app__btn:has(input:checked) {
+  background: var(--app-text);
+  color: var(--app-bg);
+}
+.seg-app__btn input {
   position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.seg-app__btn:has(input:focus-visible) {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+.seg-app__count {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+  font-size: 10.5px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--app-text-2);
+  white-space: nowrap;
+}
+.sync__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--app-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-success) 24%, transparent);
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.sync.is-off .sync__dot {
+  background: var(--app-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-danger) 22%, transparent);
+}
+.sync.is-busy .sync__dot {
+  background: var(--app-warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-warning) 22%, transparent);
+}
+
+/* The floor: a slip per table, its 4 px start edge saying the state, as in the app. */
+.floor {
+  list-style: none;
+  margin: 0;
+  padding: 2px 14px 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 92px;
+  align-content: start;
+  gap: 8px;
+  min-height: 206px;
+}
+.floor--phone {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 88px;
+  padding: 2px 12px 12px;
+  min-height: 292px;
+}
+.t {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--app-line);
+  border-inline-start: 4px solid var(--edge, var(--app-line));
+  border-radius: 12px;
+  background: var(--app-surface);
+  color: var(--app-text);
+  text-align: left;
+  touch-action: manipulation;
+  transition:
+    transform 0.16s var(--ease-out),
+    background-color 0.3s ease,
+    border-color 0.3s ease;
+}
+.t:active {
+  transform: scale(0.97);
+}
+.t[data-state='open'] {
+  --edge: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+.t[data-state='ready'] {
+  --edge: var(--app-success);
+  border-color: var(--app-success);
+  background: var(--app-accent-soft);
+}
+.t.is-selected {
+  box-shadow: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--app-text);
+}
+.t__name {
+  font: 700 22px/1 var(--display);
+  letter-spacing: -0.02em;
+}
+.t--pkg .t__name {
+  font-size: 16px;
+}
+.t__info {
+  display: flex;
+  flex-direction: column;
+  font-size: 11.5px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.t__sum {
+  font: 600 14px/1.25 var(--display);
+}
+.t__min,
+.t__empty {
+  color: var(--app-text-2);
+}
+.t__ready {
+  color: var(--app-success);
+  font-weight: 600;
+}
+/* A table that just turned ready rings once. */
+.t::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 15px;
+  border: 2px solid var(--app-success);
+  opacity: 0;
+  pointer-events: none;
+}
+.t.is-ping::after {
+  animation: ping 0.9s var(--ease-out);
+}
+@keyframes ping {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
+/* The waiter's phone. */
+.phone {
+  display: flex;
+  flex-direction: column;
+  height: 440px;
+}
+@media (max-width: 759px) {
+  .pos .phone {
+    height: 470px;
+  }
+}
+.phone__floor {
+  display: flex;
+  flex-direction: column;
+  padding-top: 14px;
+}
+.phone .app__bar {
+  padding-top: 12px;
+}
+.order {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.order__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 26px 12px 8px;
+}
+.order__back {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+.order__back svg {
+  width: 18px;
+  height: 18px;
+}
+.order__title {
+  min-width: 0;
+}
+.order__title strong {
+  display: block;
+  font: 700 17px/1.1 var(--display);
+  font-stretch: 85%;
+}
+.order__title span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--app-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.order__cats {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.order__cats::-webkit-scrollbar {
+  display: none;
+}
+.chip-app {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.16s var(--ease-out);
+}
+.chip-app:active {
+  transform: scale(0.96);
+}
+.chip-app[aria-pressed='true'],
+.chip-app.is-on {
+  background: var(--app-text);
+  border-color: var(--app-text);
+  color: var(--app-bg);
+}
+.order__menu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 46px;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+.dish {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 5px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-text);
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.15;
+  transition:
+    transform 0.16s var(--ease-out),
+    border-color 0.2s ease;
+}
+.dish:active {
+  transform: scale(0.96);
+}
+.dish__price {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--app-text-2);
+}
+.dish__qty {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+  font-size: 11px;
+  text-align: center;
+}
+.dish__qty.is-bump {
+  animation: bump 0.24s var(--ease-out);
+}
+@keyframes bump {
+  50% {
+    transform: scale(1.22);
+  }
+}
+.order__lines {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--app-line);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  scrollbar-width: thin;
+}
+.order__lines-empty {
+  margin: auto 0;
+  color: var(--app-text-2);
+  font-size: 12px;
+  text-align: center;
+}
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.line.is-in {
+  animation: line-in 0.32s var(--ease-out);
+}
+@keyframes line-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.line__main {
+  min-width: 0;
+}
+.line__main b {
+  font-weight: 600;
+}
+.line__note {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--app-accent);
+}
+.line__opt {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--app-text-2);
+}
+.line__side {
+  flex: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.line__sum {
+  display: block;
+  font-weight: 600;
+}
+.line__state {
+  display: block;
+  font-size: 11px;
+  color: var(--app-text-2);
+}
+.line[data-st='new'] .line__state {
+  color: var(--app-accent);
+  font-weight: 600;
+}
+.line[data-st='ready'] .line__state {
+  color: var(--app-success);
+  font-weight: 600;
+}
+.line[data-st='served'] {
+  color: var(--app-text-2);
+}
+.line__extra {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 3px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px dashed var(--app-text-2);
+  background: transparent;
+  color: var(--app-text-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+.line__extra.has-value {
+  border-style: solid;
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+}
+.order__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 16px;
+  border-top: 1px solid var(--app-line);
+  background: var(--app-surface);
+}
+.order__sum span {
+  display: block;
+  font-size: 11px;
+  color: var(--app-text-2);
+}
+.order__sum strong {
+  font: 700 19px/1.05 var(--display);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.order-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: var(--app-text-2);
+  font-size: 13.5px;
+}
+.order-empty p {
+  padding: 18px 16px;
+  border: 1px dashed var(--app-line-strong);
+  border-radius: 12px;
+}
+
+/* App buttons are 10 px plates, as in the product. */
+.btn-app {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: 600 12.5px/1 var(--sans);
+  white-space: nowrap;
+  transition:
+    transform 0.16s var(--ease-out),
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+}
+.btn-app--primary {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: var(--app-on-accent);
+}
+.btn-app:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn-app:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Kitchen tickets: a perforated slip per table and station, oldest first. */
+.tickets {
+  list-style: none;
+  margin: 0;
+  padding: 6px 12px 12px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 168px;
+  align-items: start;
+  gap: 8px;
+  height: 204px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-line-strong) transparent;
+}
+.tickets__empty {
+  position: absolute;
+  inset: 48px 0 0;
+  display: grid;
+  place-items: center;
+  color: var(--app-text-2);
+  font-size: 13px;
+}
+.tk {
+  position: relative;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 13px 10px 10px;
+  border: 1px solid var(--app-line);
+  border-inline-start: 4px solid var(--edge, var(--app-accent));
+  border-radius: 12px;
+  background: var(--app-surface);
+  mask: radial-gradient(circle 4px at 7px 0, transparent 97%, #000) 0 0 / 14px 100% repeat-x;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    opacity 0.3s ease,
+    transform 0.3s var(--ease-out);
+}
+.tk--slow {
+  --edge: var(--app-warning);
+  background: var(--app-warning-bg);
+}
+.tk--late {
+  --edge: var(--app-danger);
+}
+.tk.is-new {
+  animation: tk-in 0.45s var(--ease-out);
+}
+.tk.is-leaving {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.97);
+}
+@keyframes tk-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.97);
+  }
+}
+.tk__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.tk__title {
+  font: 700 17px/1 var(--display);
+  letter-spacing: -0.02em;
+}
+.tk__min {
+  font-size: 12px;
+  color: var(--app-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.tk--slow .tk__min {
+  color: var(--app-warning);
+  font-weight: 700;
+}
+.tk--late .tk__min {
+  color: var(--app-danger);
+  font-weight: 700;
+}
+.tk__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tk__item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--app-line);
+  background: transparent;
+  color: var(--app-text);
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+}
+button.tk__item:hover {
+  background: var(--app-bg);
+}
+.tk__note {
+  font-size: 11.5px;
+  color: var(--app-accent);
+}
+.tk__opt {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--app-text-2);
+}
+.tk__all {
+  width: 100%;
+  min-height: 34px;
+}
+
+.pos__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 0 6px;
+}
+.pos__status {
+  min-height: 2.8em;
+  max-width: 34ch;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.pos__play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    transform 0.16s var(--ease-out);
+}
+.pos__play:hover {
+  border-color: var(--text);
+}
+.pos__play:active {
+  transform: scale(0.97);
+}
+.pos__play::before {
+  content: '';
+  width: 10px;
+  height: 12px;
+  border-inline: 3px solid currentColor;
+}
+.pos__play[data-playing='false']::before {
+  border: 0;
+  width: 0;
+  height: 0;
+  border-left: 10px solid currentColor;
+  border-block: 6px solid transparent;
+}
+/* The waiter's finger during the self-playing loop. */
+.pos__finger {
+  position: absolute;
+  z-index: 4;
+  top: 0;
   left: 0;
-  bottom: 0;
-  width: 29%;
-  padding: 6px;
-  border-radius: 28px;
-  background: var(--frame);
-  border: 1px solid var(--frame-line);
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text) 60%, transparent);
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.5s var(--ease-in-out),
+    opacity 0.3s ease;
+}
+.pos__finger.is-on {
+  opacity: 1;
+}
+.pos__finger.is-press {
+  animation: finger-press 0.3s var(--ease-out);
+}
+@keyframes finger-press {
+  50% {
+    scale: 0.78;
+  }
+}
+/* A ticket on its way from the phone to the kitchen. */
+.fly {
+  position: fixed;
+  z-index: 30;
+  top: 0;
+  left: 0;
+  max-width: 190px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--app-line);
+  border-inline-start: 4px solid var(--app-accent);
+  background: var(--app-surface);
+  color: var(--app-text);
   box-shadow: var(--shadow);
+  font: 600 12px/1.3 var(--sans);
+  pointer-events: none;
+  white-space: nowrap;
 }
-.stage__phone img {
-  border-radius: 22px;
-  aspect-ratio: 390 / 760;
-  object-fit: cover;
-  object-position: top;
-}
-
-@media (max-width: 960px) {
-  .hero__grid {
-    grid-template-columns: 1fr;
-  }
-  .stage {
-    padding: 0 0 18% 14%;
-  }
-  .stage__screen {
-    width: 100%;
-  }
-  .stage__phone {
-    width: 30%;
-    border-radius: 20px;
-    padding: 4px;
-  }
-  .stage__phone img {
-    border-radius: 16px;
-  }
+.fly small {
+  display: block;
+  font-weight: 500;
+  color: var(--app-text-2);
 }
 
-/* Sections */
+/* Sections. Below the hero the browser skips laying out what is not on screen yet. */
 .section {
   padding: clamp(64px, 9vw, 120px) 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1100px;
 }
 .section--raised {
   background: var(--bg-2);
@@ -448,7 +1451,7 @@ p {
   font-size: 1.15rem;
 }
 
-/* Features: a bento with exactly six cells, three of them carrying a real screen. */
+/* Features: a bento with exactly six cells; two of them carry a slice of the app. */
 .bento {
   list-style: none;
   padding: 0;
@@ -471,7 +1474,11 @@ p {
   color: var(--text-2);
   max-width: 36em;
 }
-/* Big screen left with two text tiles stacked beside it, then the same mirrored. */
+.tile__text {
+  display: grid;
+  gap: 12px;
+}
+/* Big cell left with two text cells stacked beside it, then the same mirrored. */
 .tile--adisyon {
   grid-area: 1 / 1 / 3 / 8;
 }
@@ -490,23 +1497,92 @@ p {
 .tile--tasi {
   grid-area: 4 / 1 / 5 / 6;
 }
-.tile--shot {
-  padding-bottom: 0;
+.tile__ui {
+  margin: auto 0 0;
+  padding: 6px 14px 14px;
+  border-radius: var(--radius-inner);
+  border: 1px solid var(--app-line);
+  background: var(--app-bg);
+  color: var(--app-text);
+  box-shadow: var(--shadow-soft);
 }
-.tile--shot img {
-  margin-top: auto;
-  margin-right: -28px;
-  width: calc(100% + 28px);
-  max-width: none;
-  border-radius: var(--radius-inner) 0 0 0;
-  border: 1px solid var(--frame-line);
-  border-width: 1px 0 0 1px;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  object-position: left top;
+.mini-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--app-line);
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
 }
-.tile--hesap img {
-  object-position: 40% 30%;
+.mini-line__name {
+  font-weight: 600;
+}
+.mini-line__name em {
+  margin-left: 8px;
+  font-style: normal;
+  font-size: 0.85rem;
+  color: var(--app-accent);
+}
+.mini-line__state {
+  font-size: 0.82rem;
+  color: var(--app-text-2);
+}
+.mini-line__state.is-ready {
+  color: var(--app-success);
+  font-weight: 600;
+}
+.mini-line.is-new .mini-line__state {
+  color: var(--app-accent);
+  font-weight: 600;
+}
+.mini-line__sum {
+  font-weight: 600;
+  text-align: right;
+}
+.mini-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 14px;
+  font-size: 0.92rem;
+}
+.mini-foot b {
+  font: 700 1.2rem/1 var(--display);
+  margin-left: 6px;
+}
+.mini-pay {
+  padding: 4px 16px;
+}
+.mini-pay__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--app-line);
+  font-variant-numeric: tabular-nums;
+}
+.mini-pay__row:last-child {
+  border-bottom: 0;
+}
+.mini-pay dt {
+  color: var(--app-text-2);
+}
+.mini-pay dd {
+  margin: 0;
+  font-weight: 600;
+}
+.mini-pay__row--big dd {
+  font: 700 1.9rem/1 var(--display);
+  letter-spacing: -0.01em;
+}
+.mini-pay__change {
+  color: var(--app-success);
 }
 .tile--accent {
   background: var(--accent);
@@ -537,40 +1613,734 @@ p {
     grid-column: 1 / -1;
   }
 }
-
-/* Phone and tablet: the kitchen tablet on the left, the steps on a rail on the right. */
-.phone {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: clamp(32px, 6vw, 88px);
-  align-items: start;
+@media (max-width: 480px) {
+  .tile {
+    padding: 22px 18px;
+  }
+  .mini-line {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .mini-line__state {
+    grid-row: 2;
+  }
 }
-.phone__shot {
-  position: sticky;
-  top: 104px;
+
+/* The story: one order through the phone, the kitchen and the bill. */
+.story__title {
+  max-width: 20ch;
+}
+.story {
+  margin-top: clamp(32px, 5vw, 56px);
+}
+.story__step h3 {
+  font-size: clamp(1.7rem, 1.3rem + 1.2vw, 2.4rem);
+  transition: color 0.3s ease;
+}
+.story__step p {
+  margin-top: 14px;
+  max-width: 30em;
+  font-size: 1.12rem;
+  color: var(--text-2);
+  transition: color 0.3s ease;
+}
+.story__frame {
+  margin: 28px 0 64px;
+  display: flex;
+  justify-content: center;
+}
+.story__frame:last-child {
+  margin-bottom: 0;
+}
+.story__phone {
+  width: min(100%, 300px);
+}
+.story__phone .phone {
+  height: 520px;
+}
+.sf1 .order__lines {
+  padding-top: 10px;
+}
+.story__tablet {
+  width: min(100%, 600px);
+}
+.story__bill {
+  width: min(100%, 460px);
+}
+.sf1 {
+  position: relative;
+}
+.sf1 .order__lines {
+  overflow: hidden;
+}
+.sf1__toast {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 80px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--app-text);
+  color: var(--app-bg);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0;
+}
+.line__state--swap {
+  display: grid;
+  justify-items: end;
+}
+.line__state--swap > * {
+  grid-area: 1 / 1;
+}
+.line__state--swap .is-sent {
+  opacity: 0;
+  color: var(--app-text-2);
+  font-weight: 500;
+}
+.order__back--ghost {
+  border-color: var(--app-line);
+}
+.sf2 .tickets {
+  height: auto;
+  overflow: visible;
+  grid-auto-flow: row;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-bottom: 16px;
+}
+.tk__stamp {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--app-success-bg) 92%, transparent);
+  color: var(--app-success);
+  font: 700 15px/1.2 var(--display);
+  text-align: center;
+  opacity: 0;
+}
+@media (max-width: 560px) {
+  .sf2 .tickets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Wide screens: each step beside its device. With motion (below) the devices stay put while
+   the steps scroll past instead. */
+@media (min-width: 900px) {
+  .story {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: center;
+    gap: 56px clamp(40px, 6vw, 96px);
+  }
+  .story__frame {
+    margin: 0;
+  }
+}
+/* Wide screens with motion: the devices stay put while the three steps scroll past. */
+@media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
+  .js .story {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    column-gap: clamp(40px, 6vw, 96px);
+  }
+  .js .story__step {
+    grid-column: 1;
+    position: relative;
+    min-height: 74vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: 28px;
+  }
+  .js .story__step[data-step='0'] {
+    grid-row: 1;
+  }
+  .js .story__step[data-step='1'] {
+    grid-row: 2;
+  }
+  .js .story__step[data-step='2'] {
+    grid-row: 3;
+  }
+  .js .story__step::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 96px;
+    margin-top: -48px;
+    border-radius: 2px;
+    background: var(--line);
+    transition: background-color 0.3s ease;
+  }
+  .js .story__step:not(.is-active) h3,
+  .js .story__step:not(.is-active) p {
+    color: var(--muted);
+  }
+  .js .story__step.is-active::before {
+    background: var(--accent-text);
+  }
+  .js .story__frame {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    position: sticky;
+    top: max(88px, calc(50vh - 270px));
+    align-self: start;
+    height: 560px;
+    margin: 0;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(18px) scale(0.985);
+    transition:
+      opacity 0.45s var(--ease-out),
+      transform 0.6s var(--ease-out),
+      visibility 0s linear 0.45s;
+  }
+  .js .story__frame.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+  }
+  /* The bill stays reachable by keyboard: focusing it brings its step into view. */
+  .js .story__frame--live {
+    visibility: visible;
+    pointer-events: none;
+  }
+  .js .story__frame--live.is-active {
+    pointer-events: auto;
+  }
+  .js .story__phone .phone {
+    height: 530px;
+  }
+}
+
+/* The bill split. */
+.bill {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+.bill__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bill__head strong {
+  font: 700 19px/1.1 var(--display);
+  font-stretch: 85%;
+}
+.bill__head span {
+  font-size: 12.5px;
+  color: var(--app-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.bill__mode {
   margin: 0;
 }
-.tablet {
+.bill__hint {
+  font-size: 12.5px;
+  color: var(--app-text-2);
+}
+.bill__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 252px;
+}
+.bill__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.bill__line label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.15s ease;
+}
+.bill__line label:hover {
+  background: var(--app-surface);
+}
+.bill__line input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--app-accent);
+}
+.bill__line .bill__name {
+  flex: 1;
+  min-width: 0;
+}
+.bill__line .bill__amount {
+  font-weight: 600;
+}
+.bill__line.is-paid label {
+  color: var(--app-text-2);
+  cursor: default;
+}
+.bill__line.is-paid .bill__name {
+  text-decoration: line-through;
+}
+.bill__tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--app-success-bg);
+  color: var(--app-success);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 4px;
+}
+.stepper__label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.stepper__ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+}
+.stepper__btn {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  transition: transform 0.16s var(--ease-out);
+}
+.stepper__btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.stepper__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.stepper__value {
+  min-width: 34px;
+  text-align: center;
+  font: 700 20px/1 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+.bill__each {
+  font-size: 13px;
+  color: var(--app-text-2);
+}
+.bill__each strong {
+  display: block;
+  margin-top: 4px;
+  font: 700 34px/1 var(--display);
+  letter-spacing: -0.01em;
+  color: var(--app-text);
+  font-variant-numeric: tabular-nums;
+}
+.shares {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px dashed var(--app-line-strong);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text-2);
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+.share.is-paid {
+  border-style: solid;
+  border-color: var(--app-success);
+  background: var(--app-success-bg);
+  color: var(--app-success);
+}
+.bill__pay {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--app-line);
+}
+.bill__due span {
+  display: block;
+  font-size: 12px;
+  color: var(--app-text-2);
+}
+.bill__due strong {
+  font: 700 28px/1.05 var(--display);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.bill__due strong.is-bump {
+  animation: bump 0.24s var(--ease-out);
+}
+.bill__method {
+  grid-column: 1;
+  justify-self: start;
+}
+.bill__pay [data-pay] {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  min-height: 48px;
+  padding: 0 18px;
+  font-size: 13.5px;
+}
+.bill__left {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--app-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.bill__left strong {
+  color: var(--app-text);
+}
+.bill__left.is-done strong {
+  color: var(--app-success);
+}
+.bill__reset {
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--app-accent);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The outage demo. */
+.offline__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(32px, 6vw, 88px);
+  align-items: center;
+}
+.offline__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 14px;
+  margin-top: 32px;
+}
+.net {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 0 20px 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    transform 0.16s var(--ease-out);
+}
+.net:hover {
+  border-color: var(--text);
+}
+.net:active {
+  transform: scale(0.97);
+}
+.net__track {
+  position: relative;
+  flex: none;
+  width: 54px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--olive);
+  transition: background-color 0.25s ease;
+}
+.net__thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fbf5ea;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  transform: translateX(22px);
+  transition: transform 0.28s var(--ease-out);
+}
+.net[aria-checked='false'] .net__track {
+  background: var(--accent-text);
+}
+.net[aria-checked='false'] .net__thumb {
+  transform: none;
+  background: var(--bg);
+}
+.flow {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(48px, 0.3fr) minmax(0, 1.15fr);
+  align-items: center;
+}
+.flow .dev--phone {
+  border-radius: 30px;
+  padding: 6px;
+}
+.flow .dev--phone .dev__glass {
+  border-radius: 24px;
+}
+.flow__phone,
+.flow__kitchen {
+  min-width: 0;
+  align-self: center;
+}
+.node {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  height: 330px;
+  padding: 16px;
+}
+.node--phone {
+  padding-top: 30px;
+}
+.node--kitchen {
+  height: 290px;
+}
+.queue__empty {
+  margin-top: 4px;
   padding: 12px;
-  border-radius: 22px;
-  background: var(--frame);
-  border: 1px solid var(--frame-line);
-  box-shadow: var(--shadow);
-  transform: rotate(-2deg);
+  border: 1px dashed var(--app-line-strong);
+  border-radius: 10px;
+  color: var(--app-text-2);
+  font-size: 12.5px;
+  line-height: 1.4;
 }
-.tablet img {
-  border-radius: var(--radius-inner);
+.node__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
 }
-.phone__shot figcaption {
-  margin-top: 24px;
-  color: var(--muted);
+.node__name {
+  font: 650 1.15rem/1.1 var(--display);
+  font-stretch: 85%;
+}
+.node__sync {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--app-success);
+}
+.node__sync.is-wait {
+  color: var(--app-warning);
+}
+.node__count {
   font-size: 0.95rem;
+  color: var(--app-text-2);
 }
+.node__count b {
+  display: inline-block;
+  min-width: 1ch;
+  margin-right: 4px;
+  font: 700 2.4rem/1 var(--display);
+  letter-spacing: -0.02em;
+  color: var(--app-text);
+  font-variant-numeric: tabular-nums;
+  vertical-align: -3px;
+}
+.node__count b.is-bump {
+  animation: bump 0.26s var(--ease-out);
+}
+.flow[data-online='false'] .node--phone .node__count b {
+  color: var(--app-accent);
+}
+.queue,
+.arrived {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+}
+.queue__item,
+.arrived__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--app-line);
+  border-inline-start: 4px solid var(--app-warning);
+  background: var(--app-surface);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.queue__item span:last-child,
+.arrived__item span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--app-text-2);
+}
+.arrived__item {
+  border-inline-start-color: var(--app-accent);
+}
+.queue__item.is-in,
+.arrived__item.is-in {
+  animation: tk-in 0.4s var(--ease-out);
+}
+.queue__item.is-gone {
+  opacity: 0;
+  transform: translateX(16px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.wire {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.wire__line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  margin-top: -1px;
+  overflow: hidden;
+}
+.wire__line::before {
+  content: '';
+  position: absolute;
+  inset: 0 -16px;
+  background: repeating-linear-gradient(90deg, var(--olive) 0 10px, transparent 10px 16px);
+}
+.flow[data-online='false'] .wire__line::before {
+  background: repeating-linear-gradient(90deg, var(--line-strong) 0 4px, transparent 4px 12px);
+}
+.wire__cut {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--accent-text);
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity 0.25s ease,
+    transform 0.3s var(--ease-out);
+}
+.wire__cut svg {
+  width: 20px;
+  height: 20px;
+}
+.flow[data-online='false'] .wire__cut {
+  opacity: 1;
+  transform: none;
+}
+@media (max-width: 1023px) {
+  .offline__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .flow {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 56px auto;
+    justify-items: center;
+  }
+  .flow__phone {
+    width: min(100%, 280px);
+  }
+  .flow__kitchen {
+    width: 100%;
+  }
+  .node {
+    height: 290px;
+  }
+  .node--kitchen {
+    height: 250px;
+  }
+  .wire {
+    width: 100%;
+    height: 56px;
+  }
+  .wire__line {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    width: 2px;
+    height: auto;
+    margin: 0 0 0 -1px;
+  }
+  .wire__line::before {
+    inset: -16px 0;
+    background: repeating-linear-gradient(180deg, var(--olive) 0 10px, transparent 10px 16px);
+  }
+  .flow[data-online='false'] .wire__line::before {
+    background: repeating-linear-gradient(180deg, var(--line-strong) 0 4px, transparent 4px 12px);
+  }
+}
+
+/* Setup: three steps on a line, a vertical rail on phones. */
 .steps {
   list-style: none;
   counter-reset: step;
   padding: 0;
-  margin: 40px 0 0;
+  margin: 48px 0 0 18px;
   display: grid;
   gap: 32px;
   border-left: 1px solid var(--line-strong);
@@ -599,27 +2369,30 @@ p {
   margin-top: 8px;
   color: var(--text-2);
 }
+@media (min-width: 900px) {
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 40px;
+    margin: 64px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line-strong);
+  }
+  .steps li {
+    padding: 44px 0 0;
+  }
+  .steps li::before {
+    left: 0;
+    top: -18px;
+  }
+}
 .note {
-  margin-top: 36px;
+  margin-top: 40px;
+  max-width: 44em;
   padding: 16px 20px;
   border-radius: var(--radius);
   border-left: 3px solid var(--olive);
   background: var(--olive-soft);
   color: var(--text);
-}
-@media (max-width: 900px) {
-  .phone {
-    grid-template-columns: 1fr;
-  }
-  .phone__shot {
-    position: static;
-  }
-  .tablet {
-    transform: none;
-  }
-  .steps {
-    margin-left: 18px;
-  }
 }
 
 /* Download: three rows, not three cards. */
@@ -750,8 +2523,10 @@ p {
   color: var(--accent-text);
 }
 
-/* Motion: one entrance in the hero (copy, then the screen, then the phone joins it) and a soft
-   rise as tiles and steps scroll in. All of it is skipped when the visitor asks for less motion. */
+/* Motion: one entrance in the hero (copy, then the register, then the phone and the kitchen
+   join it), a soft rise as tiles and steps scroll in, the story's devices playing their step,
+   and the live line in the outage demo. All of it is skipped when the visitor asks for less
+   motion; the page then shows each state still. */
 @media (prefers-reduced-motion: no-preference) {
   .hero__copy > * {
     animation: rise 0.7s var(--ease) both;
@@ -765,11 +2540,22 @@ p {
   .hero__copy > :nth-child(4) {
     animation-delay: 0.24s;
   }
-  .stage__screen {
+  .pos__screen {
     animation: rise 0.9s var(--ease) 0.2s both;
   }
-  .stage__phone {
-    animation: phone-in 0.9s var(--ease) 0.6s both;
+  .pos__phone {
+    animation: phone-in 0.9s var(--ease) 0.55s both;
+  }
+  .pos__kitchen {
+    animation: rise 0.9s var(--ease) 0.75s both;
+  }
+  .pos__foot {
+    animation: fade 0.6s ease 1.1s both;
+  }
+  .dev[data-tilt] {
+    transition:
+      rotate 0.5s var(--ease-out),
+      translate 0.5s var(--ease-out);
   }
   @supports (animation-timeline: view()) {
     .reveal {
@@ -778,13 +2564,76 @@ p {
       animation-range: entry 0% entry 35%;
     }
   }
+
+  .wire__line::before {
+    animation: dash 0.9s linear infinite;
+  }
+  .flow[data-online='false'] .wire__line::before {
+    animation: none;
+  }
+
+  /* Story, phone: the lines arrive, the send button is pressed, the states turn. */
+  .story__frame.is-active .sf1 .line {
+    animation: line-in 0.4s var(--ease-out) both;
+  }
+  .story__frame.is-active .sf1 .line:nth-child(1) {
+    animation-delay: 0.25s;
+  }
+  .story__frame.is-active .sf1 .line:nth-child(2) {
+    animation-delay: 0.5s;
+  }
+  .story__frame.is-active .sf1 .line:nth-child(3) {
+    animation-delay: 0.75s;
+  }
+  .story__frame.is-active .sf1 .line:nth-child(4) {
+    animation-delay: 1s;
+  }
+  .story__frame.is-active .sf1__send {
+    animation:
+      press 0.32s var(--ease-out) 1.6s,
+      dim 0.3s ease 1.95s forwards;
+  }
+  .story__frame.is-active .sf1__toast {
+    animation: toast 2.4s var(--ease-out) 1.8s both;
+  }
+  .story__frame.is-active .line__state--swap .is-new {
+    animation: fade-out 0.3s ease 1.85s both;
+  }
+  .story__frame.is-active .line__state--swap .is-sent {
+    animation: fade 0.3s ease 1.95s both;
+  }
+  /* Story, kitchen: a new ticket lands, the late one is cleared and goes back to the waiter. */
+  .story__frame.is-active .sf2__new {
+    animation: tk-in 0.5s var(--ease-out) 0.3s both;
+  }
+  .story__frame.is-active .sf2__tick {
+    animation: tick 0.3s ease both;
+  }
+  .story__frame.is-active .sf2__tick:nth-child(1) {
+    animation-delay: 1.1s;
+  }
+  .story__frame.is-active .sf2__tick:nth-child(2) {
+    animation-delay: 1.45s;
+  }
+  .story__frame.is-active .sf2__all {
+    animation: press 0.32s var(--ease-out) 1.9s;
+  }
+  .story__frame.is-active .sf2__done .tk__stamp {
+    animation: fade 0.35s ease 2.15s both;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
   .btn,
-  .faq summary::after {
+  .theme,
+  .faq summary::after,
+  .t,
+  .tk,
+  .net__thumb,
+  .wire__cut,
+  .pos__finger {
     transition: none;
   }
 }
@@ -807,4 +2656,71 @@ p {
     opacity: 1;
     transform: none;
   }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dim {
+  to {
+    opacity: 0.45;
+  }
+}
+@keyframes press {
+  50% {
+    transform: scale(0.94);
+  }
+}
+@keyframes toast {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  12%,
+  80% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes tick {
+  to {
+    opacity: 0.45;
+    text-decoration: line-through;
+  }
+}
+@keyframes dash {
+  to {
+    transform: translateX(16px);
+  }
+}
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+  .wire__line::before {
+    animation-name: dash-y;
+  }
+}
+@keyframes dash-y {
+  to {
+    transform: translateY(16px);
+  }
+}
+
+/* Theme switch: the new theme opens as a circle from the button (where View Transitions exist
+   and motion is welcome); site.js sets the circle's centre. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
