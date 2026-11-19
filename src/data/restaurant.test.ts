@@ -10,6 +10,9 @@ import {
   kitchenTickets,
   listDiningTables,
   markReady,
+  markServed,
+  readyToServe,
+  recallLast,
   mergeTabs,
   moveTab,
   openTab,
@@ -122,6 +125,38 @@ describe('a table’s tab', () => {
     expect(await kitchenTickets(db, 'kitchen')).toEqual([]);
     // Nothing new is left to send.
     expect(await sendTab(db, tab.id, later(11))).toBe(0);
+  });
+
+  it('marks ready lines served, so the floor stops counting them, and takes it back', async () => {
+    const { kebab, water } = await menu();
+    const tab = await openTab(db, { label: 'Paket 1', ...waiter }, at);
+    const plate = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000 }, waiter, at);
+    await addTabItem(db, tab.id, water, { qtyMilli: 1000 }, waiter, at);
+    await sendTab(db, tab.id, later(1));
+    // Water is ready on sending; the kebab is not yet.
+    expect((await readyToServe(db, tab.id)).map((item) => item.name)).toEqual(['Su']);
+    await markReady(db, [plate.id], later(10));
+    const ready = await readyToServe(db, tab.id);
+    expect(ready).toHaveLength(2);
+
+    expect(
+      await markServed(
+        db,
+        ready.map((item) => item.id),
+        true,
+        later(12),
+      ),
+    ).toBe(2);
+    expect(await readyToServe(db, tab.id)).toEqual([]);
+    expect((await db.tabItems.get(plate.id))?.servedAt).toBe(later(12).toISOString());
+    // A served line is not the kitchen's to recall any more.
+    expect(await recallLast(db, 'kitchen', later(13))).toBe(0);
+
+    await markServed(db, [plate.id], false, later(14));
+    expect((await readyToServe(db, tab.id)).map((item) => item.name)).toEqual(['Adana kebap']);
+    // Synced as a field of the line, like every other change to it.
+    const ops = await pendingOps(db);
+    expect(ops.some((op) => op.kind === 'patch' && 'servedAt' in (op.patch ?? {}))).toBe(true);
   });
 
   it('drops a line not yet sent, and voids a sent one only with a reason', async () => {

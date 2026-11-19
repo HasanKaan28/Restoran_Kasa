@@ -11,6 +11,7 @@ import {
   changeNewItem,
   fireHeld,
   itemLabel,
+  markServed,
   payTabItems,
   removeNewItem,
   repeatItem,
@@ -98,6 +99,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   const paid = (items ?? []).filter((item) => item.paidSaleId);
   const shown = (items ?? []).filter((item) => !item.paidSaleId);
   const billRequested = tab?.record.billRequestedAt !== undefined;
+  const toServe = shown.filter((item) => item.status === 'ready' && !item.servedAt);
   const amounts = new Map((bill?.lines ?? []).map((line) => [line.item.id, line.amount]));
   const taken = new Map<string, number>();
   for (const item of fresh) {
@@ -187,6 +189,17 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
     void runner.run();
   }
 
+  async function serve(ids: readonly string[], served: boolean) {
+    const count = await markServed(db, ids, served, new Date());
+    if (served && count > 0) {
+      toast.show(`${count} kalem servis edildi.`, {
+        label: 'Geri al',
+        onAction: () => void markServed(db, ids, false, new Date()),
+      });
+    }
+    void runner.run();
+  }
+
   async function toggleBillRequest() {
     setSheet(null);
     if (billRequested) {
@@ -218,6 +231,13 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
       total={bill?.total ?? 0}
       fresh={fresh.length}
       held={held.length}
+      ready={toServe.length}
+      onServe={() =>
+        void serve(
+          toServe.map((item) => item.id),
+          true,
+        )
+      }
       canPay={session.can('sell')}
       sendLabel={sendLabel}
       onSend={() => void send()}
@@ -362,6 +382,10 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           canTreat={session.can('discount')}
           canVoid={session.can('voidSale')}
           onClose={() => setLineFor(null)}
+          onServe={(served) => {
+            setLineFor(null);
+            void serve([lineFor.id], served);
+          }}
           onRepeat={() => {
             setLineFor(null);
             void repeatItem(db, lineFor.id, waiter, new Date()).catch(() =>
@@ -435,19 +459,24 @@ function OrderActions({
   total,
   fresh,
   held,
+  ready,
   canPay,
   sendLabel,
   onSend,
   onFire,
+  onServe,
   onPay,
 }: {
   total: number;
   fresh: number;
   held: number;
+  /** Ready lines not yet taken to the table. */
+  ready: number;
   canPay: boolean;
   sendLabel: string;
   onSend(): void;
   onFire(): void;
+  onServe(): void;
   onPay(): void;
 }): JSX.Element {
   return (
@@ -461,6 +490,11 @@ function OrderActions({
           {formatTRY(total)}
         </span>
       </div>
+      {ready > 0 ? (
+        <Button className="border-success/50 text-success" onClick={onServe}>
+          {`Hazırları servis et (${ready})`}
+        </Button>
+      ) : null}
       {held > 0 ? <Button onClick={onFire}>{`Bekleyenleri gönder (${held})`}</Button> : null}
       <Button
         variant="primary"
@@ -563,6 +597,7 @@ function LineSheet({
   canTreat,
   canVoid,
   onClose,
+  onServe,
   onRepeat,
   onTreat,
   onVoid,
@@ -573,6 +608,7 @@ function LineSheet({
   canTreat: boolean;
   canVoid: boolean;
   onClose(): void;
+  onServe(served: boolean): void;
   onRepeat(): void;
   onTreat(): void;
   onVoid(): void;
@@ -585,6 +621,15 @@ function LineSheet({
       {...(amount !== undefined ? { description: formatTRY(amount) } : {})}
     >
       <div className="flex flex-col gap-2">
+        {item.status === 'ready' ? (
+          item.servedAt ? (
+            <Button onClick={() => onServe(false)}>Servis edilmedi</Button>
+          ) : (
+            <Button variant="primary" onClick={() => onServe(true)}>
+              Servis edildi
+            </Button>
+          )
+        ) : null}
         <Button disabled={!canRepeat} onClick={onRepeat}>
           Tekrarla
         </Button>

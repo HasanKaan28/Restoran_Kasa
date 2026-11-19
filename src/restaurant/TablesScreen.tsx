@@ -8,8 +8,10 @@ import { useSession } from '@/app/session';
 import {
   cancelBillRequest,
   listDiningTables,
+  markServed,
   openTab,
   openTabs,
+  readyToServe,
   requestBill,
   tabBill,
 } from '@/data/restaurant';
@@ -56,7 +58,10 @@ export function TablesScreen(): JSX.Element {
     const totals = new Map<string, { total: number; ready: number }>();
     for (const tab of tabs) {
       const bill = await tabBill(db, tab.id);
-      const ready = bill.lines.filter((line) => line.item.status === 'ready').length;
+      // Ready and not yet taken to the table: what the waiter still has to carry.
+      const ready = bill.lines.filter(
+        (line) => line.item.status === 'ready' && !line.item.servedAt,
+      ).length;
       totals.set(tab.id, { total: bill.total, ready });
     }
     const seated: FloorTable[] = tables.map((table) => {
@@ -103,6 +108,18 @@ export function TablesScreen(): JSX.Element {
       toast.show('Hesap istendi.');
     }
     setActions(null);
+    void runner.run();
+  }
+
+  async function serveReady(tab: TabRecord) {
+    const ready = await readyToServe(db, tab.id);
+    const ids = ready.map((item) => item.id);
+    await markServed(db, ids, true, new Date());
+    setActions(null);
+    toast.show(`${ids.length} kalem servis edildi.`, {
+      label: 'Geri al',
+      onAction: () => void markServed(db, ids, false, new Date()),
+    });
     void runner.run();
   }
 
@@ -293,6 +310,11 @@ export function TablesScreen(): JSX.Element {
                 >
                   Taşı / birleştir
                 </Button>
+                {actions.ready > 0 ? (
+                  <Button onClick={() => void serveReady(actions.tab as TabRecord)}>
+                    {`Hazırları servis et (${actions.ready})`}
+                  </Button>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -320,7 +342,7 @@ export function TablesScreen(): JSX.Element {
           }}
         />
       ) : null}
-      <ToastRegion message={toast.message} />
+      <ToastRegion message={toast.message} action={toast.action} onDismiss={toast.dismiss} />
     </>
   );
 }

@@ -51,12 +51,12 @@ export function OrderLines({
         const details = (
           <div className={`min-w-0 flex-1 ${voided ? 'line-through opacity-60' : ''}`}>
             <p className="leading-snug font-semibold break-words">{itemLabel(item)}</p>
-            <p className={`text-sm font-medium ${STATUS_TONES[item.status] ?? 'text-text-2'}`}>
-              {`${formatLineQty(item.qtyMilli, item.unit)} · ${
-                item.status === 'new' && item.hold
-                  ? 'Bekletiliyor'
-                  : STATUS_LABELS[item.status]
-              }${item.complimentary ? ' · İkram' : ''}`}
+            <p
+              className={`text-sm font-medium ${item.servedAt ? 'text-text-2' : (STATUS_TONES[item.status] ?? 'text-text-2')}`}
+            >
+              {`${formatLineQty(item.qtyMilli, item.unit)} · ${statusLabel(item)}${
+                item.complimentary ? ' · İkram' : ''
+              }`}
             </p>
             {item.options ? (
               <p className="text-sm text-text-2">{item.options.join(' · ')}</p>
@@ -163,4 +163,14 @@ export function OrderLines({
       })}
     </ul>
   );
+}
+
+function statusLabel(item: TabItemRecord): string {
+  if (item.status === 'new' && item.hold) {
+    return 'Bekletiliyor';
+  }
+  if (item.status === 'ready' && item.servedAt) {
+    return 'Servis edildi';
+  }
+  return STATUS_LABELS[item.status];
 }

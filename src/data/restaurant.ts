@@ -473,6 +473,37 @@ export async function markReady(db: MarketDb, itemIds: readonly string[], at: Da
   });
 }
 
+/** The lines of a tab that are ready and not yet taken to the table, oldest first. */
+export async function readyToServe(db: MarketDb, tabId: string): Promise<TabItemRecord[]> {
+  return (await db.tabItems.where('tabId').equals(tabId).toArray())
+    .filter((item) => item.status === 'ready' && !item.servedAt && !item.paidSaleId)
+    .sort((a, b) => (a.readyAt ?? '').localeCompare(b.readyAt ?? '') || a.id.localeCompare(b.id));
+}
+
+/**
+ * Marks ready lines as taken to the table (or takes that back), so "hazır" on the floor means
+ * waiting to be served. A field of the line, synced like the kitchen's "ready". Returns how many
+ * changed.
+ */
+export async function markServed(
+  db: MarketDb,
+  itemIds: readonly string[],
+  served: boolean,
+  at: Date,
+): Promise<number> {
+  return db.transaction('rw', db.tabItems, db.outbox, async () => {
+    let changed = 0;
+    for (const id of itemIds) {
+      const item = await requireItem(db, id);
+      if (item.status === 'ready' && Boolean(item.servedAt) !== served) {
+        await patch(db, 'tabItems', id, { servedAt: served ? at.toISOString() : null }, at);
+        changed += 1;
+      }
+    }
+    return changed;
+  });
+}
+
 export type KitchenTicket = {
   tab: TabRecord;
   /** The table's name, or the takeaway order's label. */
@@ -552,7 +583,7 @@ export async function allDayCounts(
 export async function recallLast(db: MarketDb, station: Station, at: Date): Promise<number> {
   return db.transaction('rw', db.tabItems, db.outbox, async () => {
     const ready = (await db.tabItems.where('status').equals('ready').toArray()).filter(
-      (item) => item.station === station && item.readyAt && !item.paidSaleId,
+      (item) => item.station === station && item.readyAt && !item.servedAt && !item.paidSaleId,
     );
     const last = ready.reduce<string | undefined>(
       (latest, item) =>

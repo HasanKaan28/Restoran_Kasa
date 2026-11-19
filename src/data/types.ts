@@ -477,6 +477,8 @@ export type TabItemRecord = {
   orderedAt: string;
   sentAt?: string;
   readyAt?: string;
+  /** Taken to the table: a ready line the floor no longer counts as waiting to be served. */
+  servedAt?: string;
   createdAt: string;
   updatedAt: string;
 };
