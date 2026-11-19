@@ -1,6 +1,6 @@
 # Restoran Kasa
 
-**Site:** https://hasankaan28.github.io/Restoran_Kasa/ · **Web app:** https://hasankaan28.github.io/Restoran_Kasa/app/ · **Downloads:** [latest release](https://github.com/HasanKaan28/Restoran_Kasa/releases/latest)
+**Site:** https://restoran-kasa-nine.vercel.app/ · **Web app:** https://restoran-kasa-nine.vercel.app/app/ · **GitHub Pages copy:** [site](https://hasankaan28.github.io/Restoran_Kasa/) / [app](https://hasankaan28.github.io/Restoran_Kasa/app/) · **Downloads:** [latest release](https://github.com/HasanKaan28/Restoran_Kasa/releases/latest)
 
 An offline-first restaurant and bar point of sale: tables, tabs (adisyon), a kitchen and bar
 screen, and the register behind them. It is built on [Market Kasa v2](https://github.com/HasanKaan28/Market_Kasa)
@@ -8,8 +8,8 @@ screen, and the register behind them. It is built on [Market Kasa v2](https://gi
 codebase runs as a web app (PWA, for waiters' phones and tablets), a Windows desktop app
 (Electron) and an Android app (Capacitor).
 
-> **Status:** `1.0.0`. Syncs through the same Supabase project as Market Kasa (migration
-> `supabase/migrations/20261114120000_restaurant_tables.sql` applied).
+> **Status:** `1.0.0`. Restoran Kasa has its own Supabase project. The GitHub Pages copy still
+> runs against the old shared project for existing registers, until they are moved.
 
 ## What it does
 
@@ -143,6 +143,9 @@ Two workflows run on GitHub Actions:
   `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. On a tag it opens a **draft** release
   (the tag must equal `v` + the version in `package.json`) and deploys the web app to GitHub
   Pages; a run by hand deploys only with **deploy_pages** ticked.
+
+The Vercel project builds `main` on every push with its own environment variables (site at `/`,
+app at `/app/`); GitHub Pages is still deployed only from `v2-release.yml`.
 
 No workflow deploys anything on a push to a branch. v1's workflow, which redeployed Pages and
 republished releases on every push to `main`, is removed on `v2`.
