@@ -94,7 +94,7 @@ export function UpdateSection({
           href={APK_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex min-h-11 items-center rounded-control bg-accent px-4 font-medium text-white"
+          className="inline-flex min-h-11 items-center rounded-control bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover"
         >
           {`Yeni sürümü indir (${latest})`}
         </a>

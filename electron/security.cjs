@@ -9,7 +9,8 @@ const APP_HOST = 'market';
  */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self'",
+  // The one inline script, index.html's theme setter, by its hash (security.test.ts checks it).
+  "script-src 'self' 'sha256-oFKhc3JUbuqVl40H0gwKWMueGsnIH0xanJF0EW3TQu4='",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",

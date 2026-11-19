@@ -88,7 +88,7 @@ export function CameraScanner({
           muted
           playsInline
           aria-label="Kamera görüntüsü"
-          className="aspect-[4/3] w-full rounded-control bg-text object-cover"
+          className="aspect-[4/3] w-full rounded-control bg-media object-cover"
         />
         {state.kind === 'failed' ? (
           <p role="alert" className="font-medium text-danger">

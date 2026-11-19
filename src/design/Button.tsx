@@ -10,7 +10,7 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'border-transparent bg-accent text-white hover:bg-accent-hover',
+  primary: 'border-transparent bg-accent text-on-accent hover:bg-accent-hover',
   secondary: 'border-line bg-surface text-text hover:border-line-strong',
   ghost: 'border-transparent bg-transparent text-text-2 hover:bg-surface',
   danger: 'border-transparent bg-danger-bg text-danger hover:border-danger',

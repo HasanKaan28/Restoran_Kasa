@@ -35,7 +35,7 @@ export function Dialog({
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-text/40" />
+        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <RadixDialog.Content
           {...describedBy}
           onCloseAutoFocus={(event) => {

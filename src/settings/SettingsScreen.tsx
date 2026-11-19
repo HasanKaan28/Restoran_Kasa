@@ -8,6 +8,7 @@ import { useSession } from '@/app/session';
 import { listStaff } from '@/data/staff';
 import { Button, ToastRegion, useToast } from '@/design';
 import { ROLE_LABELS } from '@/domain/permissions';
+import { AppearanceSection } from './AppearanceSection';
 import { AuditLog } from './AuditLog';
 import { BackupSection } from './BackupSection';
 import { TablesSection } from '@/restaurant/TablesSection';
@@ -47,6 +48,7 @@ export function SettingsScreen(): JSX.Element {
         <MarketSection onDone={(message) => done(message)} />
         <TablesSection onDone={(message) => done(message)} />
         <RegisterSection />
+        <AppearanceSection />
         <ReceiptSection onDone={(message) => done(message)} />
         <UpdateSection version={APP_VERSION} {...updateTarget()} />
         <BackupSection />

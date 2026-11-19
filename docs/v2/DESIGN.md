@@ -305,7 +305,11 @@ Bütün olaylar ortak olarak `id`, `market_id`, `device_id`, `staff_id`, `occurr
 ## 13. Arayüz ve tasarım sistemi
 - **Yön (K12):** Sade ve profesyonel.
   - Yazı tipi: IBM Plex Sans (metin), IBM Plex Mono (kısayol etiketleri).
-  - Renkler: zemin `#F5F6F8`, yüzey `#FFFFFF`, çizgi `#E2E5EA` / `#CDD2DA`, metin `#12151A` / `#4A5260`, soluk `#5B6472`, vurgu kobalt `#2350D8`, başarı `#0F6B49`, tehlike `#B42318`.
+  - Renkler (`src/design/tokens.css`): adisyon-çatal işaretinin kiremidi tek vurgu, yüzeyler sıcak nötr, "hazır" zeytin yeşili.
+    - Açık: zemin `#F4EEE6`, yüzey `#FFFDF9`, çizgi `#E5DCCF` / `#BFB09D`, metin `#2A2420` / `#584D45`, soluk `#6B5F56`, vurgu kiremit `#A9432B`, başarı `#4A6120`, uyarı `#7C5400`, tehlike `#B0173E`.
+    - Koyu (loş salonda saatlerce açık kalır; saf siyah yok): zemin `#1C1815`, yüzey `#27221E`, çizgi `#3A322C` / `#62564C`, metin `#ECE3D6` / `#C8BBAC`, soluk `#A89A8A`, vurgu `#DB7C5E`, başarı `#A9C46B`, uyarı `#E6B95B`, tehlike `#F38BA8`.
+    - Her metin rengi üzerinde durduğu yüzeyde WCAG AA (4.5:1); `tokens.test.ts` denetler. Fiş ve yazdırılan her şey temadan bağımsız beyaz üstüne siyahtır.
+  - Tema cihaz başına seçilir (Ayarlar → Görünüm: Sistem / Açık / Koyu, `rk.theme`); varsayılan Sistem.
   - Köşe: kontroller 8 px, kısayol etiketleri 6 px, durum rozetleri tam yuvarlak.
 - **Token'lar:**
   - Renk: anlamsal (zemin, yüzey, çizgi, metin, soluk, vurgu, başarı, uyarı, tehlike).

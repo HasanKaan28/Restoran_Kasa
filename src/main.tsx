@@ -8,6 +8,7 @@ import '@fontsource/ibm-plex-mono/500.css';
 import { Capacitor } from '@capacitor/core';
 import { App } from './app/App';
 import { loadDeviceSettings } from './app/device';
+import { applyTheme, followStoredTheme, loadTheme } from './app/theme';
 import { CustomerDisplay } from './display/CustomerDisplay';
 import './app/app.css';
 import { registerServiceWorker } from './pwa/register';
@@ -16,6 +17,11 @@ const container = document.getElementById('root');
 if (!container) {
   throw new Error('Root element #root is missing');
 }
+
+// index.html already set the theme before the first paint; this also points the browser bar at
+// it, and keeps every window of the app (the customer display too) on the register's choice.
+applyTheme(loadTheme());
+followStoredTheme();
 
 // The customer display is its own window: it shows the register's cart and starts nothing else.
 const customerDisplay = window.location.hash === '#/display';

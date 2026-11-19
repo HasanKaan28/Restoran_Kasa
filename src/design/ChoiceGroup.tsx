@@ -31,7 +31,7 @@ export function ChoiceGroup<T extends string | number>({
         {options.map((option) => (
           <label
             key={String(option.value)}
-            className="flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-line-strong px-3 text-center font-medium has-checked:border-accent has-checked:bg-accent has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+            className="flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-line-strong px-3 text-center font-medium has-checked:border-accent has-checked:bg-accent has-checked:text-on-accent has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
           >
             <input
               type="radio"

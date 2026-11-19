@@ -1,8 +1,18 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import security from './security.cjs';
 
 const { CONTENT_SECURITY_POLICY, devToolsAllowed, isExternalUrl, resolveAppFile } = security;
+
+/**
+ * index.html's one inline script, which sets the theme before the first paint, as the browser
+ * hashes it: with its line breaks read as LF, whatever the checkout keeps on disk.
+ */
+const themeScript = /<script>([\s\S]*?)<\/script>/
+  .exec(readFileSync('index.html', 'utf8'))?.[1]
+  ?.replaceAll('\r\n', '\n');
 
 const dist = path.resolve('/opt/market-kasa/dist');
 
@@ -56,7 +66,10 @@ describe('electron security', () => {
     );
     expect(directives).toEqual({
       'default-src': "'self'",
-      'script-src': "'self'",
+      // The theme script and nothing else inline: allowed by its hash, so an edit must update it.
+      'script-src': `'self' 'sha256-${createHash('sha256')
+        .update(themeScript ?? '')
+        .digest('base64')}'`,
       'style-src': "'self' 'unsafe-inline'",
       'img-src': "'self' data: blob:",
       'font-src': "'self' data:",

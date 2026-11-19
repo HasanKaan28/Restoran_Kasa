@@ -71,7 +71,7 @@ export function ReceiptSettingsDialog({
             {WIDTHS.map((width) => (
               <label
                 key={width}
-                className="flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-line-strong font-medium has-checked:border-accent has-checked:bg-accent has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+                className="flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-line-strong font-medium has-checked:border-accent has-checked:bg-accent has-checked:text-on-accent has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
               >
                 <input
                   type="radio"

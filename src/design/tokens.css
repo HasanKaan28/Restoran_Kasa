@@ -1,27 +1,94 @@
-/* Direction K12 "sade ve profesyonel" (docs/v2/DESIGN.md §13). */
+/*
+ * Restoran Kasa's colours (docs/v2/DESIGN.md §13): the adisyon-fork mark's terracotta as the one
+ * accent, warm neutrals for every surface, olive for "ready". Light values live here; the dark
+ * ones below replace them on screen only, so anything printed stays black on white.
+ * Every text colour passes WCAG AA on the surfaces it sits on (tokens.test.ts checks the pairs).
+ */
 @theme {
-  --color-bg: #f5f6f8;
-  --color-surface: #ffffff;
-  --color-line: #e2e5ea;
-  --color-line-strong: #cdd2da;
-  --color-text: #12151a;
-  --color-text-2: #4a5260;
-  --color-muted: #5b6472;
-  --color-accent: #2350d8;
-  --color-accent-hover: #1a3fae;
-  --color-success: #0f6b49;
-  --color-success-bg: #e8f6ef;
-  --color-danger: #b42318;
-  --color-danger-bg: #fdecea;
-  /* Uyarı (§13): 5.8:1 on its background. */
-  --color-warning: #8a5300;
-  --color-warning-bg: #fdf3e1;
+  --color-bg: #f4eee6;
+  --color-surface: #fffdf9;
+  --color-line: #e5dccf;
+  --color-line-strong: #bfb09d;
+  --color-text: #2a2420;
+  --color-text-2: #584d45;
+  --color-muted: #6b5f56;
+  --color-accent: #a9432b;
+  --color-accent-hover: #8c3420;
+  /* Text and icons on an accent fill. */
+  --color-on-accent: #fffaf3;
+  --color-success: #4a6120;
+  --color-success-bg: #ecf0da;
+  --color-danger: #b0173e;
+  --color-danger-bg: #fbe7eb;
+  --color-warning: #7c5400;
+  --color-warning-bg: #faefd5;
+  /* The veil behind a dialog. */
+  --color-scrim: rgb(42 36 32 / 0.45);
+  /* Behind a camera picture: dark in both themes. */
+  --color-media: #2a2420;
 
   --radius-control: 8px;
   --radius-chip: 6px;
 
   --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+/*
+ * Dark: warm charcoal, never pure black, and cream text a step below white, for screens that stay
+ * on for a whole service. The two blocks hold the same values (tokens.test.ts keeps them equal):
+ * one for a device set to "Koyu", one for "Sistem" on a device whose system is dark.
+ */
+@media screen {
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --color-bg: #1c1815;
+    --color-surface: #27221e;
+    --color-line: #3a322c;
+    --color-line-strong: #62564c;
+    --color-text: #ece3d6;
+    --color-text-2: #c8bbac;
+    --color-muted: #a89a8a;
+    --color-accent: #db7c5e;
+    --color-accent-hover: #e59276;
+    --color-on-accent: #1c1815;
+    --color-success: #a9c46b;
+    --color-success-bg: #2a331b;
+    --color-danger: #f38ba8;
+    --color-danger-bg: #3f1d25;
+    --color-warning: #e6b95b;
+    --color-warning-bg: #3a2d14;
+    --color-scrim: rgb(0 0 0 / 0.6);
+    --color-media: #0f0d0b;
+  }
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-bg: #1c1815;
+    --color-surface: #27221e;
+    --color-line: #3a322c;
+    --color-line-strong: #62564c;
+    --color-text: #ece3d6;
+    --color-text-2: #c8bbac;
+    --color-muted: #a89a8a;
+    --color-accent: #db7c5e;
+    --color-accent-hover: #e59276;
+    --color-on-accent: #1c1815;
+    --color-success: #a9c46b;
+    --color-success-bg: #2a331b;
+    --color-danger: #f38ba8;
+    --color-danger-bg: #3f1d25;
+    --color-warning: #e6b95b;
+    --color-warning-bg: #3a2d14;
+    --color-scrim: rgb(0 0 0 / 0.6);
+    --color-media: #0f0d0b;
+  }
 }
 
 @layer base {

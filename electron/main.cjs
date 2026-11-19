@@ -4,6 +4,7 @@ const {
   Menu,
   dialog,
   ipcMain,
+  nativeTheme,
   net,
   protocol,
   screen,
@@ -35,6 +36,12 @@ const gotTheLock = app.requestSingleInstanceLock();
 
 let mainWindow = null;
 
+// The window's colour until the page paints: the app's background in the system's scheme
+// (src/design/tokens.css), so a dark desktop does not flash light on start.
+function windowBackground() {
+  return nativeTheme.shouldUseDarkColors ? '#1C1815' : '#F4EEE6';
+}
+
 async function serveApp(request) {
   const file = resolveAppFile(DIST, request.url);
   if (!file) {
@@ -54,7 +61,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 650,
     title: 'Restoran Kasa',
-    backgroundColor: '#F5F6F8',
+    backgroundColor: windowBackground(),
     webPreferences: {
       contextIsolation: true,
       sandbox: true,
@@ -81,7 +88,7 @@ function createWindow() {
           fullscreen,
           title: 'Restoran Kasa · Müşteri ekranı',
           autoHideMenuBar: true,
-          backgroundColor: '#F5F6F8',
+          backgroundColor: windowBackground(),
           webPreferences: {
             contextIsolation: true,
             sandbox: true,

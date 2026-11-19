@@ -180,7 +180,7 @@ function ReceiptDetail({
         {status && status.returned.size > 0 ? <Badge tone="muted">İade var</Badge> : null}
         {status?.conflict ? <Badge tone="danger">Kontrol gerekli</Badge> : null}
       </div>
-      <div className="max-h-[50dvh] overflow-y-auto rounded-control border border-line bg-white">
+      <div className="max-h-[50dvh] overflow-y-auto rounded-control border border-line bg-bg py-2">
         <ReceiptView model={model} paperWidth={settings.paperWidth} />
       </div>
       <div className="grid grid-cols-2 gap-2">
