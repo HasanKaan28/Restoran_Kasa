@@ -1,6 +1,6 @@
 # Restoran Kasa
 
-**Site:** https://restoran-kasa-nine.vercel.app/ · **Web app:** https://restoran-kasa-nine.vercel.app/app/ · **GitHub Pages copy:** [site](https://hasankaan28.github.io/Restoran_Kasa/) / [app](https://hasankaan28.github.io/Restoran_Kasa/app/) · **Downloads:** [latest release](https://github.com/HasanKaan28/Restoran_Kasa/releases/latest)
+**Site:** https://restorankasa.vercel.app/ · **Web app:** https://restorankasa.vercel.app/app/ · **GitHub Pages copy:** [site](https://hasankaan28.github.io/Restoran_Kasa/) / [app](https://hasankaan28.github.io/Restoran_Kasa/app/) · **Downloads:** [latest release](https://github.com/HasanKaan28/Restoran_Kasa/releases/latest)
 
 An offline-first restaurant and bar point of sale: tables, tabs (adisyon), a kitchen and bar
 screen, and the register behind them. It is built on [Market Kasa v2](https://github.com/HasanKaan28/Market_Kasa)
