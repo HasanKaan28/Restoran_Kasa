@@ -19,8 +19,8 @@ describe('platform configuration', () => {
       scope: './',
       display: 'standalone',
       orientation: 'any',
-      theme_color: '#F5F6F8',
-      background_color: '#F5F6F8',
+      theme_color: '#F4EEE6',
+      background_color: '#F4EEE6',
     });
     expect(read('index.html')).toContain('<link rel="manifest" href="./manifest.json" />');
   });
