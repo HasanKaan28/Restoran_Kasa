@@ -1,21 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#3060F0"/>
-      <stop offset="1" stop-color="#1D43C2"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" fill="url(#bg)"/>
-  <g transform="translate(56.3 56.3) scale(0.78)">
-<!-- The register's slot -->
-  <rect x="92" y="108" width="328" height="52" rx="26" fill="#0F1B4D"/>
-  <!-- The receipt, torn at the bottom -->
-  <path fill="#FFFFFF" d="M138 134h236v258l-19.7 16-19.6-16-19.7 16-19.7-16-19.6 16-19.7-16-19.7 16-19.6-16-19.7 16-19.7-16-19.6 16L138 392z"/>
-  <!-- The slot's lip over the paper -->
-  <rect x="92" y="108" width="328" height="34" rx="17" fill="#0F1B4D"/>
-  <!-- Lines on the receipt; the last, darker one is the total -->
-  <rect x="174" y="190" width="164" height="22" rx="11" fill="#C7D3F7"/>
-  <rect x="174" y="236" width="118" height="22" rx="11" fill="#C7D3F7"/>
-  <rect x="174" y="300" width="164" height="34" rx="17" fill="#2350D8"/>
+  <!-- Full bleed; the mark stays inside the 80% safe circle. -->
+  <rect width="512" height="512" fill="#A9432B"/>
+  <g transform="translate(256 256) scale(0.96)">
+    <!-- The slip's shadow, cast down and to the right -->
+    <path fill="#7F2F1B" transform="translate(5 6) rotate(16) translate(-66 -28)" d="M0 0H45C54-2 57-12 57-26C57-36 32-40 32-62C32-72 35.5-78 35.5-86V-155A7.5 7.5 0 0 1 50.5-155V-89A5.5 5.5 0 0 0 61.5-89V-155A7.5 7.5 0 0 1 76.5-155V-89A5.5 5.5 0 0 0 87.5-89V-155A7.5 7.5 0 0 1 102.5-155V-89A5.5 5.5 0 0 0 113.5-89V-155A7.5 7.5 0 0 1 128.5-155V-86C128.5-78 132-72 132-62C132-40 107-36 107-26C107-12 110-2 119 0H148V203L129.5 185 111 203 92.5 185 74 203 55.5 185 37 203 18.5 185 0 203Z"/>
+    <g transform="rotate(16) translate(-66 -28)">
+      <!-- The adisyon slip; its top edge rises into a fork, torn at the bottom -->
+      <path fill="#F6ECDC" d="M0 0H45C54-2 57-12 57-26C57-36 32-40 32-62C32-72 35.5-78 35.5-86V-155A7.5 7.5 0 0 1 50.5-155V-89A5.5 5.5 0 0 0 61.5-89V-155A7.5 7.5 0 0 1 76.5-155V-89A5.5 5.5 0 0 0 87.5-89V-155A7.5 7.5 0 0 1 102.5-155V-89A5.5 5.5 0 0 0 113.5-89V-155A7.5 7.5 0 0 1 128.5-155V-86C128.5-78 132-72 132-62C132-40 107-36 107-26C107-12 110-2 119 0H148V203L129.5 185 111 203 92.5 185 74 203 55.5 185 37 203 18.5 185 0 203Z"/>
+      <!-- Three order lines and the olive dot -->
+      <path fill="none" stroke="#2A2420" stroke-width="13" stroke-linecap="round" d="M31 73H118M31 103H118M31 133H92"/>
+      <circle cx="120" cy="32" r="9" fill="#6E7A3A"/>
+    </g>
   </g>
 </svg>

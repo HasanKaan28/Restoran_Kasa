@@ -25,7 +25,7 @@ describe('platform configuration', () => {
     expect(read('index.html')).toContain('<link rel="manifest" href="./manifest.json" />');
   });
 
-  it('gives every platform the Market Kasa icon', () => {
+  it('gives every platform the Restoran Kasa icon', () => {
     const manifest = JSON.parse(read('public/manifest.json')) as {
       icons: { src: string; sizes: string; purpose: string }[];
     };
@@ -50,6 +50,6 @@ describe('platform configuration', () => {
     expect(read('site/index.html')).toContain('src="img/logo.svg"');
     expect(read('public/logo.svg')).toBe(read('branding/mark.svg'));
     expect(read('site/img/logo.svg')).toBe(read('branding/mark.svg'));
-    expect(read('android/app/src/main/res/values/ic_launcher_background.xml')).toContain('#2852E6');
+    expect(read('android/app/src/main/res/values/ic_launcher_background.xml')).toContain('#A9432B');
   });
 });

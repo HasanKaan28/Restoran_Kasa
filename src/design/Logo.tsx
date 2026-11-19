@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-/** The Market Kasa mark (public/logo.svg, from branding/mark.svg); decorative beside a name. */
+/** The Restoran Kasa mark (public/logo.svg, from branding/mark.svg); decorative beside a name. */
 export function Logo({ className = 'size-9' }: { className?: string }): JSX.Element {
   return (
     <img
