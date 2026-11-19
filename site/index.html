@@ -8,9 +8,18 @@
       name="description"
       content="Masalar, adisyon, mutfak ve bar ekranı, hesap bölme. Garsonun telefonu, mutfağın tableti ve kasa aynı masaları görür; internet gitse de satış durmaz. Windows, Android ve tarayıcı."
     />
-    <meta name="theme-color" content="#F5F6F8" />
+    <meta name="theme-color" content="#F6ECDC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1C1815" media="(prefers-color-scheme: dark)" />
+    <script>
+      // Apply a saved theme before the first paint, so the page never flashes the other one.
+      try {
+        var t = localStorage.getItem('rk.site.theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    </script>
     <link rel="icon" href="img/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="img/apple-touch-icon.png" />
+    <link rel="preload" href="fonts/bricolage-grotesque-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -18,13 +27,24 @@
     <header class="top">
       <div class="wrap top__row">
         <a class="brand" href="./" aria-label="Restoran Kasa ana sayfa">
-          <img class="brand__mark" src="img/logo.svg" width="34" height="34" alt="" />
+          <!-- The logo: one image, swap the file to change it everywhere (favicon included). -->
+          <img class="brand__mark" src="img/logo.svg" width="32" height="32" alt="" />
           <span>Restoran Kasa</span>
         </a>
         <nav aria-label="Sayfa">
           <a href="#ozellikler">Özellikler</a>
           <a href="#telefon">Garson ve mutfak</a>
           <a href="#sss">Sorular</a>
+          <button class="theme" type="button" aria-label="Koyu tema" aria-pressed="false" hidden>
+            <!-- Tabler Icons (MIT): moon and sun. -->
+            <svg class="theme__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+            </svg>
+            <svg class="theme__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />
+            </svg>
+          </button>
           <a class="btn btn--small" href="#indir">İndir</a>
         </nav>
       </div>
@@ -34,78 +54,78 @@
       <section class="hero">
         <div class="wrap hero__grid">
           <div class="hero__copy">
-            <p class="eyebrow">Sürüm 1.0 · Restoran, ocakbaşı, kafe ve bar için</p>
-            <h1>Sipariş masada alınır, mutfakta anında görünür.</h1>
+            <p class="eyebrow">Restoran, ocakbaşı, kafe ve bar için</p>
+            <h1>Sipariş masada alınır, mutfakta <em>anında</em> görünür.</h1>
             <p class="lead">
-              Garson siparişi telefondan alır, mutfak ve bar kendi ekranında görür, hazır olunca garsona
-              haber gider. Hesap tek seferde ya da kişi kişi alınır. İnternet gitse de satış durmaz;
-              gelince bütün cihazlar eşitlenir.
+              Garson siparişi telefondan alır, mutfak ve bar kendi ekranında görür. İnternet gitse de
+              satış durmaz.
             </p>
             <div class="cta">
               <a class="btn btn--primary" href="https://github.com/HasanKaan28/Restoran_Kasa/releases/latest/download/Restoran-Kasa-Setup.exe">
                 Windows için indir
               </a>
-              <a class="btn" href="https://github.com/HasanKaan28/Restoran_Kasa/releases/latest/download/Restoran-Kasa.apk">
+              <a class="btn btn--line" href="https://github.com/HasanKaan28/Restoran_Kasa/releases/latest/download/Restoran-Kasa.apk">
                 Android için indir
               </a>
-              <a class="btn btn--ghost" href="app/">Tarayıcıda aç →</a>
+              <a class="link" href="app/">Tarayıcıda aç <span aria-hidden="true">→</span></a>
             </div>
-            <p class="fine">Ücretsiz deneme · Kurulum 2 dakika · Türkçe</p>
           </div>
 
-          <figure class="hero__shot">
-            <div class="window">
-              <div class="window__bar" aria-hidden="true"><i></i><i></i><i></i></div>
+          <!-- The page's anchor: the register and the waiter's phone on one counter, lit from below. -->
+          <figure class="stage">
+            <div class="stage__screen">
               <img
                 src="img/masalar.png"
                 width="1440"
                 height="900"
+                fetchpriority="high"
                 alt="Masalar ekranı: salon ve bahçe masaları, dolu masalarda adisyon toplamı, açık kalma süresi ve hazır bekleyen kalemler."
               />
             </div>
-            <!-- The page's anchor: an adisyon, the slip every restaurant knows. -->
-            <div class="receipt" aria-hidden="true">
-              <p class="receipt__head">OCAKBAŞI LEZZET<br />Masa 3 · 2 kişi</p>
-              <dl>
-                <div><dt>Masalar</dt><dd>✓</dd></div>
-                <div><dt>Mutfak ekranı</dt><dd>✓</dd></div>
-                <div><dt>Hesap bölme</dt><dd>✓</dd></div>
-                <div><dt>İkram</dt><dd>✓</dd></div>
-                <div><dt>İnternetsiz</dt><dd>✓</dd></div>
-              </dl>
-              <p class="receipt__total"><span>TOPLAM</span><span>₺1.070,00</span></p>
-              <p class="receipt__foot">Afiyet olsun</p>
+            <div class="stage__phone">
+              <img
+                src="img/telefon.png"
+                width="390"
+                height="844"
+                alt="Telefonda adisyon: ızgara kategorisi, ürünler ve altta toplam, Gönder ve Hesap."
+              />
             </div>
           </figure>
         </div>
       </section>
 
-      <section id="ozellikler" class="band">
+      <section id="ozellikler" class="section">
         <div class="wrap">
           <h2>Bir akşam serviste olan her şey</h2>
           <p class="section-lead">Büyük düğmeler, az ekran, hızlı sipariş. Garson ilk akşam öğrenir.</p>
-          <ul class="features">
-            <li>
-              <h3>Masalar</h3>
-              <p>Salon, bahçe, teras. Her masada adisyon toplamı, kaç dakikadır açık olduğu ve servise hazır bekleyenler; hazırı olan masa yeşil çerçevelenir.</p>
+          <ul class="bento">
+            <li class="tile tile--shot tile--adisyon reveal">
+              <div class="tile__text">
+                <h3>Adisyon</h3>
+                <p>Kategorili menü ve arama, notlu sipariş (acısız, az pişmiş), aynı yemeğe ikinci dokunuşta adet artar. Tek tuşla mutfağa ve bara gönderilir.</p>
+              </div>
+              <img src="img/adisyon.png" width="1440" height="900" loading="lazy" alt="Adisyon ekranı: solda kategorili menü, sağda masanın siparişi, durumları ve ikram; altta kalan tutar, Gönder ve Hesap." />
             </li>
-            <li>
-              <h3>Adisyon</h3>
-              <p>Kategorili menü ve arama, notlu sipariş (acısız, az pişmiş), aynı yemeğe ikinci dokunuşta adet artar. Tek tuşla mutfağa ve bara gönderilir.</p>
-            </li>
-            <li>
+            <li class="tile tile--accent tile--mutfak reveal">
               <h3>Mutfak ve bar ekranı</h3>
               <p>Her istasyon yalnız kendi siparişini görür, masa masa ve en çok bekleyen en üstte; 15 dakikayı geçen kırmızı. Dokununca hazır, garsonun ekranına düşer.</p>
             </li>
-            <li>
-              <h3>Hesap</h3>
-              <p>Hepsi birden ya da kalem kalem bölerek; kişi başı tutar, nakitte para üstü, kart. Her ödeme fiş olur, gün sonu (Z) ve raporlara geçer.</p>
+            <li class="tile tile--masalar reveal">
+              <h3>Masalar</h3>
+              <p>Salon, bahçe, teras. Her masada adisyon toplamı, kaç dakikadır açık olduğu ve servise hazır bekleyenler; hazırı olan masa yeşil çerçevelenir.</p>
             </li>
-            <li>
+            <li class="tile tile--shot tile--hesap reveal">
+              <div class="tile__text">
+                <h3>Hesap</h3>
+                <p>Hepsi birden ya da kalem kalem bölerek; kişi başı tutar, nakitte para üstü, kart. Her ödeme fiş olur, gün sonu (Z) ve raporlara geçer.</p>
+              </div>
+              <img src="img/hesap.png" width="1440" height="900" loading="lazy" alt="Hesap penceresi: kalemler seçilerek bölünüyor, kişi başı tutar ve ödeme yolu." />
+            </li>
+            <li class="tile tile--ikram reveal">
               <h3>İkram ve iptal</h3>
               <p>Yetkili kişi ikram yapar ya da nedenini yazarak iptal eder. Herkes kendi PIN'iyle girer, her değişiklik kayıtta kalır.</p>
             </li>
-            <li>
+            <li class="tile tile--tasi reveal">
               <h3>Taşı, birleştir, paket</h3>
               <p>Masayı boş masaya taşıyın ya da iki masanın adisyonunu birleştirin. Paket siparişler masasız açılır, aynı mutfağa düşer.</p>
             </li>
@@ -113,100 +133,95 @@
         </div>
       </section>
 
-      <section class="shots">
-        <div class="wrap shots__grid">
-          <figure>
-            <img src="img/adisyon.png" width="1440" height="900" loading="lazy" alt="Adisyon ekranı: solda kategorili menü, sağda masanın siparişi, durumları ve ikram; altta kalan tutar, Gönder ve Hesap." />
-            <figcaption>Adisyon: menüden dokun, not ekle, mutfağa gönder.</figcaption>
-          </figure>
-          <figure>
-            <img src="img/mutfak.png" width="1440" height="900" loading="lazy" alt="Mutfak ekranı: masa masa bekleyen siparişler, notları ve bekleme süreleri." />
-            <figcaption>Mutfak: en çok bekleyen en üstte; dokun, hazır.</figcaption>
-          </figure>
-          <figure>
-            <img src="img/hesap.png" width="1440" height="900" loading="lazy" alt="Hesap penceresi: kalemler seçilerek bölünüyor, kişi başı tutar ve ödeme yolu." />
-            <figcaption>Hesap: kalem kalem böl, kişi başı gör, nakit ya da kart.</figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section id="telefon" class="band band--split">
+      <section id="telefon" class="section section--raised">
         <div class="wrap phone">
+          <figure class="phone__shot">
+            <div class="tablet">
+              <img src="img/mutfak.png" width="1440" height="900" loading="lazy" alt="Mutfak ekranı: masa masa bekleyen siparişler, notları ve bekleme süreleri." />
+            </div>
+            <figcaption>Mutfaktaki tablet: en çok bekleyen en üstte; dokun, hazır.</figcaption>
+          </figure>
           <div class="phone__copy">
             <h2>Garsonun telefonu, mutfağın tableti, kasa: aynı masalar</h2>
             <ol class="steps">
-              <li>
+              <li class="reveal">
                 <h3>Kasayı kurun</h3>
                 <p>Kasa bilgisayarında “Restoran kur” ile kendi e-postanızla işletmenizi açın, Ayarlar → Masalar'dan masaları ekleyin, Menü'de her ürünün mutfakta mı barda mı hazırlandığını seçin.</p>
               </li>
-              <li>
+              <li class="reveal">
                 <h3>Garsonu ve mutfağı bağlayın</h3>
                 <p>Telefona Android uygulamasını kurun ya da tarayıcıda açıp ana ekrana ekleyin; aynı e-posta ve şifreyle “Restorana giriş yap”. Mutfaktaki tablette Mutfak / Bar ekranını açın.</p>
               </li>
-              <li>
+              <li class="reveal">
                 <h3>Servise başlayın</h3>
                 <p>Garsonun gönderdiği sipariş mutfakta belirir, “hazır” garsona döner, hesap kasada ya da masada alınır. İnternet kesilirse her cihaz çalışmayı sürdürür; gelince eşitlenir.</p>
               </li>
             </ol>
             <p class="note">Şifre telefonda ya da kasada saklanmaz. Kaybolan bir cihazı işletme sahibi kapatabilir.</p>
           </div>
-          <figure class="phone__shot">
-            <div class="device">
-              <img src="img/telefon.png" width="390" height="844" loading="lazy" alt="Telefonda adisyon: ızgara kategorisi, ürünler ve altta toplam, Gönder ve Hesap." />
-            </div>
-          </figure>
         </div>
       </section>
 
-      <section id="indir" class="download">
+      <section id="indir" class="section">
         <div class="wrap">
-          <h2>İndirin</h2>
-          <div class="download__grid">
-            <article class="card">
+          <div class="download__head">
+            <h2>İndirin</h2>
+            <p>Restoranınızın hesabını açın, kurulum 2 dakika. Türkçe.</p>
+          </div>
+          <div class="platforms">
+            <article class="platform">
               <h3>Windows</h3>
-              <p>Kasa bilgisayarı için. Fişi yazıcıya doğrudan basar.</p>
+              <div class="platform__body">
+                <p>Kasa bilgisayarı için. Fişi yazıcıya doğrudan basar.</p>
+                <p class="fine">“Bilgisayarınız korundu” uyarısında <b>Ek bilgi → Yine de çalıştır</b>. Yeni sürümleri kendisi indirip kurar.</p>
+              </div>
               <a class="btn btn--primary" href="https://github.com/HasanKaan28/Restoran_Kasa/releases/latest/download/Restoran-Kasa-Setup.exe">Kurulumu indir (.exe)</a>
-              <p class="fine">“Bilgisayarınız korundu” uyarısında <b>Ek bilgi → Yine de çalıştır</b>. Yeni sürümleri kendisi indirip kurar.</p>
             </article>
-            <article class="card">
+            <article class="platform">
               <h3>Android</h3>
-              <p>Garsonun telefonu ya da mutfağın tableti.</p>
+              <div class="platform__body">
+                <p>Garsonun telefonu ya da mutfağın tableti.</p>
+                <p class="fine">Telefon sorarsa bu kaynaktan yüklemeye izin verin. Yeni sürüm eskisinin üstüne kurulur, veriler kalır.</p>
+              </div>
               <a class="btn btn--primary" href="https://github.com/HasanKaan28/Restoran_Kasa/releases/latest/download/Restoran-Kasa.apk">Uygulamayı indir (.apk)</a>
-              <p class="fine">Telefon sorarsa bu kaynaktan yüklemeye izin verin. Yeni sürüm eskisinin üstüne kurulur, veriler kalır.</p>
             </article>
-            <article class="card">
+            <article class="platform">
               <h3>Tarayıcı</h3>
-              <p>iPhone, iPad ya da herhangi bir bilgisayar. Kurulum yok.</p>
-              <a class="btn" href="app/">Restoran Kasa'yı aç</a>
-              <p class="fine">Safari'de “Ana Ekrana Ekle”, Chrome'da “Yükle” ile uygulama gibi açılır ve internetsiz de çalışır.</p>
+              <div class="platform__body">
+                <p>iPhone, iPad ya da herhangi bir bilgisayar. Kurulum yok.</p>
+                <p class="fine">Safari'de “Ana Ekrana Ekle”, Chrome'da “Yükle” ile uygulama gibi açılır ve internetsiz de çalışır.</p>
+              </div>
+              <a class="btn btn--line" href="app/">Restoran Kasa'yı aç</a>
             </article>
           </div>
         </div>
       </section>
 
-      <section id="sss" class="band">
+      <section id="sss" class="section section--raised">
         <div class="wrap faq">
           <h2>Sorular</h2>
-          <details>
-            <summary>İnternet kesilirse ne olur?</summary>
-            <p>Her cihaz sipariş almaya ve satış yapmaya devam eder; işlemler önce cihaza yazılır. İnternet yokken mutfak tableti yeni siparişi göremez; internet gelince hepsi kendiliğinden gönderilir.</p>
-          </details>
-          <details>
-            <summary>Ürün mutfakta mı barda mı hazırlanır, nasıl seçerim?</summary>
-            <p>Menü'de ürünü açın, “Hazırlandığı yer” Mutfak, Bar ya da Hazırlanmaz olsun. Hazırlanmayanlar (şişe su gibi) gönderilince hazır sayılır.</p>
-          </details>
-          <details>
-            <summary>Hesabı kişi kişi bölebilir miyim?</summary>
-            <p>Evet. Hesap penceresinde her kişinin yediklerini seçip ödemesini alın; kalanlar masada açık kalır. İsterseniz kişi sayısını yazın, kişi başı tutar görünür.</p>
-          </details>
-          <details>
-            <summary>Verilerim nerede duruyor?</summary>
-            <p>Her cihazda bir kopyası, bir de işletmenin sunucusunda. Her işletme yalnız kendi verisini görür; Ayarlar → Yedek'ten tek dosya halinde yedek alabilirsiniz.</p>
-          </details>
-          <details>
-            <summary>Güncelleme nasıl yapılır?</summary>
-            <p>Windows sürümü yeni sürümü kendisi indirir ve kurar. Android'de Ayarlar → Güncelleme'de indirme bağlantısı çıkar. Tarayıcı sürümü kendini günceller.</p>
-          </details>
+          <div class="faq__list">
+            <details>
+              <summary>İnternet kesilirse ne olur?</summary>
+              <p>Her cihaz sipariş almaya ve satış yapmaya devam eder; işlemler önce cihaza yazılır. İnternet yokken mutfak tableti yeni siparişi göremez; internet gelince hepsi kendiliğinden gönderilir.</p>
+            </details>
+            <details>
+              <summary>Ürün mutfakta mı barda mı hazırlanır, nasıl seçerim?</summary>
+              <p>Menü'de ürünü açın, “Hazırlandığı yer” Mutfak, Bar ya da Hazırlanmaz olsun. Hazırlanmayanlar (şişe su gibi) gönderilince hazır sayılır.</p>
+            </details>
+            <details>
+              <summary>Hesabı kişi kişi bölebilir miyim?</summary>
+              <p>Evet. Hesap penceresinde her kişinin yediklerini seçip ödemesini alın; kalanlar masada açık kalır. İsterseniz kişi sayısını yazın, kişi başı tutar görünür.</p>
+            </details>
+            <details>
+              <summary>Verilerim nerede duruyor?</summary>
+              <p>Her cihazda bir kopyası, bir de işletmenin sunucusunda. Her işletme yalnız kendi verisini görür; Ayarlar → Yedek'ten tek dosya halinde yedek alabilirsiniz.</p>
+            </details>
+            <details>
+              <summary>Güncelleme nasıl yapılır?</summary>
+              <p>Windows sürümü yeni sürümü kendisi indirir ve kurar. Android'de Ayarlar → Güncelleme'de indirme bağlantısı çıkar. Tarayıcı sürümü kendini günceller.</p>
+            </details>
+          </div>
         </div>
       </section>
     </main>
@@ -217,5 +232,38 @@
         <a href="https://github.com/HasanKaan28/Restoran_Kasa/releases">Tüm sürümler</a>
       </div>
     </footer>
+    <script>
+      // Theme switch. Pressed means dark. Choosing what the system already shows forgets the
+      // saved choice, so the page follows the system again.
+      (function () {
+        var root = document.documentElement;
+        var button = document.querySelector('.theme');
+        var system = window.matchMedia('(prefers-color-scheme: dark)');
+        var metas = document.querySelectorAll('meta[name="theme-color"]');
+        function current() {
+          return root.getAttribute('data-theme') || (system.matches ? 'dark' : 'light');
+        }
+        function sync() {
+          var dark = current() === 'dark';
+          button.setAttribute('aria-pressed', String(dark));
+          button.title = dark ? 'Açık temaya geç' : 'Koyu temaya geç';
+          for (var i = 0; i < metas.length; i++) metas[i].content = dark ? '#1C1815' : '#F6ECDC';
+        }
+        button.addEventListener('click', function () {
+          var next = current() === 'dark' ? 'light' : 'dark';
+          var followsSystem = next === (system.matches ? 'dark' : 'light');
+          if (followsSystem) root.removeAttribute('data-theme');
+          else root.setAttribute('data-theme', next);
+          try {
+            if (followsSystem) localStorage.removeItem('rk.site.theme');
+            else localStorage.setItem('rk.site.theme', next);
+          } catch (e) {}
+          sync();
+        });
+        if (system.addEventListener) system.addEventListener('change', sync);
+        button.hidden = false;
+        sync();
+      })();
+    </script>
   </body>
 </html>
