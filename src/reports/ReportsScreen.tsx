@@ -1,11 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Download, Printer } from 'lucide-react';
+import { Download, MoonStar, Printer } from 'lucide-react';
 import { useId, useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { useMarketSettings } from '@/app/marketSettings';
 import { useSession } from '@/app/session';
 import { AppShell } from '@/app/AppShell';
-import { Button, ChoiceGroup, SelectField, TextField } from '@/design';
+import { Button, ChoiceGroup, SelectField, TextField, ToastRegion, useToast } from '@/design';
+import { DayCloseDialog } from '@/restaurant/DayCloseDialog';
 import { businessDate } from '@/domain/businessDate';
 import { downloadText } from '@/products/exportCsv';
 import { periodOf, type PeriodChoice } from './period';
@@ -32,6 +33,8 @@ const ALL = '';
 export function ReportsScreen(): JSX.Element {
   const { db, settings, runner } = useData();
   const session = useSession();
+  const toast = useToast();
+  const [closing, setClosing] = useState(false);
   const seeCost = session.can('seeCost');
   const status = useSyncStatus(runner);
   const [choice, setChoice] = useState<Choice>('today');
@@ -82,93 +85,114 @@ export function ReportsScreen(): JSX.Element {
   const [hero, ...figures] = summary ? reportFigures(summary, { cost: seeCost }) : [];
 
   return (
-    <AppShell
-      marketName={settings.marketName}
-      deviceName={settings.deviceName}
-      syncState={status.state}
-      pendingCount={status.pendingCount}
-      syncError={status.error}
-      activeNav="reports"
-    >
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="mr-auto">
-          <h1 className="text-xl font-semibold">Raporlar</h1>
-          <p className="text-sm text-text-2">{`${formatPeriod(from, to)} · ${registerLabel}`}</p>
-        </div>
-        {session.can('admin') ? (
+    <>
+      <AppShell
+        marketName={settings.marketName}
+        deviceName={settings.deviceName}
+        syncState={status.state}
+        pendingCount={status.pendingCount}
+        syncError={status.error}
+        activeNav="reports"
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="mr-auto">
+            <h1 className="text-xl font-semibold">Raporlar</h1>
+            <p className="text-sm text-text-2">{`${formatPeriod(from, to)} · ${registerLabel}`}</p>
+          </div>
+          {session.can('admin') ? (
+            <Button
+              icon={<Download aria-hidden="true" size={18} />}
+              disabled={!summary}
+              onClick={() => summary && exportCsv(summary)}
+            >
+              CSV indir
+            </Button>
+          ) : null}
           <Button
-            icon={<Download aria-hidden="true" size={18} />}
+            icon={<Printer aria-hidden="true" size={18} />}
             disabled={!summary}
-            onClick={() => summary && exportCsv(summary)}
+            onClick={() => summary && print(summary)}
           >
-            CSV indir
+            Yazdır
           </Button>
+          {session.can('closeDay') ? (
+            <Button
+              variant="primary"
+              icon={<MoonStar aria-hidden="true" size={18} />}
+              onClick={() => setClosing(true)}
+            >
+              Gün sonu
+            </Button>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-0 flex-[3_1_440px]">
+            <ChoiceGroup
+              legend="Dönem"
+              name="reportPeriod"
+              options={PERIODS}
+              value={choice}
+              onChange={choose}
+            />
+          </div>
+          <div className="flex-[1_1_180px]">
+            <SelectField
+              label="Cihaz"
+              options={registerOptions}
+              value={register}
+              onChange={(event) => setRegister(event.target.value)}
+            />
+          </div>
+        </div>
+        {choice === 'custom' ? (
+          <div className="flex flex-wrap gap-3">
+            <TextField
+              label="Başlangıç"
+              type="date"
+              max={today}
+              value={custom.from}
+              onChange={(event) => setCustom({ ...custom, from: event.target.value })}
+            />
+            <TextField
+              label="Bitiş"
+              type="date"
+              max={today}
+              value={custom.to}
+              onChange={(event) => setCustom({ ...custom, to: event.target.value })}
+            />
+          </div>
         ) : null}
-        <Button
-          icon={<Printer aria-hidden="true" size={18} />}
-          disabled={!summary}
-          onClick={() => summary && print(summary)}
-        >
-          Yazdır
-        </Button>
-      </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-0 flex-[3_1_440px]">
-          <ChoiceGroup
-            legend="Dönem"
-            name="reportPeriod"
-            options={PERIODS}
-            value={choice}
-            onChange={choose}
-          />
-        </div>
-        <div className="flex-[1_1_180px]">
-          <SelectField
-            label="Cihaz"
-            options={registerOptions}
-            value={register}
-            onChange={(event) => setRegister(event.target.value)}
-          />
-        </div>
-      </div>
-      {choice === 'custom' ? (
-        <div className="flex flex-wrap gap-3">
-          <TextField
-            label="Başlangıç"
-            type="date"
-            max={today}
-            value={custom.from}
-            onChange={(event) => setCustom({ ...custom, from: event.target.value })}
-          />
-          <TextField
-            label="Bitiş"
-            type="date"
-            max={today}
-            value={custom.to}
-            onChange={(event) => setCustom({ ...custom, to: event.target.value })}
-          />
-        </div>
+        {summary && hero ? (
+          <>
+            <section aria-label="Özet" className="flex flex-wrap gap-3">
+              <FigureTile figure={hero} hero />
+              <div className="grid flex-[2_1_420px] grid-cols-2 gap-3 sm:grid-cols-3">
+                {figures.map((figure) => (
+                  <FigureTile key={figure.label} figure={figure} />
+                ))}
+              </div>
+            </section>
+            {summary.salesCount + summary.returnCount + summary.voidCount === 0 ? (
+              <p className="text-text-2">Bu dönemde satış yok.</p>
+            ) : (
+              <ReportTables summary={summary} />
+            )}
+          </>
+        ) : (
+          <p className="text-text-2">Yükleniyor…</p>
+        )}
+      </AppShell>
+      {closing ? (
+        <DayCloseDialog
+          onClose={() => setClosing(false)}
+          onDone={(message) => {
+            toast.show(message);
+            void runner.run();
+          }}
+        />
       ) : null}
-      {summary && hero ? (
-        <>
-          <section aria-label="Özet" className="flex flex-wrap gap-3">
-            <FigureTile figure={hero} hero />
-            <div className="grid flex-[2_1_420px] grid-cols-2 gap-3 sm:grid-cols-3">
-              {figures.map((figure) => (
-                <FigureTile key={figure.label} figure={figure} />
-              ))}
-            </div>
-          </section>
-          {summary.salesCount + summary.returnCount + summary.voidCount === 0 ? (
-            <p className="text-text-2">Bu dönemde satış yok.</p>
-          ) : (
-            <ReportTables summary={summary} />
-          )}
-        </>
-      ) : (
-        <p className="text-text-2">Yükleniyor…</p>
-      )}
-    </AppShell>
+      <ToastRegion message={toast.message} />
+    </>
   );
 }
 
