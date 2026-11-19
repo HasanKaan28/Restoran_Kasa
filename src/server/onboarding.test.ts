@@ -12,6 +12,7 @@ function fakeClient(answers: Record<string, Answer>, session: unknown = { user: 
     signInAnonymously: vi.fn(async () => ({ error: null })),
     signOut: vi.fn(async () => ({ error: null })),
     getSession: vi.fn(async () => ({ data: { session: null } })),
+    refreshSession: vi.fn(async () => ({ error: null })),
   };
   const client: ServerClient = {
     auth,

@@ -40,22 +40,58 @@ function failure(error: { message: string; code?: string }): Error {
   return new Error(error.message);
 }
 
+/** The server could not read the session's token: signed by another project, or expired. */
+function staleToken(error: { message: string; code?: string }): boolean {
+  return error.code === 'PGRST301' || /JWT/i.test(error.message);
+}
+
+/** After a failed renewal, wait this long before trying another. */
+const RENEW_RETRY_MS = 30_000;
+
 /** The register's connection to its market through the server's sync functions. */
 export function supabaseTransport(client: ServerClient): SyncTransport {
+  let renewing: Promise<boolean> | undefined;
+  let failedAt = Number.NEGATIVE_INFINITY;
+
+  // The stored refresh token can outlive the project that signed the access token (the market
+  // moved to another server), so renew once before calling the register unpaired. Never sign out.
+  function renew(): Promise<boolean> {
+    if (Date.now() - failedAt < RENEW_RETRY_MS) {
+      return Promise.resolve(false);
+    }
+    renewing ??= client.auth
+      .refreshSession()
+      .then(({ error }) => error === null)
+      .catch(() => false)
+      .then((ok) => {
+        if (!ok) {
+          failedAt = Date.now();
+        }
+        return ok;
+      })
+      .finally(() => {
+        renewing = undefined;
+      });
+    return renewing;
+  }
+
+  async function call(fn: string, args: Record<string, unknown>): Promise<unknown> {
+    let { data, error } = await client.rpc(fn, args);
+    if (error && staleToken(error) && (await renew())) {
+      ({ data, error } = await client.rpc(fn, args));
+    }
+    if (error) {
+      throw failure(error);
+    }
+    return data;
+  }
+
   return {
     async push({ ops }: PushRequest): Promise<PushResponse> {
-      const { data, error } = await client.rpc('sync_push', { ops });
-      if (error) {
-        throw failure(error);
-      }
-      return data as PushResponse;
+      return (await call('sync_push', { ops })) as PushResponse;
     },
     async pull({ since, limit }: PullRequest): Promise<PullResponse> {
-      const { data, error } = await client.rpc('sync_pull', { since, lim: limit });
-      if (error) {
-        throw failure(error);
-      }
-      return data as PullResponse;
+      return (await call('sync_pull', { since, lim: limit })) as PullResponse;
     },
   };
 }

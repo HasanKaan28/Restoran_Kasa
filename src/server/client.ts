@@ -19,6 +19,7 @@ export type ServerClient = {
     signInAnonymously(): Promise<AuthResult>;
     signOut(options?: { scope: 'local' | 'global' | 'others' }): Promise<AuthResult>;
     getSession(): Promise<{ data: { session: unknown } }>;
+    refreshSession(): Promise<AuthResult>;
   };
 };
 
