@@ -4,6 +4,7 @@ import { createAppData } from './appData';
 import { DataProvider } from './DataProvider';
 import { ErrorBoundary } from './ErrorBoundary';
 import { loadDeviceSettings } from './device';
+import { MoveBanner } from './MoveBanner';
 import { finishPairing } from './finishPairing';
 import { Screens } from './Screens';
 import { SessionProvider } from './SessionProvider';
@@ -48,36 +49,41 @@ function AppContent(): JSX.Element {
   if (welcome && server) {
     const platform = currentPlatform();
     return (
-      <WelcomeScreen
-        current={data.settings}
-        open={(input) =>
-          openMarket({
-            owner: ownerClient(server),
-            device: deviceClient(server),
-            platform,
-            ...input,
-          })
-        }
-        join={(input) =>
-          joinMarket({
-            owner: ownerClient(server),
-            device: deviceClient(server),
-            platform,
-            ...input,
-          })
-        }
-        onDone={(next) => {
-          if (finishPairing(next)) {
-            window.location.reload();
+      <>
+        <MoveBanner fresh />
+        <WelcomeScreen
+          current={data.settings}
+          open={(input) =>
+            openMarket({
+              owner: ownerClient(server),
+              device: deviceClient(server),
+              platform,
+              ...input,
+            })
           }
-        }}
-      />
+          join={(input) =>
+            joinMarket({
+              owner: ownerClient(server),
+              device: deviceClient(server),
+              platform,
+              ...input,
+            })
+          }
+          onDone={(next) => {
+            if (finishPairing(next)) {
+              window.location.reload();
+            }
+          }}
+        />
+      </>
     );
   }
 
   return (
     <ErrorBoundary {...(route === 'tables' ? RESTART : LEAVE_SCREEN)}>
       <DataProvider value={data}>
+        {/* Above the session: a locked register shows it too. */}
+        <MoveBanner />
         <SessionProvider>
           <Screens route={route} />
         </SessionProvider>
