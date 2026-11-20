@@ -73,6 +73,11 @@ describe('the QR menu on the server', () => {
     );
     expect(stranger.auth.signOut).toHaveBeenCalled();
 
+    const lapsed = fakeClient({ rotate_qr_menu: { error: { message: 'license_expired' } } });
+    await expect(changeQrMenu({ owner: lapsed.client, ...input })).rejects.toThrow(
+      'Lisansın süresi doldu; QR menü açılamaz. Uzatmak için bize yazın.',
+    );
+
     const wrong = fakeClient({}, { message: 'Invalid login credentials' });
     await expect(changeQrMenu({ owner: wrong.client, ...input })).rejects.toThrow(
       'E-posta ya da şifre yanlış.',

@@ -38,6 +38,7 @@ const MESSAGES: Record<string, string> = {
   not_owner: 'Bu hesap bu restoranın sahibi değil.',
   device_not_registered: 'Bu cihaz sunucuya bağlı değil.',
   device_revoked: 'Bu cihazın kaydı iptal edildi.',
+  license_expired: 'Lisansın süresi doldu; QR menü açılamaz. Uzatmak için bize yazın.',
 };
 
 function explain(message: string): string {

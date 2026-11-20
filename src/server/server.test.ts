@@ -202,6 +202,19 @@ describe('pairing', () => {
     expect(refused).toMatchObject({ deviceLimit: 5 });
   });
 
+  it('says when the licence has lapsed, so no register can be added', async () => {
+    const lapsed = fakeClient({ claim_device: { error: { message: 'license_expired' } } });
+    await expect(
+      pairDevice({
+        device: lapsed.client,
+        code: 'ABCD2345',
+        deviceCode: '',
+        deviceName: '',
+        platform: 'web',
+      }),
+    ).rejects.toThrow('Lisansın süresi doldu; yeni cihaz bağlanamaz. Uzatmak için bize yazın.');
+  });
+
   it('picks up a claim whose answer was lost', async () => {
     const mine = {
       marketId: 'kursunlu',

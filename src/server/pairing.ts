@@ -22,6 +22,7 @@ const MESSAGES: Record<string, string> = {
   already_registered: 'Bu kasa zaten bir restorana bağlı.',
   bad_device_code: 'Kasa kodu bir harf ve en çok üç harf ya da rakam olmalı (K1, K2).',
   bad_platform: 'Bu cihaz türü desteklenmiyor.',
+  license_expired: 'Lisansın süresi doldu; yeni cihaz bağlanamaz. Uzatmak için bize yazın.',
 };
 const OFFLINE = 'Bağlantı kurulamadı. İnternet bağlantısını kontrol edin.';
 
