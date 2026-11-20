@@ -1,0 +1,11 @@
+/*
+ * The yönetim page's styles: the app's tokens and shape, with utilities generated only from its
+ * own files and the design components it uses. It follows the device's light or dark setting.
+ */
+@import 'tailwindcss' source(none);
+@source './';
+@source '../design';
+@source not './**/*.test.{ts,tsx}';
+@source not '../design/**/*.test.{ts,tsx}';
+@import '../design/tokens.css';
+@import '../design/shape.css';

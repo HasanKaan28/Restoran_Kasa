@@ -77,6 +77,20 @@ describe('the service worker and the QR menu', () => {
   });
 });
 
+describe('the service worker and the yönetim page', () => {
+  it('leaves the seller’s page to the browser and keeps the app’s copy', async () => {
+    const worker = startWorker((url) =>
+      Promise.resolve(new Response(new URL(url).pathname.includes('yonetim') ? 'yönetim' : 'app')),
+    );
+    expect(await (await worker.navigate('/app/')).text()).toBe('app');
+    for (const path of ['/app/yonetim.html', '/app/yonetim', '/app/yonetim/']) {
+      await expect(worker.navigate(path), path).rejects.toThrow('left /app/yonetim');
+    }
+    await Promise.resolve();
+    expect(await worker.kept.get('./index.html')?.clone().text()).toBe('app');
+  });
+});
+
 describe('the service worker and a new deploy', () => {
   it('keeps each build in a cache of its own and drops the last build’s on activation', async () => {
     const kept = new Set(['mk2-2.0.0', 'rk-1.0.0', 'rk-1.0.0+old', 'rk-1.0.0+new']);

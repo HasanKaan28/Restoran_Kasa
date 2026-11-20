@@ -58,6 +58,11 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
+  // The seller's yönetim page needs the network anyway and is no register's: the browser loads it
+  // as it is, and it never takes the place of the app's kept copy.
+  if (request.mode === 'navigate' && /\/yonetim(\.html|\/|\/index\.html)?$/.test(url.pathname)) {
+    return;
+  }
   if (request.mode === 'navigate') {
     // The guests' QR menu (menu.html) is a page of its own under the same scope: it is kept
     // apart, so opening it never replaces the app's kept copy, nor does offline open the app.

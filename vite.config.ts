@@ -15,10 +15,12 @@ export default defineConfig({
   build: {
     rollupOptions: {
       // The app, and the guests' QR menu as a page of its own: dist/menu.html loads only its
-      // small bundle and never opens the register's data, pairing or service worker.
+      // small bundle and never opens the register's data, pairing or service worker. The
+      // seller's yönetim page (dist/yonetim.html) is a third, as apart from the registers.
       input: {
         index: fileURLToPath(new URL('./index.html', import.meta.url)),
         menu: fileURLToPath(new URL('./menu.html', import.meta.url)),
+        yonetim: fileURLToPath(new URL('./yonetim.html', import.meta.url)),
       },
     },
   },
@@ -35,7 +37,11 @@ export default defineConfig({
           name: 'app',
           environment: 'jsdom',
           // A local .env.local must not change what the tests see: no server unless a test says so.
-          env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' },
+          env: {
+            VITE_SUPABASE_URL: '',
+            VITE_SUPABASE_PUBLISHABLE_KEY: '',
+            VITE_SUPPORT_WHATSAPP: '',
+          },
           // Screen tests that pass alone in a second can pass 5 s when every worker is busy.
           testTimeout: 15_000,
           setupFiles: ['./src/test/setup.ts'],

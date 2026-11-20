@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  /app/yonetim/ on a host without rewrites (GitHub Pages): sends the seller on to yonetim.html,
+  which loads its files relative to /app/. Vercel redirects this address itself (vercel.json).
+-->
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Yönetim · Restoran Kasa</title>
+    <meta http-equiv="refresh" content="0; url=../yonetim.html" />
+    <script>
+      location.replace(
+        location.pathname.replace(/\/yonetim(\/(index\.html)?)?$/, '/yonetim.html') + location.hash,
+      );
+    </script>
+  </head>
+  <body>
+    <p><a href="../yonetim.html">Yönetim sayfasını açın</a></p>
+  </body>
+</html>
