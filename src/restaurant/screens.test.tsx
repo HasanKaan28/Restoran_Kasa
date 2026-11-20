@@ -293,6 +293,8 @@ describe('the receipt of a payment', () => {
 
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     expect(document.getElementById('print-root')).toHaveTextContent('Adana kebap');
+    // The table the bill was for, as the floor names it.
+    expect(document.getElementById('print-root')).toHaveTextContent('S1');
     window.dispatchEvent(new Event('afterprint'));
     print.mockRestore();
   });

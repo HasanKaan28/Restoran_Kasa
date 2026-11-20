@@ -63,6 +63,11 @@ describe('receiptText', () => {
     }
   });
 
+  it('names the table under the receipt number', () => {
+    const lines = receiptText({ ...model, table: 'Paket 2' }, 32).split('\n');
+    expect(lines.slice(2, 4)).toEqual(['Fiş K1-20261029-0001', 'Paket 2']);
+  });
+
   it('keeps the amount and shortens a long name', () => {
     const long: ReceiptModel = {
       ...model,

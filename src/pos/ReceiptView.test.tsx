@@ -21,6 +21,13 @@ describe('ReceiptView', () => {
     // The printable width of 58 mm paper; jsdom computes no mm lengths, so read the style.
     expect(receipt.style.width).toBe('48mm');
   });
+
+  it('names the table the bill was for', () => {
+    render(<ReceiptView model={{ ...sampleReceipt, table: 'Masa 4' }} paperWidth={80} />);
+    expect(screen.getByRole('article', { name: 'Fiş K1-20261029-0001' })).toHaveTextContent(
+      'Masa 4',
+    );
+  });
 });
 
 describe('printReceipt', () => {

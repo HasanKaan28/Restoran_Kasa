@@ -28,6 +28,7 @@ export function ReceiptView({
         <span>{model.dateTime}</span>
       </div>
       <p className="font-mono">{`Fiş ${model.receiptNo}`}</p>
+      {model.table ? <p className="font-semibold">{model.table}</p> : null}
       <hr className="border-dashed border-black/40" />
       <ul className="flex flex-col gap-1">
         {model.lines.map((line, index) => (

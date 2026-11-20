@@ -123,6 +123,17 @@ describe('buildReceipt', () => {
     expect(model.footer).toEqual(['Teşekkürler', 'Bilgi fişidir, mali değeri yoktur.']);
   });
 
+  it('names the table or the takeaway order the bill was for', async () => {
+    const sale = await recordSale(db, {
+      deviceCode: 'K1',
+      at,
+      lines: [{ productId: ekmek, qtyMilli: 1000 }],
+      payments: [{ method: 'card', amount: 1500 }],
+    });
+    expect(buildReceipt(sale, { ...context, table: 'Masa 4' }).table).toBe('Masa 4');
+    expect(buildReceipt(sale, context).table).toBeUndefined();
+  });
+
   it('lists every payment of a split sale', async () => {
     const sale = await recordSale(db, {
       deviceCode: 'K1',

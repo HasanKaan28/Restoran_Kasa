@@ -3,7 +3,7 @@ import { useState, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { useMarketSettings } from '@/app/marketSettings';
 import { useSession } from '@/app/session';
-import { itemLabel, payTabItems, tabBill } from '@/data/restaurant';
+import { itemLabel, payTabItems, tabBill, tabTitle } from '@/data/restaurant';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
 import { formatTRY, parseTRY } from '@/domain/money';
 import { formatLineQty } from '@/pos/format';
@@ -70,6 +70,9 @@ export function PayDialog({
       // The amount of the lines ticked now: the figure on screen is worked out after the window
       // opens and after every tick, so a quick tap can come before it, or while it is the last one.
       const due = (await tabBill(db, tabId, chosenIds)).total;
+      // Named before paying: the last payment closes the tab.
+      const tab = await db.tabs.get(tabId);
+      const table = tab ? await tabTitle(db, tab) : undefined;
       if (method === 'cash' && cashGiven !== undefined && cashGiven < due) {
         setError('Alınan para tutardan az.');
         return;
@@ -88,7 +91,10 @@ export function PayDialog({
         new Date(),
       );
       if (printIt && 'id' in paid) {
-        printReceipt(buildReceipt(paid, receiptContext(settings, receipt)), receipt.paperWidth);
+        printReceipt(
+          buildReceipt(paid, { ...receiptContext(settings, receipt), ...(table ? { table } : {}) }),
+          receipt.paperWidth,
+        );
       }
       const closed = chosen.length === lines.length;
       onPaid(

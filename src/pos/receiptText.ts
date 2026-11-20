@@ -14,6 +14,7 @@ export function receiptText(model: ReceiptModel, columns: ReceiptColumns): strin
     ...model.header.flatMap((line) => centered(line, columns)),
     twoColumns(model.device, model.dateTime, columns),
     `Fiş ${model.receiptNo}`,
+    ...(model.table ? [model.table] : []),
     rule,
     ...model.lines.flatMap((line) => [
       twoColumns(line.name, line.amount, columns),

@@ -13,6 +13,8 @@ export type ReceiptModel = {
   device: string;
   receiptNo: string;
   dateTime: string;
+  /** The table or the takeaway order the bill was for ("Masa 4", "Paket 2"). */
+  table?: string;
   lines: ReceiptLine[];
   totals: ReceiptRow[];
   vat: ReceiptRow[];
@@ -28,6 +30,8 @@ export type ReceiptContext = {
   header?: string;
   footer?: string;
   customerName?: string;
+  /** The table or the takeaway order the bill was for, as the floor names it. */
+  table?: string;
   status?: { voided: boolean; returnedAny: boolean };
   /** An invoice was asked for: the receipt is then not the only paper, so it does not say so. */
   invoiced?: boolean;
@@ -77,6 +81,7 @@ export function buildReceipt(sale: SaleRecord, context: ReceiptContext): Receipt
     device: context.deviceName,
     receiptNo: sale.receiptNo,
     dateTime: DATE_TIME.format(new Date(sale.occurredAt)),
+    ...(context.table ? { table: context.table } : {}),
     lines,
     totals,
     vat,
