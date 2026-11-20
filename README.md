@@ -76,6 +76,35 @@ PGlite with `npm test`.
    next register (K2, K3…). The password is never kept on a device. Registers bound to the same
    restaurant see each other's sales, tabs and credit.
 
+### Who may write what
+
+The registers of one restaurant trust each other: the app is local-first, and every register
+keeps selling offline and syncs later. The server keeps restaurants apart; inside one, roles and
+permissions are enforced on the registers.
+
+- **A paired register** (its anonymous session in `localStorage['rk.auth']`) may push any row of
+  its own restaurant's synced tables (menu, tables and tabs, staff, settings, sales, cash, the
+  audit log) through `sync_push`, and read them through `sync_pull`; never another restaurant's.
+  A lost or stolen device holds the restaurant's data and can write to it: revoke it.
+- **Only the server** writes the restaurant itself, its plan and licence, its registers, its QR
+  menu link and the activation and pairing codes; registers reach none of them.
+- **A row is kept under its own id.** An insert naming another id, or a patch that clears or
+  changes the id, is refused (`bad_record`), and a register sets aside any pulled row whose id is
+  not the one the server keeps it by. **Events** (sales, voids, returns, cash, the audit log…) are
+  written once: never patched, and a second copy changes nothing.
+- **Who sent it.** A row's `deviceCode` and `staffId` are what the sending register wrote. The
+  server records which register actually sent each row (`app.rows.pushed_by`, never sent to the
+  registers), so an entry written in another register's name can be traced.
+- **Staff PINs** switch the person at a register; they do not protect the data from someone who
+  holds a paired device or a backup. The hashes (PBKDF2-SHA256; 600,000 rounds for PINs set since
+  November 2026) sync to every register and are in backups, and four to six digits fall to an
+  offline search. A sign-in survives a reload only by a token whose hash is kept in that
+  register's database: a staff id written into `localStorage` signs nobody in, and a PIN change
+  ends that person's sessions.
+- Anyone who can run code in the page (developer tools on a web register, a script on the same
+  address) can do whatever that register can. The desktop app has no developer tools; keep web
+  registers on devices the staff do not administer.
+
 ### Activation codes and licences
 
 Nobody opens a restaurant without a one-time **activation code** from the seller. The seller
@@ -96,12 +125,15 @@ on **Restoran kur**. The schema is `supabase/migrations/20261121120000_activatio
   the plan and the end with every pull, warns in the last 7 days, and keeps selling and syncing
   for **7 days of grace** after the end. After that the server refuses `sync_push` and
   `sync_pull` (`license_expired`) and the register says so; nothing done on it is lost, and it
-  syncs again as soon as the licence is extended. A market with no end (`license_expires_at`
+  syncs again as soon as the licence is extended. Past the grace, or once the seller suspends
+  the restaurant, it also gets no pairing code and no new register, and its QR menu can be
+  turned off but not on or given a new link. A market with no end (`license_expires_at`
   null, as every market opened before codes) is never limited, and the yönetim page will not put
   an end on it.
 
 **The yönetim page** is `/app/yonetim` (`yonetim.html`, its own small Vite entry; Vercel rewrites
-the address, GitHub Pages gets a redirect page). The seller signs in with his own email and
+the address, GitHub Pages gets a redirect page). It is built only when `RK_YONETIM=1` (the Vercel
+build and the release's Pages build set it), so the desktop and Android apps never carry it. The seller signs in with his own email and
 password (**Hesap oluştur** the first time). An account sees nothing until it is an operator: run
 this once in the Supabase SQL editor, with his email:
 
@@ -130,8 +162,10 @@ npm run electron:installer   # dist-electron/*.exe
 ```
 
 The desktop app serves the build from its own `app://market` origin with the sandbox, web
-security and a content security policy on. A packaged build has no developer tools, and links
-such as WhatsApp open in the system browser.
+security and a content security policy on; the page may talk only to the restaurant's Supabase
+project and Open Food Facts. It is granted the camera (for the barcode scanner) and clipboard
+writing, nothing else. A packaged build has no developer tools, and only the app's own links
+(WhatsApp chats, its GitHub releases, restorankasa.vercel.app) open in the system browser.
 
 ### Android
 
@@ -140,7 +174,8 @@ npm run cap:sync   # builds and copies dist/ into android/
 npm run cap:open   # opens Android Studio
 ```
 
-Android cloud backups are off (`allowBackup="false"`).
+Android cloud backups are off (`allowBackup="false"`), and the FileProvider offers only the app's
+own files.
 
 Release APKs are signed with one release key (repository secrets `ANDROID_KEYSTORE_BASE64`,
 `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`), so each version
@@ -198,6 +233,14 @@ Two workflows run on GitHub Actions:
 The Vercel project builds `main` on every push with its own environment variables (site at `/`,
 app at `/app/`); GitHub Pages is still deployed only from `v2-release.yml`, with the app under
 `app/` and a front page (`.github/pages/index.html`) that sends visitors to the Vercel site.
+
+`vercel.json` gives each page its own security headers: a Content-Security-Policy (only its own
+files; the app, the menu and the yönetim page may also reach the Supabase project; no framing),
+`nosniff`, a Referrer-Policy and a Permissions-Policy that lets only the app use the camera. The
+inline theme scripts of `index.html` and `site/index.html` are allowed by their hash: change a
+script and `src/pwa/headers.test.ts` (and, for `index.html`, `electron/security.test.ts`) asks for
+the new one. Moving to another Supabase project means changing its address in `vercel.json` and
+`electron/security.cjs` too.
 
 No workflow deploys anything on a push to a branch. v1's workflow, which redeployed Pages and
 republished releases on every push to `main`, is removed on `v2`.
