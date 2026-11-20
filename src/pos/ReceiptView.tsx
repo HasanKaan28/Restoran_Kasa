@@ -12,7 +12,7 @@ export function ReceiptView({
 }): JSX.Element {
   return (
     <article
-      aria-label={`Fiş ${model.receiptNo}`}
+      aria-label={model.heading ?? `Fiş ${model.receiptNo}`}
       style={{ width: `${PRINTABLE_WIDTH[paperWidth]}mm` }}
       className="mx-auto flex max-w-full flex-col gap-2 bg-white px-2 py-3 text-[13px] leading-snug text-black"
     >
@@ -27,8 +27,12 @@ export function ReceiptView({
         <span>{model.device}</span>
         <span>{model.dateTime}</span>
       </div>
-      <p className="font-mono">{`Fiş ${model.receiptNo}`}</p>
+      {model.heading ? (
+        <p className="text-center text-[15px] font-semibold">{model.heading}</p>
+      ) : null}
+      {model.receiptNo ? <p className="font-mono">{`Fiş ${model.receiptNo}`}</p> : null}
       {model.table ? <p className="font-semibold">{model.table}</p> : null}
+      {model.waiter ? <p>{model.waiter}</p> : null}
       <hr className="border-dashed border-black/40" />
       <ul className="flex flex-col gap-1">
         {model.lines.map((line, index) => (
@@ -53,10 +57,11 @@ export function ReceiptView({
           <Row key={row.label} label={row.label} amount={row.amount} muted />
         ))}
       </dl>
-      <hr className="border-dashed border-black/40" />
+      {model.payments.length > 0 ? <hr className="border-dashed border-black/40" /> : null}
       <dl>
-        {model.payments.map((row: ReceiptRow) => (
-          <Row key={row.label} label={row.label} amount={row.amount} />
+        {model.payments.map((row: ReceiptRow, index) => (
+          // Two shares paid the same way carry the same label.
+          <Row key={index} label={row.label} amount={row.amount} />
         ))}
       </dl>
       {model.customer ? <p>{model.customer}</p> : null}

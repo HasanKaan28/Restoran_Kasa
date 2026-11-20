@@ -519,6 +519,24 @@ describe('the receipt of a payment', () => {
     print.mockRestore();
   });
 
+  it('prints the pre-bill (adisyon), which says it is no receipt', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const bill = await payKebab({ printing: false, autoPrint: false });
+    await within(bill).findByRole('checkbox', { name: /Adana kebap/ });
+    await userEvent.click(within(bill).getByRole('button', { name: 'Adisyon yazdır' }));
+
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    const paper = document.getElementById('print-root');
+    expect(paper).toHaveTextContent('ÖN HESAP (ADİSYON)');
+    expect(paper).toHaveTextContent('Adana kebap');
+    expect(paper).toHaveTextContent('S1');
+    expect(paper).toHaveTextContent('Ödeme fişi değildir.');
+    window.dispatchEvent(new Event('afterprint'));
+    // Nothing was paid: the bill is still open.
+    expect(within(bill).getByRole('button', { name: 'Ödemeyi al' })).toBeEnabled();
+    print.mockRestore();
+  });
+
   it('offers no receipt while printing is off', async () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {});
     const bill = await payKebab({ printing: false, autoPrint: false });

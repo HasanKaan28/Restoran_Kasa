@@ -753,7 +753,8 @@ export async function tabTitle(db: MarketDb, tab: TabRecord): Promise<string> {
 
 // --- The bill -----------------------------------------------------------------------------------
 
-export type BillLine = { item: TabItemRecord; amount: Kurus };
+/** A line of the bill: its price now (each), and what it comes to after a treat. */
+export type BillLine = { item: TabItemRecord; price: Kurus; amount: Kurus };
 export type TabBill = { lines: BillLine[]; total: Kurus };
 
 const payable = (item: TabItemRecord) => item.status !== 'void' && !item.paidSaleId;
@@ -784,7 +785,11 @@ export async function tabBill(
     0,
   );
   return {
-    lines: priced.map(({ item, gross, discount }) => ({ item, amount: gross - discount })),
+    lines: priced.map(({ item, price, gross, discount }) => ({
+      item,
+      price,
+      amount: gross - discount,
+    })),
     total: cart.total,
   };
 }

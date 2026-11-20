@@ -13,8 +13,10 @@ export function receiptText(model: ReceiptModel, columns: ReceiptColumns): strin
   const lines = [
     ...model.header.flatMap((line) => centered(line, columns)),
     twoColumns(model.device, model.dateTime, columns),
-    `Fiş ${model.receiptNo}`,
+    ...(model.heading ? centered(model.heading, columns) : []),
+    ...(model.receiptNo ? [`Fiş ${model.receiptNo}`] : []),
     ...(model.table ? [model.table] : []),
+    ...(model.waiter ? [model.waiter] : []),
     rule,
     ...model.lines.flatMap((line) => [
       twoColumns(line.name, line.amount, columns),

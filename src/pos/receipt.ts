@@ -11,10 +11,15 @@ export type ReceiptLine = { name: string; detail: string; discount?: string; amo
 export type ReceiptModel = {
   header: string[];
   device: string;
+  /** Empty on a paper that is not a receipt (the pre-bill): no "Fiş" line is printed. */
   receiptNo: string;
+  /** What the paper is, in capitals, when it is not a receipt ("ÖN HESAP (ADİSYON)"). */
+  heading?: string;
   dateTime: string;
   /** The table or the takeaway order the bill was for ("Masa 4", "Paket 2"). */
   table?: string;
+  /** "Garson: Ali": who served the table. */
+  waiter?: string;
   lines: ReceiptLine[];
   totals: ReceiptRow[];
   vat: ReceiptRow[];
@@ -32,6 +37,8 @@ export type ReceiptContext = {
   customerName?: string;
   /** The table or the takeaway order the bill was for, as the floor names it. */
   table?: string;
+  /** The waiter of the table's tab. */
+  waiter?: string;
   status?: { voided: boolean; returnedAny: boolean };
   /** An invoice was asked for: the receipt is then not the only paper, so it does not say so. */
   invoiced?: boolean;
@@ -82,6 +89,7 @@ export function buildReceipt(sale: SaleRecord, context: ReceiptContext): Receipt
     receiptNo: sale.receiptNo,
     dateTime: DATE_TIME.format(new Date(sale.occurredAt)),
     ...(context.table ? { table: context.table } : {}),
+    ...(context.waiter ? { waiter: waiterLine(context.waiter) } : {}),
     lines,
     totals,
     vat,
@@ -95,9 +103,17 @@ export function buildReceipt(sale: SaleRecord, context: ReceiptContext): Receipt
   };
 }
 
+/** "Garson: Ali". */
+export function waiterLine(name: string): string {
+  return `Garson: ${name}`;
+}
+
 function paymentRows(sale: SaleRecord): ReceiptRow[] {
   const rows = sale.payments.map((payment) => ({
-    label: PAYMENT_LABELS[payment.method],
+    // A guest's share paid by amount before the bill was settled.
+    label: payment.tabPaymentId
+      ? `${PAYMENT_LABELS[payment.method]} (ön ödeme)`
+      : PAYMENT_LABELS[payment.method],
     amount: formatTRY(payment.amount),
   }));
   if (sale.cashGiven !== undefined) {

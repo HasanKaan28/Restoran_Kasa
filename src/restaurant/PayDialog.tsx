@@ -23,6 +23,7 @@ import { formatLineQty } from '@/pos/format';
 import { printReceipt } from '@/pos/printReceipt';
 import { buildReceipt } from '@/pos/receipt';
 import { loadReceiptSettings, receiptContext } from '@/pos/receiptSettings';
+import { buildPreBill, waiterOf } from './preBill';
 import { SharePanel, type ShareMethod } from './SharePanel';
 import { tenderFor, typedAmount, type Tender } from './tender';
 
@@ -106,13 +107,39 @@ export function PayDialog({
     typedCash !== undefined && typedCash > 0 && typedCash < total ? typedCash : undefined;
   const cashDue = method === 'mixed' ? cashShare : total;
 
+  /** The table's name and its waiter's, for the papers; read before the last payment closes it. */
+  async function namesOnPaper(): Promise<{ table?: string; waiter?: string }> {
+    const tab = await db.tabs.get(tabId);
+    if (!tab) {
+      return {};
+    }
+    const [table, waiter] = await Promise.all([tabTitle(db, tab), waiterOf(db, tab)]);
+    return { table, ...(waiter ? { waiter } : {}) };
+  }
+
   /** The receipt of a sale just made, when it is to be printed. */
-  function printSale(sale: SaleRecord, table: string | undefined) {
+  function printSale(sale: SaleRecord, names: { table?: string; waiter?: string }) {
     if (printIt) {
       printReceipt(
-        buildReceipt(sale, { ...receiptContext(settings, receipt), ...(table ? { table } : {}) }),
+        buildReceipt(sale, { ...receiptContext(settings, receipt), ...names }),
         receipt.paperWidth,
       );
+    }
+  }
+
+  /** The pre-bill (adisyon) the table asks for: what is on it, and what is left after shares. */
+  async function printPreBill() {
+    setError(undefined);
+    try {
+      const due = await tabDue(db, tabId);
+      const bill = await tabBill(db, tabId, due.lineIds);
+      const names = await namesOnPaper();
+      printReceipt(
+        buildPreBill(bill, due, { ...receiptContext(settings, receipt), ...names, at: new Date() }),
+        receipt.paperWidth,
+      );
+    } catch {
+      setError('Adisyon yazdırılamadı.');
     }
   }
 
@@ -140,8 +167,7 @@ export function PayDialog({
         setError(`Kalan ${formatTRY(due)}; bundan fazlası alınamaz.`);
         return;
       }
-      const tab = await db.tabs.get(tabId);
-      const table = tab ? await tabTitle(db, tab) : undefined;
+      const names = await namesOnPaper();
       const paid = await payTabAmount(
         db,
         {
@@ -157,7 +183,7 @@ export function PayDialog({
       );
       void runner.run();
       if ('sale' in paid) {
-        printSale(paid.sale, table);
+        printSale(paid.sale, names);
         onPaid(`Ödeme alındı: ${formatTRY(amount)}.`, unsent.length === 0);
         return;
       }
@@ -204,8 +230,7 @@ export function PayDialog({
       const shares = chosenIds.length === payable.length ? (await tabDue(db, tabId)).paid : 0;
       const due = (await tabBill(db, tabId, chosenIds)).total - shares;
       // Named before paying: the last payment closes the tab.
-      const tab = await db.tabs.get(tabId);
-      const table = tab ? await tabTitle(db, tab) : undefined;
+      const names = await namesOnPaper();
       const tender = tenderFor(method, due, { cashPart, given });
       if ('error' in tender) {
         setError(tender.error);
@@ -225,7 +250,7 @@ export function PayDialog({
         new Date(),
       );
       if ('id' in paid) {
-        printSale(paid, table);
+        printSale(paid, names);
       }
       const closed = chosen.length === payable.length && unsent.length === 0;
       onPaid(
@@ -439,16 +464,25 @@ export function PayDialog({
             ) : null}
           </>
         ) : null}
-        {receipt.printing && payable.length > 0 ? (
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start">
-            <input
-              type="checkbox"
-              checked={printIt}
-              onChange={(event) => setPrintIt(event.target.checked)}
-              className="size-5 accent-accent"
-            />
-            <span>Fiş yazdır</span>
-          </label>
+        {payable.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {receipt.printing ? (
+              <label className="flex min-h-11 cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={printIt}
+                  onChange={(event) => setPrintIt(event.target.checked)}
+                  className="size-5 accent-accent"
+                />
+                <span>Fiş yazdır</span>
+              </label>
+            ) : (
+              <span />
+            )}
+            <Button disabled={busy} onClick={() => void printPreBill()}>
+              Adisyon yazdır
+            </Button>
+          </div>
         ) : null}
         {notice ? (
           <p role="status" className="font-medium text-success">

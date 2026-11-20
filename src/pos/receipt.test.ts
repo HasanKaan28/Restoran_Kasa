@@ -134,6 +134,22 @@ describe('buildReceipt', () => {
     expect(buildReceipt(sale, context).table).toBeUndefined();
   });
 
+  it('names the waiter, and marks a share paid before the bill', async () => {
+    const sale = await recordSale(db, {
+      deviceCode: 'K1',
+      at,
+      lines: [{ productId: ekmek, qtyMilli: 2000 }],
+      payments: [
+        { method: 'cash', amount: 1000, tabPaymentId: 's1' },
+        { method: 'cash', amount: 2000 },
+      ],
+    });
+    const model = buildReceipt(sale, { ...context, table: 'Masa 4', waiter: 'Ali' });
+    expect(model.waiter).toBe('Garson: Ali');
+    expect(model.payments.map((row) => row.label)).toEqual(['Nakit (ön ödeme)', 'Nakit']);
+    expect(buildReceipt(sale, context).waiter).toBeUndefined();
+  });
+
   it('lists every payment of a split sale', async () => {
     const sale = await recordSale(db, {
       deviceCode: 'K1',
