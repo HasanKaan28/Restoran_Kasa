@@ -5,6 +5,7 @@ import { TableInUseError } from '@/data/errors';
 import { archiveDiningTable, createDiningTable, listDiningTables } from '@/data/restaurant';
 import { Button, TextField } from '@/design';
 import { SettingsSection } from '@/settings/MarketSections';
+import { tableTitle } from './tableTitle';
 
 const MAX_AT_ONCE = 50;
 
@@ -112,7 +113,7 @@ export function TablesSection({ onDone }: { onDone(message: string): void }): JS
                     (reason: unknown) =>
                       setError(
                         reason instanceof TableInUseError
-                          ? `${table.name} masasında açık adisyon var. Önce hesabı alın ya da masayı taşıyın.`
+                          ? `Açık adisyonu olan masa kaldırılamaz (${tableTitle(table.name)}). Önce hesabı alın ya da masayı taşıyın.`
                           : `${table.name} kaldırılamadı.`,
                       ),
                   )

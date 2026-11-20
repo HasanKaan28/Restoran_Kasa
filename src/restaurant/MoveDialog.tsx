@@ -3,6 +3,7 @@ import { useState, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { listDiningTables, mergeTabs, moveTab, openTabs } from '@/data/restaurant';
 import { Button, Dialog } from '@/design';
+import { tableTitle } from './tableTitle';
 
 /**
  * Moves a tab to another table: to an empty one it simply moves; onto a table with its own tab
@@ -89,9 +90,4 @@ export function MoveDialog({
       ) : null}
     </Dialog>
   );
-}
-
-/** "3" alone reads as a count; "Masa 3" is how it is said. */
-function tableTitle(name: string): string {
-  return /^\d+$/.test(name) ? `Masa ${name}` : name;
 }

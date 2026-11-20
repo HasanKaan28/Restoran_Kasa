@@ -345,7 +345,7 @@ describe('the tables in settings', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Kaldır: S1' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'S1 masasında açık adisyon var. Önce hesabı alın ya da masayı taşıyın.',
+      'Açık adisyonu olan masa kaldırılamaz (S1). Önce hesabı alın ya da masayı taşıyın.',
     );
     expect(onDone).not.toHaveBeenCalled();
     expect((await listDiningTables(data.db)).map((one) => one.name)).toEqual(['S1']);
