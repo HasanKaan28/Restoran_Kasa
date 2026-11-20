@@ -42,4 +42,32 @@ describe('readXlsx', () => {
     expect(() => readXlsx(new Uint8Array([1, 2, 3]))).toThrow(XlsxReadError);
     expect(() => readXlsx(zipSync({ 'readme.txt': strToU8('merhaba') }))).toThrow(XlsxReadError);
   });
+
+  it('refuses a small file that would unpack to more than a product list ever needs', () => {
+    // A zip bomb: a few kilobytes that unpack to tens of megabytes would freeze the till's tab.
+    const MB = 1024 * 1024;
+    const workbook = makeXlsx([['Ad'], ['Ayran']]);
+    const bomb = zipSync({ 'xl/worksheets/sheet1.xml': new Uint8Array(33 * MB) }, { level: 9 });
+    expect(bomb.length).toBeLessThan(100 * 1024);
+    expect(() => readXlsx(bomb)).toThrow('too large');
+
+    // Each part within its limit, but together too much.
+    const parts = zipSync(
+      {
+        'xl/a.xml': new Uint8Array(30 * MB),
+        'xl/b.xml': new Uint8Array(30 * MB),
+        'xl/c.xml': new Uint8Array(10 * MB),
+      },
+      { level: 9 },
+    );
+    expect(() => readXlsx(parts)).toThrow('too large');
+    // What lies outside xl/ is never unpacked, so it counts for nothing.
+    expect(readXlsx(workbook)).toEqual([['Ad'], ['Ayran']]);
+  });
+
+  it('refuses a sheet with more rows than it may read', () => {
+    const rows = [['Ad'], ['Ayran'], ['Çay'], ['Su']];
+    expect(readXlsx(makeXlsx(rows), { maxRows: 4 })).toEqual(rows);
+    expect(() => readXlsx(makeXlsx(rows), { maxRows: 3 })).toThrow('too many rows');
+  });
 });

@@ -1,6 +1,17 @@
 import { strFromU8, unzipSync } from 'fflate';
 
 const RELATIONSHIPS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const MB = 1024 * 1024;
+/**
+ * The most one part, and all the parts read together, may unpack to. A product list of tens of
+ * thousands of rows is a few megabytes; a zip bomb (a small file unpacking to gigabytes) is
+ * refused before anything is unpacked, by the sizes the zip declares (fflate unpacks a part
+ * into a buffer of its declared size, never more).
+ */
+const MAX_PART_BYTES = 32 * MB;
+const MAX_TOTAL_BYTES = 64 * MB;
+/** More rows than any menu or product list has. */
+const MAX_ROWS = 50_000;
 
 /** The file is not an Excel workbook, or it has no sheet to read. */
 export class XlsxReadError extends Error {
@@ -15,19 +26,40 @@ export class XlsxReadError extends Error {
  * are read as text, numbers with a decimal comma ("12,5"); a missing cell is "" so every value
  * stays in its column. Rows with nothing in them are dropped, as `parseCsv` drops blank lines.
  */
-export function readXlsx(bytes: Uint8Array): string[][] {
+export function readXlsx(
+  bytes: Uint8Array,
+  { maxRows = MAX_ROWS }: { maxRows?: number } = {},
+): string[][] {
   let files: Record<string, Uint8Array>;
+  let total = 0;
+  let tooLarge = false;
   try {
-    files = unzipSync(bytes, { filter: (file) => file.name.startsWith('xl/') });
+    files = unzipSync(bytes, {
+      filter: (file) => {
+        if (!file.name.startsWith('xl/') || tooLarge) {
+          return false;
+        }
+        total += file.originalSize;
+        tooLarge = file.originalSize > MAX_PART_BYTES || total > MAX_TOTAL_BYTES;
+        return !tooLarge;
+      },
+    });
   } catch {
     throw new XlsxReadError('Not a zip file');
+  }
+  if (tooLarge) {
+    throw new XlsxReadError('The workbook is too large');
   }
   const sheet = readXml(files, firstSheetPath(files));
   const sharedStrings = files['xl/sharedStrings.xml']
     ? elements(readXml(files, 'xl/sharedStrings.xml'), 'si').map(richText)
     : [];
+  const sheetRows = elements(sheet, 'row');
+  if (sheetRows.length > maxRows) {
+    throw new XlsxReadError(`The sheet has too many rows (${sheetRows.length})`);
+  }
   const rows: string[][] = [];
-  for (const row of elements(sheet, 'row')) {
+  for (const row of sheetRows) {
     const cells: string[] = [];
     for (const cell of elements(row, 'c')) {
       const column = columnIndex(cell.getAttribute('r')) ?? cells.length;

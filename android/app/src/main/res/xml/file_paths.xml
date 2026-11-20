@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
+    <!-- What the FileProvider may hand out: the app's own files only. Capacitor keeps a photo or
+         video taken for a file input in the app's external files folder (Pictures, Movies); the
+         whole shared storage (external-path) is never offered. -->
+    <external-files-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
 </paths>
