@@ -340,6 +340,19 @@ describe('the kitchen’s screen', () => {
     const ticket = await screen.findByRole('listitem', { name: 'S1' });
     await userEvent.click(within(ticket).getByRole('button', { name: 'Hazır: Adana kebap' }));
     expect(await screen.findByText('Bekleyen sipariş yok.')).toBeInTheDocument();
+
+    // Bringing back the last one says what it did, and says so when there is none left.
+    await userEvent.click(screen.getByRole('button', { name: 'Son hazırı geri al' }));
+    expect(await screen.findByText('1 kalem yeniden bekliyor.')).toBeInTheDocument();
+    await userEvent.click(
+      within(await screen.findByRole('listitem', { name: 'S1' })).getByRole('button', {
+        name: 'Hazır: Adana kebap',
+      }),
+    );
+    await screen.findByText('Bekleyen sipariş yok.');
+    await userEvent.click(screen.getByRole('button', { name: 'Son hazırı geri al' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Son hazırı geri al' }));
+    expect(await screen.findByText('Geri alınacak hazır kalem yok.')).toBeInTheDocument();
   });
 });
 

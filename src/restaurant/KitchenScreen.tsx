@@ -61,7 +61,8 @@ export function KitchenScreen(): JSX.Element {
   }
 
   async function recall() {
-    await recallLast(db, station, new Date());
+    const count = await recallLast(db, station, new Date());
+    toast.show(count > 0 ? `${count} kalem yeniden bekliyor.` : 'Geri alınacak hazır kalem yok.');
     void runner.run();
   }
 
