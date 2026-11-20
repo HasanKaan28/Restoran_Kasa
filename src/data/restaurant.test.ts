@@ -19,8 +19,10 @@ import {
   openTab,
   openTabs,
   payTabItems,
+  dropUnsent,
   removeNewItem,
   sendTab,
+  sendUnsent,
   setComplimentary,
   tabBill,
   tabTitle,
@@ -274,6 +276,102 @@ describe('a table’s tab', () => {
     await mergeTabs(db, tab.id, other.id, at);
     expect((await db.tabs.get(tab.id))?.status).toBe('merged');
     expect((await tabBill(db, other.id)).total).toBe(105000);
+  });
+
+  it('charges no line the kitchen has not had until it is sent or dropped', async () => {
+    const { kebab, raki, water } = await menu();
+    const tab = await openTab(db, { label: 'Paket 1', ...waiter }, at);
+    const plate = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000 }, waiter, at);
+    // The next course, kept back with "Beklet", and a drink taken but not sent yet.
+    const later1 = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000, hold: true }, waiter, at);
+    await sendTab(db, tab.id, at);
+    const glass = await addTabItem(db, tab.id, raki, { qtyMilli: 1000 }, waiter, at);
+    expect((await db.tabItems.get(later1.id))?.status).toBe('held');
+
+    for (const unsent of [later1.id, glass.id]) {
+      await expect(
+        payTabItems(
+          db,
+          {
+            tabId: tab.id,
+            itemIds: [plate.id, unsent],
+            payments: [{ method: 'cash', amount: 200000 }],
+            ...waiter,
+          },
+          later(10),
+        ),
+      ).rejects.toThrow(RangeError);
+    }
+    // What was sent can be paid on its own; the tab stays open for the rest.
+    await payTabItems(
+      db,
+      {
+        tabId: tab.id,
+        itemIds: [plate.id],
+        payments: [{ method: 'card', amount: 45000 }],
+        ...waiter,
+      },
+      later(11),
+    );
+    expect((await db.tabs.get(tab.id))?.status).toBe('open');
+
+    // "Gönder": the held course and the drink go to their stations, then can be paid.
+    const bottle = await addTabItem(db, tab.id, water, { qtyMilli: 1000 }, waiter, at);
+    expect(await sendUnsent(db, tab.id, later(12))).toBe(3);
+    expect((await db.tabItems.get(later1.id))?.status).toBe('sent');
+    expect((await db.tabItems.get(glass.id))?.status).toBe('sent');
+    expect((await db.tabItems.get(bottle.id))?.status).toBe('ready');
+    await payTabItems(
+      db,
+      {
+        tabId: tab.id,
+        itemIds: [later1.id, glass.id, bottle.id],
+        payments: [{ method: 'card', amount: 107000 }],
+        ...waiter,
+      },
+      later(13),
+    );
+    expect((await db.tabs.get(tab.id))?.status).toBe('paid');
+  });
+
+  it('drops what the kitchen has not had, and leaves no ticket behind once paid', async () => {
+    const { kebab, raki } = await menu();
+    const tab = await openTab(db, { label: 'Paket 2', ...waiter }, at);
+    const plate = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000 }, waiter, at);
+    const held = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000, hold: true }, waiter, at);
+    await sendTab(db, tab.id, at);
+    const glass = await addTabItem(db, tab.id, raki, { qtyMilli: 1000 }, waiter, at);
+
+    expect(await dropUnsent(db, tab.id, later(5))).toBe(2);
+    expect(await db.tabItems.get(held.id)).toMatchObject({
+      status: 'void',
+      voidReason: 'Gönderilmeden çıkarıldı',
+    });
+    expect((await db.tabItems.get(glass.id))?.status).toBe('void');
+    expect((await tabBill(db, tab.id)).total).toBe(45000);
+    await markReady(db, [plate.id], later(6));
+    await payTabItems(
+      db,
+      {
+        tabId: tab.id,
+        itemIds: [plate.id],
+        payments: [{ method: 'card', amount: 45000 }],
+        ...waiter,
+      },
+      later(7),
+    );
+    expect((await db.tabs.get(tab.id))?.status).toBe('paid');
+    expect(await kitchenTickets(db, 'kitchen')).toEqual([]);
+  });
+
+  it('shows the kitchen no held course of a tab already closed (paid on an older register)', async () => {
+    const { kebab } = await menu();
+    const tab = await openTab(db, { label: 'Paket 3', ...waiter }, at);
+    await addTabItem(db, tab.id, kebab, { qtyMilli: 1000, hold: true }, waiter, at);
+    await sendTab(db, tab.id, at);
+    expect(await kitchenTickets(db, 'kitchen')).toHaveLength(1);
+    await db.tabs.update(tab.id, { status: 'paid', closedAt: later(5).toISOString() });
+    expect(await kitchenTickets(db, 'kitchen')).toEqual([]);
   });
 
   it('closes a tab with nothing on it', async () => {

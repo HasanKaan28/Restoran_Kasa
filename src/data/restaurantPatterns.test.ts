@@ -85,6 +85,7 @@ describe('portions and options', () => {
     );
     expect(item).toMatchObject({ portion: 'Yarım', options: ['Acısız'], unitPrice: 25000 });
     expect((await tabBill(db, tab.id)).total).toBe(25000);
+    await sendTab(db, tab.id, at);
     const sale = await payTabItems(
       db,
       {

@@ -427,6 +427,55 @@ export async function fireHeld(db: MarketDb, tabId: string, at: Date): Promise<n
   });
 }
 
+/** Whether the kitchen or the bar has yet to hear of a line: still being taken, or kept back. */
+export function isUnsent(item: Pick<TabItemRecord, 'status'>): boolean {
+  return item.status === 'new' || item.status === 'held';
+}
+
+/**
+ * Sends everything of a tab the stations have not had, the course kept back included, so it can
+ * be paid: the bill is being taken, so nothing waits for a next course any more. Returns how many.
+ */
+export async function sendUnsent(db: MarketDb, tabId: string, at: Date): Promise<number> {
+  return db.transaction('rw', db.tabs, db.tabItems, db.outbox, async () => {
+    await requireOpenTab(db, tabId);
+    const unsent = await unsentOnBill(db, tabId);
+    for (const item of unsent) {
+      await patch(db, 'tabItems', item.id, started(item, at.toISOString()), at);
+    }
+    return unsent.length;
+  });
+}
+
+/** The lines of a tab still to pay that the stations have not had. */
+async function unsentOnBill(db: MarketDb, tabId: string): Promise<TabItemRecord[]> {
+  return (await db.tabItems.where('tabId').equals(tabId).toArray()).filter(
+    (item) => isUnsent(item) && !item.paidSaleId,
+  );
+}
+
+/**
+ * Takes off the bill everything of a tab the stations have not had (still being taken, or the
+ * course kept back), so the rest can be paid and the kitchen keeps no ticket for it. Returns how
+ * many.
+ */
+export async function dropUnsent(db: MarketDb, tabId: string, at: Date): Promise<number> {
+  return db.transaction('rw', db.tabs, db.tabItems, db.outbox, async () => {
+    await requireOpenTab(db, tabId);
+    const unsent = await unsentOnBill(db, tabId);
+    for (const item of unsent) {
+      await patch(
+        db,
+        'tabItems',
+        item.id,
+        { status: 'void', voidReason: 'Gönderilmeden çıkarıldı' },
+        at,
+      );
+    }
+    return unsent.length;
+  });
+}
+
 /**
  * One more of a line already ordered, the same portion, choices and note: a new line to send. One
  * more is one of a counted dish ("2 Ayran" gives one Ayran, not two), and the same weight of one
@@ -552,6 +601,14 @@ export async function kitchenTickets(db: MarketDb, station: Station): Promise<Ki
     const tab = await db.tabs.get(tabId);
     if (!tab) {
       continue;
+    }
+    // A course kept back on a tab already closed (paid on a register before this rule, or
+    // merged) can never be fired: no ticket for it. What was sent is still made, paid or not.
+    if (tab.status !== 'open') {
+      lines.held = [];
+      if (lines.items.length === 0) {
+        continue;
+      }
     }
     lines.items.sort((a, b) => (a.sentAt ?? '').localeCompare(b.sentAt ?? ''));
     lines.held.sort((a, b) => a.orderedAt.localeCompare(b.orderedAt));
@@ -710,6 +767,10 @@ export async function payTabItems(
     const chosen = input.itemIds.map((id) => open.find((item) => item.id === id));
     if (chosen.some((item) => item === undefined)) {
       throw new RangeError('A chosen line is paid, voided or not on this tab');
+    }
+    // Nothing is charged that the kitchen has not had: it is sent first, or dropped.
+    if (chosen.some((item) => isUnsent(item!))) {
+      throw new RangeError('A line not yet sent is sent or dropped before it is paid');
     }
     const products = await db.products.bulkGet(chosen.map((item) => item!.productId));
     const sale = await recordSale(db, {

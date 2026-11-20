@@ -1,9 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState, type JSX } from 'react';
+import { useId, useState, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { useMarketSettings } from '@/app/marketSettings';
 import { useSession } from '@/app/session';
-import { itemLabel, payTabItems, tabBill, tabTitle } from '@/data/restaurant';
+import {
+  dropUnsent,
+  isUnsent,
+  itemLabel,
+  payTabItems,
+  sendUnsent,
+  tabBill,
+  tabTitle,
+  type BillLine,
+} from '@/data/restaurant';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
 import { formatTRY, parseTRY } from '@/domain/money';
 import { formatLineQty } from '@/pos/format';
@@ -20,7 +29,10 @@ const METHODS: readonly { value: Method; label: string }[] = [
 
 /**
  * The bill: every line left to pay is ticked; untick some to split the bill by what each person
- * had, or share the total by heads. One payment is one receipt.
+ * had, or share the total by heads. One payment is one receipt. A line the kitchen has not had
+ * (still being taken, or a course kept back) is never charged as it stands: the waiter sends it
+ * with the bill or takes it off, so nobody pays for food that was never made and no ticket is
+ * left on the kitchen's screen for a table already paid.
  */
 export function PayDialog({
   tabId,
@@ -32,7 +44,7 @@ export function PayDialog({
   /** `closed` once nothing is left on the tab. */
   onPaid(message: string, closed: boolean): void;
 }): JSX.Element {
-  const { db, settings } = useData();
+  const { db, settings, runner } = useData();
   const session = useSession();
   const { cutoffMinutes } = useMarketSettings();
   const all = useLiveQuery(() => tabBill(db, tabId), [db, tabId]);
@@ -48,7 +60,9 @@ export function PayDialog({
   const [printIt, setPrintIt] = useState(receipt.printing && receipt.autoPrint);
 
   const lines = all?.lines ?? [];
-  const chosen = lines.filter((line) => !skipped.has(line.item.id));
+  const unsent = lines.filter((line) => isUnsent(line.item));
+  const payable = lines.filter((line) => !isUnsent(line.item));
+  const chosen = payable.filter((line) => !skipped.has(line.item.id));
   const chosenIds = chosen.map((line) => line.item.id);
   const selected = useLiveQuery(
     () => tabBill(db, tabId, chosenIds),
@@ -96,13 +110,27 @@ export function PayDialog({
           receipt.paperWidth,
         );
       }
-      const closed = chosen.length === lines.length;
+      const closed = chosen.length === payable.length && unsent.length === 0;
       onPaid(
         chosenIds.length === 0 ? 'Masa kapatıldı.' : `Ödeme alındı: ${formatTRY(due)}.`,
         closed,
       );
     } catch {
       setError('Ödeme kaydedilemedi.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Sends the lines the kitchen has not had, so they go on the bill, or takes them off it. */
+  async function settleUnsent(how: 'send' | 'drop') {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await (how === 'send' ? sendUnsent : dropUnsent)(db, tabId, new Date());
+      void runner.run();
+    } catch {
+      setError(how === 'send' ? 'Gönderilemedi.' : 'Çıkarılamadı.');
     } finally {
       setBusy(false);
     }
@@ -138,11 +166,19 @@ export function PayDialog({
       }
     >
       <div className="flex flex-col gap-4">
+        {unsent.length > 0 ? (
+          <UnsentLines
+            lines={unsent}
+            busy={busy}
+            onSend={() => void settleUnsent('send')}
+            onDrop={() => void settleUnsent('drop')}
+          />
+        ) : null}
         {lines.length === 0 ? (
           <p className="text-text-2">Ödenecek kalem yok. Masa kapatılabilir.</p>
-        ) : (
+        ) : payable.length === 0 ? null : (
           <ul aria-label="Kalemler" className="flex flex-col divide-y divide-line">
-            {lines.map(({ item, amount }) => (
+            {payable.map(({ item, amount }) => (
               <li key={item.id}>
                 <label className="flex min-h-11 cursor-pointer items-center gap-3">
                   <input
@@ -173,7 +209,7 @@ export function PayDialog({
             ))}
           </ul>
         )}
-        {lines.length > 0 ? (
+        {payable.length > 0 ? (
           <>
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-32">
@@ -233,6 +269,58 @@ export function PayDialog({
         ) : null}
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * What the kitchen has not had, kept off the bill until the waiter sends it with the bill (the
+ * course kept back goes now) or takes it off.
+ */
+function UnsentLines({
+  lines,
+  busy,
+  onSend,
+  onDrop,
+}: {
+  lines: readonly BillLine[];
+  busy: boolean;
+  onSend(): void;
+  onDrop(): void;
+}): JSX.Element {
+  const headingId = useId();
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="slip edge-bill flex flex-col gap-2 bg-warning-bg p-3"
+    >
+      <h3 id={headingId} className="font-semibold">
+        Mutfağa gitmemiş kalemler
+      </h3>
+      <ul className="flex flex-col gap-1">
+        {lines.map(({ item, amount }) => (
+          <li key={item.id} className="flex items-baseline justify-between gap-3">
+            <span>
+              {`${formatLineQty(item.qtyMilli, item.unit)} × ${itemLabel(item)}`}
+              <span className="text-text-2">
+                {item.status === 'held' || item.hold ? ' · bekletiliyor' : ' · gönderilmedi'}
+              </span>
+            </span>
+            <span className="font-display font-semibold">{formatTRY(amount)}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-sm">
+        Hesaba katılmadı. Ödenmeden önce mutfağa gönderin ya da adisyondan çıkarın.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={busy} onClick={onSend}>
+          Gönder ve hesaba kat
+        </Button>
+        <Button variant="ghost" className="text-danger" disabled={busy} onClick={onDrop}>
+          Adisyondan çıkar
+        </Button>
+      </div>
+    </section>
   );
 }
 

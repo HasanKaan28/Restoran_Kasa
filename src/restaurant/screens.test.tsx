@@ -97,7 +97,7 @@ describe('the waiter’s floor', () => {
     expect(await within(order).findByText('2 · Gönderilmedi')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('Kalan tutar')).toHaveTextContent('₺940,00'));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mutfağa gönder (2)' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
     await waitFor(async () => expect(await kitchenTickets(data.db, 'kitchen')).toHaveLength(1));
     expect(await kitchenTickets(data.db, 'bar')).toHaveLength(1);
 
@@ -118,6 +118,7 @@ describe('the waiter’s floor', () => {
     const menu = await screen.findByRole('region', { name: 'Menü' });
     await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
     await userEvent.click(within(menu).getByRole('button', { name: /Ayran/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
     await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
     const bill = await screen.findByRole('dialog', { name: 'Hesap' });
     await userEvent.click(await within(bill).findByRole('checkbox', { name: /Adana kebap/ }));
@@ -138,6 +139,7 @@ describe('the waiter’s floor', () => {
     const menu = await screen.findByRole('region', { name: 'Menü' });
     await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
     await userEvent.click(within(menu).getByRole('button', { name: /Ayran/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
     await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
     const bill = await screen.findByRole('dialog', { name: 'Hesap' });
     // The amount below is worked out after the window opens, and again after every tick: a
@@ -157,6 +159,7 @@ describe('the waiter’s floor', () => {
     const menu = await screen.findByRole('region', { name: 'Menü' });
     await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
     await userEvent.click(within(menu).getByRole('button', { name: /Ayran/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
     await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
     const bill = await screen.findByRole('dialog', { name: 'Hesap' });
     await waitFor(() =>
@@ -261,6 +264,7 @@ describe('a licence past its grace', () => {
     const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
     const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
     await addTabItem(data.db, tab.id, kebab!, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
+    await sendTab(data.db, tab.id, new Date());
     // Ended a month ago: the seven days of grace are long over (DESIGN §8.6).
     const ended = new Date(Date.now() - 30 * 86_400_000).toISOString();
     await saveServerLicense(data.db, {
@@ -287,6 +291,61 @@ describe('a licence past its grace', () => {
   });
 });
 
+describe('paying a tab with a course kept back', () => {
+  async function tabWithHeldCourse() {
+    const data = await restaurant();
+    const [table] = await listDiningTables(data.db);
+    const waiter = { deviceCode: 'K1' };
+    const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
+    const ayran = await data.db.products.filter((one) => one.name === 'Ayran').first();
+    const tab = await openTab(data.db, { tableId: table!.id, ...waiter }, new Date());
+    await addTabItem(data.db, tab.id, ayran!, { qtyMilli: 1000 }, waiter, new Date());
+    await addTabItem(data.db, tab.id, kebab!, { qtyMilli: 1000, hold: true }, waiter, new Date());
+    await sendTab(data.db, tab.id, new Date());
+    await renderWithData(<TablesScreen />, data);
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, dolu, ₺490,00' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Hesap' }));
+    const bill = await screen.findByRole('dialog', { name: 'Hesap' });
+    return { data, bill };
+  }
+
+  it('charges only what was sent, until the waiter sends the rest with the bill', async () => {
+    const { data, bill } = await tabWithHeldCourse();
+    const unsent = await within(bill).findByRole('region', { name: 'Mutfağa gitmemiş kalemler' });
+    expect(unsent).toHaveTextContent('Adana kebap');
+    expect(unsent).toHaveTextContent('bekletiliyor');
+    expect(within(bill).queryByRole('checkbox', { name: /Adana kebap/ })).toBeNull();
+    await waitFor(() =>
+      expect(within(bill).getByLabelText('Ödenecek tutar')).toHaveTextContent('₺40,00'),
+    );
+
+    await userEvent.click(within(unsent).getByRole('button', { name: 'Gönder ve hesaba kat' }));
+    await within(bill).findByRole('checkbox', { name: /Adana kebap/ });
+    await waitFor(() =>
+      expect(within(bill).getByLabelText('Ödenecek tutar')).toHaveTextContent('₺490,00'),
+    );
+    expect((await kitchenTickets(data.db, 'kitchen'))[0]?.items).toHaveLength(1);
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+
+    expect(await screen.findByRole('button', { name: 'S1, boş' })).toBeInTheDocument();
+    expect(await recentSales(data.db)).toMatchObject([{ total: 49000 }]);
+  });
+
+  it('drops the course kept back, and leaves no ticket of it on the kitchen screen', async () => {
+    const { data, bill } = await tabWithHeldCourse();
+    const unsent = await within(bill).findByRole('region', { name: 'Mutfağa gitmemiş kalemler' });
+    await userEvent.click(within(unsent).getByRole('button', { name: 'Adisyondan çıkar' }));
+    await waitFor(() =>
+      expect(within(bill).queryByRole('region', { name: 'Mutfağa gitmemiş kalemler' })).toBeNull(),
+    );
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+
+    expect(await screen.findByRole('button', { name: 'S1, boş' })).toBeInTheDocument();
+    expect(await recentSales(data.db)).toMatchObject([{ total: 4000 }]);
+    expect(await kitchenTickets(data.db, 'kitchen')).toEqual([]);
+  });
+});
+
 describe('the receipt of a payment', () => {
   async function payKebab(receipt: { printing: boolean; autoPrint: boolean }) {
     localStorage.setItem(
@@ -298,6 +357,7 @@ describe('the receipt of a payment', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
     const menu = await screen.findByRole('region', { name: 'Menü' });
     await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (1)' }));
     await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
     return screen.findByRole('dialog', { name: 'Hesap' });
   }
