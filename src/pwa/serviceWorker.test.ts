@@ -54,14 +54,16 @@ function startWorker(network: (url: string) => Promise<Response>) {
   return { kept, navigate };
 }
 
+/** A page as the host serves it: HTML. */
+const page = (text: string) =>
+  new Response(text, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+
 describe('the service worker and the QR menu', () => {
   it('keeps the guest menu page apart from the app it keeps for offline use', async () => {
     let online = true;
     const worker = startWorker((url) =>
       online
-        ? Promise.resolve(
-            new Response(new URL(url).pathname.endsWith('menu.html') ? 'menu' : 'app'),
-          )
+        ? Promise.resolve(page(new URL(url).pathname.endsWith('menu.html') ? 'menu' : 'app'))
         : Promise.reject(new TypeError('offline')),
     );
 
@@ -80,7 +82,7 @@ describe('the service worker and the QR menu', () => {
 describe('the service worker and the yönetim page', () => {
   it('leaves the seller’s page to the browser and keeps the app’s copy', async () => {
     const worker = startWorker((url) =>
-      Promise.resolve(new Response(new URL(url).pathname.includes('yonetim') ? 'yönetim' : 'app')),
+      Promise.resolve(page(new URL(url).pathname.includes('yonetim') ? 'yönetim' : 'app')),
     );
     expect(await (await worker.navigate('/app/')).text()).toBe('app');
     for (const path of ['/app/yonetim.html', '/app/yonetim', '/app/yonetim/']) {
@@ -88,6 +90,42 @@ describe('the service worker and the yönetim page', () => {
     }
     await Promise.resolve();
     expect(await worker.kept.get('./index.html')?.clone().text()).toBe('app');
+  });
+});
+
+describe('the service worker and a page that is not the app', () => {
+  it('never keeps a file opened in the tab as the app’s offline copy', async () => {
+    let online = true;
+    const worker = startWorker((url) => {
+      if (!online) {
+        return Promise.reject(new TypeError('offline'));
+      }
+      const path = new URL(url).pathname;
+      if (path.endsWith('.json')) {
+        return Promise.resolve(
+          new Response('{"name":"Restoran Kasa"}', {
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      if (path.endsWith('.js')) {
+        return Promise.resolve(
+          new Response('console.log(1)', { headers: { 'content-type': 'text/javascript' } }),
+        );
+      }
+      return Promise.resolve(page(path.endsWith('menu.html') ? 'menu' : 'app'));
+    });
+    expect(await (await worker.navigate('/app/')).text()).toBe('app');
+    expect(await (await worker.navigate('/app/menu.html')).text()).toBe('menu');
+    // A link to the manifest or a built file, opened as a page, shows it as the host sent it...
+    expect(await (await worker.navigate('/app/manifest.json')).text()).toContain('Restoran');
+    expect(await (await worker.navigate('/app/assets/index-abc.js')).text()).toBe('console.log(1)');
+    await Promise.resolve();
+
+    // ...and offline the app and the menu still open, not that file.
+    online = false;
+    expect(await (await worker.navigate('/app/')).text()).toBe('app');
+    expect(await (await worker.navigate('/app/menu.html')).text()).toBe('menu');
   });
 });
 

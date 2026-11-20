@@ -33,6 +33,11 @@ async function cacheShell() {
   await cache.put('./index.html', page);
 }
 
+/** An HTML page, as the host serves the app and the menu. */
+function isPage(response) {
+  return (response.headers.get('content-type') || '').toLowerCase().startsWith('text/html');
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(cacheShell().then(() => self.skipWaiting()));
 });
@@ -68,10 +73,12 @@ self.addEventListener('fetch', (event) => {
     // apart, so opening it never replaces the app's kept copy, nor does offline open the app.
     const page = url.pathname.endsWith('/menu.html') ? './menu.html' : './index.html';
     // The page first from the network, so a new release is seen; the kept copy when offline.
+    // Only a page is kept: a link to the manifest or a built file opened in the tab is shown as
+    // it is, and never takes the place of the app's copy.
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response.ok) {
+          if (response.ok && isPage(response)) {
             const copy = response.clone();
             void caches.open(CACHE).then((cache) => cache.put(page, copy));
           }
