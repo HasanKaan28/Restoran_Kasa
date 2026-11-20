@@ -1,7 +1,7 @@
 import { useEffect, useState, type JSX } from 'react';
 import { useMediaQuery } from '@/design';
 import type { DesktopUpdates, UpdateStatus } from '@/settings/updates';
-import { UpdateMark } from '@/updates/UpdateMark';
+import { UpdateMark } from './UpdateMark';
 
 type Shown =
   | { kind: 'downloading'; version?: string; percent: number }

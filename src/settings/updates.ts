@@ -49,11 +49,21 @@ export function isNewer(latest: string, current: string): boolean {
   return false;
 }
 
-/** Where this app runs, for the update section: the desktop bridge, or an Android phone. */
-export function updateTarget(): { desktop?: DesktopUpdates; android: boolean } {
+/** Where this app runs, for updates: the desktop app, the Android app or a browser. */
+export type UpdateTarget = { desktop?: DesktopUpdates; android: boolean; web: boolean };
+
+/** Finds the desktop bridge, or an Android phone (as Capacitor tells), or else the web app. */
+export function updateTarget(): UpdateTarget {
   const bridge = (window as { marketKasa?: { updates?: DesktopUpdates } }).marketKasa?.updates;
+  const native = Capacitor.isNativePlatform();
   return {
     ...(bridge ? { desktop: bridge } : {}),
-    android: Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android',
+    android: native && Capacitor.getPlatform() === 'android',
+    web: !bridge && !native,
   };
+}
+
+/** The release notes on GitHub: of `version` when one was found, else of the latest release. */
+export function releaseNotesUrl(version?: string): string {
+  return version ? `${RELEASES}/tag/v${version}` : `${RELEASES}/latest`;
 }

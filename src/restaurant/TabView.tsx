@@ -25,6 +25,7 @@ import {
   type OrderInput,
 } from '@/data/restaurant';
 import type { ProductRecord, TabItemRecord } from '@/data/types';
+import { useHoldUpdates } from '@/updates/workGuard';
 import {
   Button,
   Dialog,
@@ -95,6 +96,8 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   }, [gone, onClose]);
 
   const fresh = (items ?? []).filter((item) => item.status === 'new');
+  // An order being taken: a new release reloads the web app only once it is sent.
+  useHoldUpdates(fresh.length > 0);
   const held = (items ?? []).filter((item) => item.status === 'held');
   const paid = (items ?? []).filter((item) => item.paidSaleId);
   const shown = (items ?? []).filter((item) => !item.paidSaleId);

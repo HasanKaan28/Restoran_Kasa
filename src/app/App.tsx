@@ -14,16 +14,14 @@ import { joinMarket, openMarket } from '@/server/onboarding';
 import { currentPlatform } from '@/server/pairing';
 import { forgetSkippedWelcome, shouldWelcome } from './welcome';
 import { ServerMissingScreen, WelcomeScreen } from './WelcomeScreen';
-import { UpdateOverlay } from './UpdateOverlay';
-import { updateTarget } from '@/settings/updates';
+import { Updates } from '@/updates/Updates';
 
-/** The app, with the desktop's startup-update screen over whatever is showing. */
+/** The app, with word of a new release (and the desktop's update screen) over whatever shows. */
 export function App(): JSX.Element {
-  const [desktop] = useState(() => updateTarget().desktop);
   return (
     <>
       <AppContent />
-      <UpdateOverlay {...(desktop ? { desktop } : {})} />
+      <Updates />
     </>
   );
 }
