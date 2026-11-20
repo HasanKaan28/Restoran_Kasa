@@ -122,7 +122,8 @@ export function PayDialog({
           <Button
             variant="primary"
             size="lg"
-            disabled={busy || (lines.length > 0 && chosenIds.length === 0)}
+            // Not before the lines are in: with none yet, the button would close the table.
+            disabled={busy || all === undefined || (lines.length > 0 && chosenIds.length === 0)}
             onClick={() => void pay()}
           >
             {lines.length === 0 ? 'Masayı kapat' : 'Ödemeyi al'}
@@ -178,7 +179,7 @@ export function PayDialog({
                 />
               </div>
               {Number.isInteger(people) && people > 1 ? (
-                <p className="pb-3 text-text-2">{`Kişi başı ${formatTRY(Math.ceil(total / people))}`}</p>
+                <p className="pb-3 text-text-2">{shareText(total, people)}</p>
               ) : null}
             </div>
             <ChoiceGroup<Method>
@@ -195,7 +196,10 @@ export function PayDialog({
                     label="Alınan"
                     inputMode="decimal"
                     value={given}
-                    onChange={(event) => setGiven(event.target.value)}
+                    onChange={(event) => {
+                      setGiven(event.target.value);
+                      setError(undefined);
+                    }}
                   />
                 </div>
                 {cashGiven !== undefined && cashGiven >= total ? (
@@ -224,4 +228,16 @@ export function PayDialog({
       </div>
     </Dialog>
   );
+}
+
+/**
+ * Each person's share, to the kuruş: an amount that does not divide evenly leaves a kuruş or a few
+ * for some, so the shares add up to the bill ("Kişi başı ₺163,33 · 1 kişi ₺163,34").
+ */
+function shareText(total: number, people: number): string {
+  const base = Math.floor(total / people);
+  const over = total - base * people;
+  return over === 0
+    ? `Kişi başı ${formatTRY(base)}`
+    : `Kişi başı ${formatTRY(base)} · ${over} kişi ${formatTRY(base + 1)}`;
 }

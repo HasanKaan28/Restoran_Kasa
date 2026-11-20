@@ -105,6 +105,32 @@ describe('the waiter’s floor', () => {
     await waitFor(async () => expect(await recentSales(data.db)).toMatchObject([{ total: 4000 }]));
     expect(within(bill).queryByRole('alert')).toBeNull();
   });
+
+  it('shares the bill by heads to the kuruş, and drops a cash error once it is put right', async () => {
+    const data = await restaurant();
+    await renderWithData(<TablesScreen />, data);
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
+    const menu = await screen.findByRole('region', { name: 'Menü' });
+    await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
+    await userEvent.click(within(menu).getByRole('button', { name: /Ayran/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
+    const bill = await screen.findByRole('dialog', { name: 'Hesap' });
+    await waitFor(() =>
+      expect(within(bill).getByLabelText('Ödenecek tutar')).toHaveTextContent('₺490,00'),
+    );
+
+    // ₺490 by three is not even: three shares of ₺163,34 would take ₺490,02.
+    await userEvent.type(within(bill).getByLabelText('Kişi sayısı'), '3');
+    expect(within(bill).getByText('Kişi başı ₺163,33 · 1 kişi ₺163,34')).toBeInTheDocument();
+
+    await userEvent.type(within(bill).getByLabelText('Alınan'), '400');
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    expect(await within(bill).findByRole('alert')).toHaveTextContent('Alınan para tutardan az.');
+    await userEvent.clear(within(bill).getByLabelText('Alınan'));
+    await userEvent.type(within(bill).getByLabelText('Alınan'), '500');
+    expect(within(bill).queryByRole('alert')).toBeNull();
+    expect(within(bill).getByText('Para üstü ₺10,00')).toBeInTheDocument();
+  });
 });
 
 describe('moving and merging tabs', () => {
