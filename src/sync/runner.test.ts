@@ -62,6 +62,31 @@ describe('createSyncRunner', () => {
     expect(push).toHaveBeenCalledTimes(1);
   });
 
+  it('runs one more round when asked during a round, for work the round passed', async () => {
+    const push = vi.spyOn(server, 'push');
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const pull = server.pull.bind(server);
+    // The first round's pull waits: an order is sent and synced meanwhile.
+    vi.spyOn(server, 'pull').mockImplementationOnce(async (request) => {
+      await gate;
+      return pull(request);
+    });
+    const runner = createSyncRunner({ db, transport: server, isOnline: () => true, now });
+    const first = runner.run();
+    await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    await createProduct(db, { name: 'Ayran', sellPrice: 3000, vatRate: 1 }, now());
+    const second = runner.run();
+    const third = runner.run();
+    expect(third).toBe(second);
+    release();
+    await first;
+    expect(await second).toMatchObject({ state: 'online', pendingCount: 0 });
+    expect(push).toHaveBeenCalledTimes(2);
+  });
+
   it('notifies subscribers and syncs on an interval once started', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     const runner = createSyncRunner({ db, transport: server, isOnline: () => true, now });

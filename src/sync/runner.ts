@@ -33,7 +33,10 @@ type SyncRunnerDeps = {
 const DEFAULT_INTERVAL_MS = 60_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
-/** Runs at most one sync at a time and reports every status change to its subscribers. */
+/**
+ * Runs at most one sync at a time (a call during a round queues one more right after it) and
+ * reports every status change to its subscribers.
+ */
 export function createSyncRunner({
   db,
   transport,
@@ -43,6 +46,7 @@ export function createSyncRunner({
 }: SyncRunnerDeps): SyncRunner {
   let current: SyncStatus = { state: isOnline() ? 'pending' : 'offline', pendingCount: 0 };
   let inFlight: Promise<SyncStatus> | undefined;
+  let followUp: Promise<SyncStatus> | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   const listeners = new Set<(status: SyncStatus) => void>();
   const timed = withTimeout(transport, requestTimeoutMs);
@@ -96,10 +100,19 @@ export function createSyncRunner({
   };
 
   const run = (): Promise<SyncStatus> => {
-    inFlight ??= syncRound().finally(() => {
-      inFlight = undefined;
+    if (!inFlight) {
+      inFlight = syncRound().finally(() => {
+        inFlight = undefined;
+      });
+      return inFlight;
+    }
+    // Asked during a round: what was just queued (an order sent mid-pull) may have missed its
+    // push, so one more round follows at once. Any number of such calls share that one round.
+    followUp ??= inFlight.then(() => {
+      followUp = undefined;
+      return run();
     });
-    return inFlight;
+    return followUp;
   };
 
   return {
