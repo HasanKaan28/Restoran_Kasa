@@ -7,6 +7,7 @@ import './admin.css';
 import { SERVER } from '@/server/config';
 import { AdminApp } from './AdminApp';
 import { operatorClient } from './api';
+import { leaveSharedOrigin } from './origin';
 import { ServerMissing } from './ServerMissing';
 
 /*
@@ -18,8 +19,19 @@ if (!root) {
   throw new Error('Root element #admin is missing');
 }
 
-createRoot(root).render(
-  <StrictMode>
-    {SERVER ? <AdminApp client={operatorClient(SERVER)} /> : <ServerMissing />}
-  </StrictMode>,
-);
+function storage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+// On GitHub Pages every site of the account shares the origin: the page runs only on its own.
+if (!leaveSharedOrigin(window.location, storage())) {
+  createRoot(root).render(
+    <StrictMode>
+      {SERVER ? <AdminApp client={operatorClient(SERVER)} /> : <ServerMissing />}
+    </StrictMode>,
+  );
+}
