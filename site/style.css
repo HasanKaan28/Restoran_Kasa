@@ -2712,6 +2712,21 @@ h3.gm__title {
   color: var(--text-2);
   font-size: 1.15rem;
 }
+/* The way to a setup code: a WhatsApp button when the seller's number is set (config.js). */
+.download__code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 20px;
+}
+.download__code .fine {
+  margin-top: 0;
+  font-size: 0.98rem;
+}
+.download__code [hidden] {
+  display: none;
+}
 .platforms {
   margin-top: 40px;
   border-top: 1px solid var(--line);

@@ -1576,8 +1576,25 @@
     });
   }
 
+  // The setup code comes from the seller: a WhatsApp chat with the message written in, once the
+  // number is set in config.js. Without one, the line under it says to get in touch instead.
+  function initContact() {
+    var config = window.RK_SITE || {};
+    var number = String(config.whatsapp || '').replace(/\D/g, '');
+    if (number.length < 10) return;
+    var text = 'Merhaba, Restoran Kasa için kurulum kodu almak istiyorum.';
+    $$('[data-whatsapp]').forEach(function (link) {
+      link.href = 'https://wa.me/' + number + '?text=' + encodeURIComponent(text);
+      link.hidden = false;
+    });
+    $$('[data-contact-fallback]').forEach(function (line) {
+      line.hidden = true;
+    });
+  }
+
   function start() {
     initTheme();
+    initContact();
     initPos();
     initStory();
     initBill();
