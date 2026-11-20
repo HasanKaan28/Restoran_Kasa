@@ -8,6 +8,7 @@ const {
   net,
   protocol,
   screen,
+  session,
   shell,
 } = require('electron');
 const { autoUpdater } = require('electron-updater');
@@ -18,6 +19,8 @@ const {
   CONTENT_SECURITY_POLICY,
   devToolsAllowed,
   isExternalUrl,
+  permissionAllowed,
+  permissionCheckAllowed,
   resolveAppFile,
 } = require('./security.cjs');
 const { displayBounds, isDisplayUrl } = require('./display.cjs');
@@ -172,6 +175,17 @@ if (!gotTheLock) {
 
   app.whenReady().then(() => {
     protocol.handle('app', serveApp);
+    // Electron grants a page every permission it asks for unless told otherwise: the camera for
+    // the barcode scanner and writing the clipboard, for the app's own page only.
+    session.defaultSession.setPermissionRequestHandler(
+      (webContents, permission, callback, details) =>
+        callback(
+          permissionAllowed(permission, details.requestingUrl ?? webContents.getURL(), details),
+        ),
+    );
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission, origin, details) =>
+      permissionCheckAllowed(permission, origin, details),
+    );
     wireUpdates({ autoUpdater, ipcMain, getWindow: () => mainWindow, isPackaged: app.isPackaged });
     createWindow();
 

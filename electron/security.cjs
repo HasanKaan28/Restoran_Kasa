@@ -4,8 +4,14 @@ const path = require('path');
 const APP_HOST = 'market';
 
 /**
- * What the page may load and talk to: its own files, the market's server on Supabase (sign-up,
- * pairing and every sync) and product names from Open Food Facts.
+ * The restaurant's own Supabase project, as in the release builds' VITE_SUPABASE_URL and in the
+ * web deploy's policy (vercel.json): the one server the desktop register may talk to.
+ */
+const SUPABASE_ORIGIN = 'https://bjtymphglonbdvmjcnbw.supabase.co';
+
+/**
+ * What the page may load and talk to: its own files, the restaurant's server on Supabase
+ * (sign-up, pairing and every sync) and product names from Open Food Facts.
  */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -15,20 +21,71 @@ const CONTENT_SECURITY_POLICY = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   "media-src 'self' blob: mediastream:",
-  "connect-src 'self' https://*.supabase.co https://world.openfoodfacts.org",
+  `connect-src 'self' ${SUPABASE_ORIGIN} https://world.openfoodfacts.org`,
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'none'",
   "frame-ancestors 'none'",
 ].join('; ');
 
-/** A link the app hands to the system browser: https only, never a file or a script. */
+/**
+ * A link the app hands to the system browser: only the https links the app itself makes, a
+ * WhatsApp chat, its releases on GitHub and its own web address (the QR menu, the site). Never a
+ * file, a script or any other address, so a page gone wrong cannot send the till anywhere.
+ */
 function isExternalUrl(url) {
+  let parsed;
   try {
-    return new URL(url).protocol === 'https:';
+    parsed = new URL(url);
   } catch {
     return false;
   }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port) {
+    return false;
+  }
+  if (parsed.hostname === 'wa.me' || parsed.hostname === 'restorankasa.vercel.app') {
+    return true;
+  }
+  return (
+    parsed.hostname === 'github.com' && parsed.pathname.startsWith('/HasanKaan28/Restoran_Kasa/')
+  );
+}
+
+/** Whether an address or origin is the app's own, app://market. */
+function isAppUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'app:' && parsed.host === APP_HOST;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether the page may have a permission it asks for (Electron grants every one unless told).
+ * The app's own page gets the camera, video only, for the barcode scanner, and writing to the
+ * clipboard (copying the QR menu's link); nothing else, and nothing for any other page.
+ */
+function permissionAllowed(permission, requestingUrl, details = {}) {
+  if (!isAppUrl(requestingUrl)) {
+    return false;
+  }
+  if (permission === 'media') {
+    const types = details.mediaTypes ?? [];
+    return types.length > 0 && types.every((type) => type === 'video');
+  }
+  return permission === 'clipboard-sanitized-write';
+}
+
+/** The same answer to the page's checks (whether a camera may be listed, say). */
+function permissionCheckAllowed(permission, requestingOrigin, details = {}) {
+  if (!isAppUrl(requestingOrigin)) {
+    return false;
+  }
+  if (permission === 'media') {
+    return details.mediaType !== 'audio';
+  }
+  return permission === 'clipboard-sanitized-write';
 }
 
 /**
@@ -71,7 +128,10 @@ function devToolsAllowed(isPackaged) {
 module.exports = {
   APP_HOST,
   CONTENT_SECURITY_POLICY,
+  SUPABASE_ORIGIN,
   isExternalUrl,
+  permissionAllowed,
+  permissionCheckAllowed,
   resolveAppFile,
   devToolsAllowed,
 };
