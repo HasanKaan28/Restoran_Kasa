@@ -7,6 +7,7 @@ import { recordReturn, returnedQuantities, saleStatus } from '@/data/returns';
 import { recentSales, recordSale } from '@/data/sales';
 import { stockOf } from '@/data/stock';
 import { isVoided, voidSale } from '@/data/voids';
+import { loadAnnouncements } from '@/data/announcements';
 import { loadStoredLicense } from '@/data/license';
 import { makeTestDb } from '@/test/db';
 import { syncOnce } from './engine';
@@ -276,6 +277,23 @@ describe('syncOnce', () => {
       expiresAt: null,
       plan: { id: 'qr', name: 'QR Menü', maxDevices: 1 },
     });
+  });
+
+  it('keeps the seller’s announcements the server sends with a pull', async () => {
+    const announcing = (announcements: unknown): SyncTransport => ({
+      push: (request) => server.push(request),
+      async pull(request) {
+        return { ...(await server.pull(request)), announcements };
+      },
+    });
+    const note = { id: 'n1', message: 'Yarın bakım var.', createdAt: '2026-11-27T09:00:00Z' };
+    await syncOnce(a, announcing([note]));
+    expect(await loadAnnouncements(a)).toEqual([note]);
+    // An older server sends none: the last ones stay.
+    await syncOnce(a, server);
+    expect(await loadAnnouncements(a)).toEqual([note]);
+    await syncOnce(a, announcing([]));
+    expect(await loadAnnouncements(a)).toEqual([]);
   });
 
   it('refuses a batch size below one', async () => {

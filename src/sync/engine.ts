@@ -1,4 +1,5 @@
 import type { MarketDb } from '@/data/db';
+import { saveServerAnnouncements } from '@/data/announcements';
 import { saveServerLicense } from '@/data/license';
 import { acknowledgeOps, pendingOps } from '@/data/outbox';
 import type { OutboxItem } from '@/data/types';
@@ -106,10 +107,17 @@ async function pullChanges(
   let since = Math.max(0, cursor - overlap);
   let pulled = 0;
   for (let page = 0; ; page++) {
-    const { rows, latest, license } = await transport.pull({ since, limit: batchSize });
-    // Once a round is enough: the licence is the market's, not the page's.
+    const { rows, latest, license, announcements } = await transport.pull({
+      since,
+      limit: batchSize,
+    });
+    // Once a round is enough: the licence and the seller's messages are the market's, not the
+    // page's. A server without announcements leaves the last ones as they were.
     if (page === 0 && license !== undefined) {
       await saveServerLicense(db, license);
+    }
+    if (page === 0 && announcements !== undefined) {
+      await saveServerAnnouncements(db, announcements);
     }
     await applyServerRows(db, rows);
     pulled += rows.length;

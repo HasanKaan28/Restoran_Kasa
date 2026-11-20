@@ -2,6 +2,7 @@ import { BookOpen, ChartColumn, ChefHat, LayoutGrid, Lock, Settings } from 'luci
 import { useState, type JSX, type ReactNode } from 'react';
 import { Button, Logo, useBottomBar } from '@/design';
 import type { SyncState } from '@/sync/runner';
+import { AnnouncementBanner } from './AnnouncementBanner';
 import { LicenseBanner } from './LicenseBanner';
 import { ROUTE_PERMISSIONS, type Route } from './route';
 import { useSession } from './session';
@@ -87,6 +88,7 @@ export function AppShell({
         </div>
       </header>
       <LicenseBanner marketName={marketName} {...(syncError ? { syncError } : {})} />
+      <AnnouncementBanner />
 
       <div className="flex flex-1 md:flex-row">
         <nav

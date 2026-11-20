@@ -27,9 +27,15 @@ export type PullRequest = { since: number; limit: number };
 
 /**
  * `latest` is the last returned `serverSeq`, or `since` when nothing changed. `license` is the
- * market's plan and licence end, which the real server sends with every page.
+ * market's plan and licence end, which the real server sends with every page, and
+ * `announcements` the seller's messages for the market's registers (servers since 2026-11-27).
  */
-export type PullResponse = { rows: ServerRow[]; latest: number; license?: ServerLicense };
+export type PullResponse = {
+  rows: ServerRow[];
+  latest: number;
+  license?: ServerLicense;
+  announcements?: unknown;
+};
 
 export interface SyncTransport {
   push(request: PushRequest): Promise<PushResponse>;
