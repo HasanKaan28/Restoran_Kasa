@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createProduct } from '@/data/products';
@@ -79,6 +79,25 @@ describe('the waiter’s floor', () => {
     // The kebab is still to pay: the tab stays open.
     await waitFor(() => expect(screen.getByLabelText('Kalan tutar')).toHaveTextContent('₺450,00'));
     expect(await recentSales(data.db)).toMatchObject([{ total: 4000 }]);
+  });
+
+  it('takes the payment of the lines chosen when tapped before the amount shows', async () => {
+    const data = await restaurant();
+    await renderWithData(<TablesScreen />, data);
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
+    const menu = await screen.findByRole('region', { name: 'Menü' });
+    await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
+    await userEvent.click(within(menu).getByRole('button', { name: /Ayran/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
+    const bill = await screen.findByRole('dialog', { name: 'Hesap' });
+    // The amount below is worked out after the window opens, and again after every tick: a
+    // waiter's quick tap must pay the lines ticked, not the figure the screen last had.
+    const kebab = await within(bill).findByRole('checkbox', { name: /Adana kebap/ });
+    fireEvent.click(kebab);
+    fireEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+
+    await waitFor(async () => expect(await recentSales(data.db)).toMatchObject([{ total: 4000 }]));
+    expect(within(bill).queryByRole('alert')).toBeNull();
   });
 });
 

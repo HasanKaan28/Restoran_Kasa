@@ -57,19 +57,22 @@ export function PayDialog({
   }
 
   async function pay() {
-    if (method === 'cash' && cashGiven !== undefined && cashGiven < total) {
-      setError('Alınan para tutardan az.');
-      return;
-    }
     setBusy(true);
     setError(undefined);
     try {
+      // The amount of the lines ticked now: the figure on screen is worked out after the window
+      // opens and after every tick, so a quick tap can come before it, or while it is the last one.
+      const due = (await tabBill(db, tabId, chosenIds)).total;
+      if (method === 'cash' && cashGiven !== undefined && cashGiven < due) {
+        setError('Alınan para tutardan az.');
+        return;
+      }
       await payTabItems(
         db,
         {
           tabId,
           itemIds: chosenIds,
-          payments: total > 0 ? [{ method, amount: total }] : [],
+          payments: due > 0 ? [{ method, amount: due }] : [],
           ...(method === 'cash' && cashGiven !== undefined ? { cashGiven } : {}),
           deviceCode: settings.deviceCode,
           staffId: session.staff?.id,
@@ -79,7 +82,7 @@ export function PayDialog({
       );
       const closed = chosen.length === lines.length;
       onPaid(
-        chosenIds.length === 0 ? 'Masa kapatıldı.' : `Ödeme alındı: ${formatTRY(total)}.`,
+        chosenIds.length === 0 ? 'Masa kapatıldı.' : `Ödeme alındı: ${formatTRY(due)}.`,
         closed,
       );
     } catch {
