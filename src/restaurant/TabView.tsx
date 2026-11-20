@@ -5,6 +5,7 @@ import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
 import { useLicense } from '@/app/license';
 import { useSession } from '@/app/session';
+import { useApproval } from '@/app/useApproval';
 import { listCategories } from '@/data/categories';
 import {
   addTabItem,
@@ -70,6 +71,8 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   // Once the licence's grace is over nothing more is sold (DESIGN §8.6): no new order is taken,
   // and what the table has had can still be paid.
   const closedForSale = useLicense().kind === 'readOnly';
+  // A treat or a void by someone not allowed to make one waits for a permitted person's PIN.
+  const approval = useApproval();
 
   const tab = useLiveQuery(async () => {
     const record = await db.tabs.get(tabId);
@@ -391,8 +394,6 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           item={lineFor}
           amount={amounts.get(lineFor.id)}
           canRepeat={!billRequested}
-          canTreat={session.can('discount')}
-          canVoid={session.can('voidSale')}
           onClose={() => setLineFor(null)}
           onServe={(served) => {
             setLineFor(null);
@@ -409,12 +410,16 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
             );
           }}
           onTreat={() => {
+            const item = lineFor;
             setLineFor(null);
-            void setComplimentary(db, lineFor.id, !lineFor.complimentary, new Date());
+            approval.ask('discount', () => {
+              void setComplimentary(db, item.id, !item.complimentary, new Date());
+            });
           }}
           onVoid={() => {
+            const item = lineFor;
             setLineFor(null);
-            setVoiding(lineFor);
+            approval.ask('voidSale', () => setVoiding(item));
           }}
         />
       ) : null}
@@ -465,6 +470,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           }}
         />
       ) : null}
+      {approval.dialog}
       <ToastRegion message={toast.message} action={toast.action} onDismiss={toast.dismiss} />
     </>
   );
@@ -610,8 +616,6 @@ function LineSheet({
   item,
   amount,
   canRepeat,
-  canTreat,
-  canVoid,
   onClose,
   onServe,
   onRepeat,
@@ -621,8 +625,6 @@ function LineSheet({
   item: TabItemRecord;
   amount: number | undefined;
   canRepeat: boolean;
-  canTreat: boolean;
-  canVoid: boolean;
   onClose(): void;
   onServe(served: boolean): void;
   onRepeat(): void;
@@ -649,10 +651,8 @@ function LineSheet({
         <Button disabled={!canRepeat} onClick={onRepeat}>
           Tekrarla
         </Button>
-        <Button disabled={!canTreat} onClick={onTreat}>
-          {item.complimentary ? 'İkramı kaldır' : 'İkram'}
-        </Button>
-        <Button variant="danger" disabled={!canVoid} onClick={onVoid}>
+        <Button onClick={onTreat}>{item.complimentary ? 'İkramı kaldır' : 'İkram'}</Button>
+        <Button variant="danger" onClick={onVoid}>
           İptal
         </Button>
       </div>

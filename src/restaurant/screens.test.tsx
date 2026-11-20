@@ -8,9 +8,12 @@ import {
   kitchenTickets,
   listDiningTables,
   openTab,
+  sendTab,
 } from '@/data/restaurant';
 import { saveServerLicense } from '@/data/license';
 import { recentSales } from '@/data/sales';
+import { createStaff } from '@/data/staff';
+import { SessionProvider } from '@/app/SessionProvider';
 import { createTestData, disposeTestData, renderWithData } from '@/test/renderWithData';
 import { KitchenScreen } from './KitchenScreen';
 import { TablesScreen } from './TablesScreen';
@@ -102,12 +105,54 @@ describe('the waiter’s floor', () => {
   });
 });
 
+describe('a waiter asking for a treat or a void', () => {
+  it('gets a manager’s PIN instead of a dead button', async () => {
+    const data = await restaurant();
+    const before = new Date(Date.now() - 60_000);
+    await createStaff(data.db, { name: 'Mert', role: 'owner', pin: '1234' }, before);
+    await createStaff(data.db, { name: 'Zeynep', role: 'manager', pin: '4444' }, before);
+    const ali = await createStaff(data.db, { name: 'Ali', role: 'cashier', pin: '2222' }, before);
+    localStorage.setItem('rk.staff', ali.id);
+    const [table] = await listDiningTables(data.db);
+    const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
+    const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
+    await addTabItem(data.db, tab.id, kebab!, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
+    await sendTab(data.db, tab.id, new Date());
+    await renderWithData(
+      <SessionProvider>
+        <TablesScreen />
+      </SessionProvider>,
+      data,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, dolu, ₺450,00' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Adana kebap: işlemler' }));
+    const line = await screen.findByRole('dialog', { name: 'Adana kebap' });
+    await userEvent.click(within(line).getByRole('button', { name: 'İkram' }));
+
+    const approval = await screen.findByRole('dialog', { name: 'Yetkili onayı' });
+    await within(approval).findByRole('option', { name: 'Zeynep · Yönetici' });
+    await userEvent.selectOptions(
+      within(approval).getByLabelText('Onaylayan'),
+      'Zeynep · Yönetici',
+    );
+    await userEvent.type(within(approval).getByLabelText('PIN'), '4444');
+    await userEvent.click(within(approval).getByRole('button', { name: 'Onayla' }));
+
+    await waitFor(async () =>
+      expect(await data.db.tabItems.where('tabId').equals(tab.id).toArray()).toMatchObject([
+        { complimentary: true },
+      ]),
+    );
+  });
+});
+
 describe('a licence past its grace', () => {
   it('takes no new order, and still lets the table pay what it has had', async () => {
     const data = await restaurant();
     const [table] = await listDiningTables(data.db);
     const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
-    const [kebab] = await data.db.products.toArray();
+    const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
     await addTabItem(data.db, tab.id, kebab!, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
     // Ended a month ago: the seven days of grace are long over (DESIGN §8.6).
     const ended = new Date(Date.now() - 30 * 86_400_000).toISOString();
@@ -230,7 +275,7 @@ describe('the tables in settings', () => {
     const data = await restaurant();
     const [table] = await listDiningTables(data.db);
     const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
-    const [kebab] = await data.db.products.toArray();
+    const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
     await addTabItem(data.db, tab.id, kebab!, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
     const onDone = vi.fn();
     await renderWithData(<TablesSection onDone={onDone} />, data);
