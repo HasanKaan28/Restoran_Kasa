@@ -2,5 +2,5 @@
    country code (905xxxxxxxxx). Empty, the WhatsApp buttons stay hidden and the page says to
    contact the seller. */
 window.RK_SITE = {
-  whatsapp: '',
+  whatsapp: '905524754711',
 };
