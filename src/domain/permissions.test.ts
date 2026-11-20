@@ -18,7 +18,7 @@ const TABLE: Record<Permission, readonly [boolean, boolean, boolean, boolean]> =
   stock: [false, true, true, true],
   suppliers: [false, true, true, true],
   reports: [false, false, true, true],
-  closeDay: [true, false, true, true],
+  closeDay: [false, false, true, true],
   invoice: [true, false, true, true],
   admin: [false, false, false, true],
 };

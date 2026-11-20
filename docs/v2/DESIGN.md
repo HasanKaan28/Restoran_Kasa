@@ -242,7 +242,7 @@ Bütün olaylar ortak olarak `id`, `market_id`, `device_id`, `staff_id`, `occurr
 | Mal kabul, sayım | – | ✓ | ✓ | ✓ |
 | Tedarikçi işlemleri | – | ✓ | ✓ | ✓ |
 | Raporlar | – | – | ✓ | ✓ |
-| Gün sonu (Z) | ✓ | – | ✓ | ✓ |
+| Gün sonu (Z) | – | – | ✓ | ✓ |
 | Fatura kesme | ✓ | – | ✓ | ✓ |
 | Personel, cihaz, ayar, dışa aktarma | – | – | – | ✓ |
 

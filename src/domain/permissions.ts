@@ -66,13 +66,14 @@ export const RESTAURANT_PERMISSIONS: readonly Permission[] = [
   'admin',
 ];
 
+// No "Gün sonu" for a waiter: it lives in Raporlar, which a waiter does not see, and closing the
+// day (counting the till, the Z) is a manager's. An owner can still give it to a person.
 const CASHIER: readonly Permission[] = [
   'sell',
   'creditSale',
   'returnWithReceipt',
   'collect',
   'addProduct',
-  'closeDay',
   'invoice',
 ];
 const STOCK: readonly Permission[] = [
