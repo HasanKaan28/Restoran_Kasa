@@ -374,8 +374,9 @@ function Pairing({ detail, api }: { detail: Detail; api: OperatorApi }): JSX.Ele
     <div className="flex flex-col gap-2 border-t border-line pt-3">
       <p className="text-sm font-semibold">Destek için bağlantı kodu</p>
       <p className="text-meta text-muted">
-        Müşterinin cihazında Ayarlar → Sunucuya bağla → “Bağlantı kodu” alanına girilir; cihaz bu
-        restorana bağlanır. 10 dakika geçerli, bir kez kullanılır.
+        Müşterinin cihazında Ayarlar → Sunucuya bağla (iptal edilmiş bir kasada “Yeniden bağla”)
+        ekranındaki “Bağlantı kodu” alanına girilir; cihaz bu restorana bağlanır. 10 dakika geçerli,
+        bir kez kullanılır.
       </p>
       {full ? (
         <p className="text-sm text-warning">

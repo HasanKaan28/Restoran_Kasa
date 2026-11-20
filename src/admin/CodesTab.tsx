@@ -208,7 +208,7 @@ function IssueForm({
           onChange={(event) => setCustomDays(event.target.value)}
         />
       ) : null}
-      <div className="grid grid-cols-[6rem_1fr] gap-3">
+      <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 [&>*]:min-w-0">
         <TextField
           label="Adet"
           type="number"

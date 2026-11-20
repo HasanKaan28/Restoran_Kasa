@@ -137,13 +137,13 @@ function RestaurantRow({
   return (
     <li className={`slip ${edge} flex flex-col gap-2 px-4 py-3`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h3 className="min-w-0 font-display text-label font-semibold">
+        <h3 className="-ml-1 max-w-full shrink-0 font-display text-label font-semibold">
           <button
             type="button"
             onClick={onOpen}
-            className="-mx-1 inline-flex min-h-11 max-w-full items-center gap-1 rounded-control px-1 text-left hover:bg-bg"
+            className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-control px-1 text-left hover:bg-bg"
           >
-            <span className="truncate">{restaurant.name}</span>
+            <span className="min-w-0 break-words">{restaurant.name}</span>
             <ChevronRight aria-hidden="true" size={18} className="shrink-0 text-muted" />
           </button>
         </h3>

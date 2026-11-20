@@ -17,9 +17,9 @@ export type ChoiceGroupProps<T extends string | number> = {
 };
 
 const CHIP =
-  'flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-chip border border-line-strong bg-surface px-4 font-medium whitespace-nowrap text-text-2 transition-colors hover:text-text has-checked:border-text has-checked:bg-text has-checked:text-bg';
+  'relative flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-chip border border-line-strong bg-surface px-4 font-medium whitespace-nowrap text-text-2 transition-colors hover:text-text has-checked:border-text has-checked:bg-text has-checked:text-bg';
 const SEGMENT =
-  'flex min-h-11 cursor-pointer items-center justify-center rounded-[8px] px-3 text-center font-medium text-text-2 transition-colors hover:text-text has-checked:bg-text has-checked:font-semibold has-checked:text-bg';
+  'relative flex min-h-11 cursor-pointer items-center justify-center rounded-[8px] px-3 text-center font-medium text-text-2 transition-colors hover:text-text has-checked:bg-text has-checked:font-semibold has-checked:text-bg';
 const FOCUS =
   'has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent';
 
