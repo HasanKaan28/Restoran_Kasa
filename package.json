@@ -4,6 +4,7 @@
   "description": "Restoran Kasa: masa, adisyon, mutfak/bar ekranı ve kasa; internetsiz çalışır",
   "author": "Kurşunlu Market",
   "private": true,
+  "license": "UNLICENSED",
   "version": "1.0.3",
   "type": "module",
   "main": "electron/main.cjs",
