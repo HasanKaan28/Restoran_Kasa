@@ -42,4 +42,21 @@ describe('PIN', () => {
     expect(await verifyPin('482', stored)).toBe(false);
     expect(await verifyPin('4821', { ...stored, iterations: 10 })).toBe(false);
   });
+
+  it('hashes a new PIN with 600,000 rounds and still accepts one hashed with fewer', async () => {
+    // OWASP's figure for PBKDF2-SHA256. PINs set before keep their rounds until they are changed.
+    expect((await hashPin('1234')).iterations).toBe(600_000);
+    const older = await hashPin('4821', undefined, 150_000);
+    expect(older.iterations).toBe(150_000);
+    expect(await verifyPin('4821', older)).toBe(true);
+  });
+
+  it('refuses at once a stored hash that asks for more rounds than any PIN is hashed with', async () => {
+    // The rounds come with the synced staff row: a huge number would hang every sign-in.
+    const stored = await hashPin('4821');
+    const started = performance.now();
+    expect(await verifyPin('4821', { ...stored, iterations: 1e12 })).toBe(false);
+    expect(await verifyPin('4821', { ...stored, iterations: 5_000_001 })).toBe(false);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
 });

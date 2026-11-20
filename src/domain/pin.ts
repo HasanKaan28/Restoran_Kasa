@@ -1,9 +1,18 @@
 /** How a PIN is kept: the PBKDF2-SHA256 result, its salt (both base64) and its rounds. */
 export type PinHash = { hash: string; salt: string; iterations: number };
 
-/** DESIGN §8.3 asks for at least 100,000; a little more costs a cashier nothing. */
-export const PIN_ITERATIONS = 150_000;
+/**
+ * Rounds for a PIN set now: OWASP's figure for PBKDF2-SHA256 (DESIGN §8.3 asks for at least
+ * 100,000). A PIN set before keeps the rounds it was hashed with until it is changed. Four to six
+ * digits stay few to guess for whoever copies a register's data; the rounds slow that, not stop it.
+ */
+export const PIN_ITERATIONS = 600_000;
 const MIN_ITERATIONS = 100_000;
+/**
+ * The most rounds a stored hash may ask for. They come with the synced staff row, which any
+ * register of the market writes: a huge number would hang every sign-in on every register.
+ */
+const MAX_ITERATIONS = 5_000_000;
 const SALT_BYTES = 16;
 const HASH_BITS = 256;
 const PIN = /^\d{4,6}$/;
@@ -25,8 +34,14 @@ export async function hashPin(
   if (!isValidPin(pin)) {
     throw new RangeError('A PIN is four to six digits');
   }
-  if (!Number.isSafeInteger(iterations) || iterations < MIN_ITERATIONS) {
-    throw new RangeError(`A PIN hash takes at least ${MIN_ITERATIONS} rounds, got ${iterations}`);
+  if (
+    !Number.isSafeInteger(iterations) ||
+    iterations < MIN_ITERATIONS ||
+    iterations > MAX_ITERATIONS
+  ) {
+    throw new RangeError(
+      `A PIN hash takes ${MIN_ITERATIONS} to ${MAX_ITERATIONS} rounds, got ${iterations}`,
+    );
   }
   const saltBytes = salt === undefined ? randomSalt() : fromBase64(salt);
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, [

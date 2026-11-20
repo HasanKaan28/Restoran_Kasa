@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Screens } from '@/app/Screens';
@@ -9,6 +9,7 @@ import { recordSale } from '@/data/sales';
 import { loadMarketSettings } from '@/data/settings';
 import { checkPin, createStaff, updateStaff } from '@/data/staff';
 import { createTestData, renderWithData } from '@/test/renderWithData';
+import { signInAs } from '@/test/session';
 
 const before = () => new Date(Date.now() - 60_000);
 const LAST_OWNER = 'Son sahip kalmalı: rolü değiştirilemez, pasife alınamaz.';
@@ -22,7 +23,7 @@ async function team() {
 
 async function settingsAs(data: ReturnType<typeof createTestData>, staffId?: string) {
   if (staffId) {
-    localStorage.setItem('rk.staff', staffId);
+    await signInAs(data.db, staffId);
   }
   await renderWithData(
     <SessionProvider>
@@ -80,7 +81,7 @@ describe('SettingsScreen', () => {
     expect(await screen.findByRole('button', { name: 'Kilitle' })).toBeInTheDocument();
     const [kaan] = await data.db.staff.toArray();
     expect(kaan).toMatchObject({ name: 'Kaan', role: 'owner' });
-    expect(localStorage.getItem('rk.staff')).toBe(kaan?.id);
+    await waitFor(() => expect(localStorage.getItem('rk.staff')).toContain(kaan?.id));
   });
 
   it('changes a role and a permission', async () => {

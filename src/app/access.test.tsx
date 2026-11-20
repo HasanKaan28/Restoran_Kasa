@@ -15,6 +15,7 @@ import { createTestData, renderWithData } from '@/test/renderWithData';
 import { ApprovalDialog } from './ApprovalDialog';
 import { Screens } from './Screens';
 import { SessionProvider } from './SessionProvider';
+import { signInAs } from '@/test/session';
 
 const milk = { barcode: '8690000000017', name: 'Süt', sellPrice: 4250, vatRate: 1 } as const;
 const before = () => new Date(Date.now() - 60_000);
@@ -30,10 +31,6 @@ async function team() {
   const ayse = await createStaff(data.db, { name: 'Ayşe', role: 'cashier', pin: '1234' }, before());
   await createStaff(data.db, { name: 'Fatma', role: 'cashier', pin: '3333' }, before());
   return { data, kaan, mehmet, ayse };
-}
-
-function signedIn(staffId: string) {
-  localStorage.setItem('rk.staff', staffId);
 }
 
 function scan(code: string) {
@@ -68,7 +65,7 @@ async function approve(name: string, pin: string) {
 describe('access', () => {
   it('hides the screens a person may not use', async () => {
     const { data, ayse } = await team();
-    signedIn(ayse.id);
+    await signInAs(data.db, ayse.id);
     await renderWithData(
       <SessionProvider>
         <Screens route="reports" />
@@ -86,7 +83,7 @@ describe('access', () => {
 
   it('asks a permitted person to approve a discount', async () => {
     const { data, ayse, mehmet } = await team();
-    signedIn(ayse.id);
+    await signInAs(data.db, ayse.id);
     await register(data);
     await userEvent.click(screen.getByRole('button', { name: 'İndirim' }));
     const dialog = await screen.findByRole('dialog', { name: 'Yetkili onayı' });
@@ -115,7 +112,7 @@ describe('access', () => {
 
   it('sells over the credit limit only with approval', async () => {
     const { data, ayse } = await team();
-    signedIn(ayse.id);
+    await signInAs(data.db, ayse.id);
     await createCustomer(data.db, { name: 'Ahmet Yılmaz', creditLimit: 1000 }, before());
     await register(data);
     await userEvent.click(screen.getByRole('button', { name: 'Veresiye' }));
@@ -128,7 +125,7 @@ describe('access', () => {
 
   it('hides cost and profit without the permission', async () => {
     const { data, mehmet } = await team();
-    signedIn(mehmet.id);
+    await signInAs(data.db, mehmet.id);
     const tea = await createProduct(
       data.db,
       { name: 'Çay', sellPrice: 9000, buyPrice: 7000, vatRate: 1 },
@@ -155,7 +152,7 @@ describe('access', () => {
   it('keeps exports to the owner', async () => {
     const { data, kaan } = await team();
     const ali = await createStaff(data.db, { name: 'Ali', role: 'stock', pin: '5555' }, before());
-    signedIn(ali.id);
+    await signInAs(data.db, ali.id);
     const first = await renderWithData(
       <SessionProvider>
         <ProductsScreen />
@@ -165,7 +162,7 @@ describe('access', () => {
     expect(await screen.findByRole('button', { name: 'İçe aktar' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Dışa aktar' })).not.toBeInTheDocument();
     first.unmount();
-    signedIn(kaan.id);
+    await signInAs(data.db, kaan.id);
     await renderWithData(
       <SessionProvider>
         <ProductsScreen />
@@ -176,7 +173,7 @@ describe('access', () => {
   });
   it('asks approval before a cashier lifts a credit limit or writes down a debt', async () => {
     const { data, ayse } = await team();
-    signedIn(ayse.id);
+    await signInAs(data.db, ayse.id);
     const ahmet = await createCustomer(
       data.db,
       { name: 'Ahmet Yılmaz', creditLimit: 1000 },
@@ -210,7 +207,7 @@ describe('access', () => {
       { name: 'Ayşe', role: 'cashier', pin: '1234', permissions: { creditSale: false } },
       before(),
     );
-    signedIn(ayse.id);
+    await signInAs(data.db, ayse.id);
     await createCustomer(data.db, { name: 'Ahmet Yılmaz' }, before());
     await register(data);
     await userEvent.click(screen.getByRole('button', { name: 'Bölünmüş' }));
@@ -231,7 +228,7 @@ describe('access', () => {
       { name: 'Zeynep', role: 'cashier', pin: '5555', permissions: { reports: false } },
       before(),
     );
-    signedIn(zeynep.id);
+    await signInAs(data.db, zeynep.id);
     await renderWithData(
       <SessionProvider>
         <Screens route="reports" />
@@ -250,7 +247,7 @@ describe('access', () => {
       { name: 'Zeynep', role: 'cashier', pin: '5555', permissions: { invoice: false } },
       before(),
     );
-    signedIn(zeynep.id);
+    await signInAs(data.db, zeynep.id);
     const product = await createProduct(data.db, milk, before());
     const sale = await recordSale(data.db, {
       deviceCode: 'K1',
@@ -290,7 +287,7 @@ describe('access', () => {
 
   it('leaves bringing v1 customers over to the owners', async () => {
     const { data, mehmet, kaan } = await team();
-    signedIn(mehmet.id);
+    await signInAs(data.db, mehmet.id);
     const { unmount } = await renderWithData(
       <SessionProvider>
         <CustomersScreen />
@@ -300,7 +297,7 @@ describe('access', () => {
     expect(await screen.findByRole('button', { name: 'Yeni müşteri' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: "v1'den aktar" })).toBeNull();
     unmount();
-    signedIn(kaan.id);
+    await signInAs(data.db, kaan.id);
     await renderWithData(
       <SessionProvider>
         <CustomersScreen />

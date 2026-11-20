@@ -16,6 +16,7 @@ import { recentSales } from '@/data/sales';
 import { createStaff } from '@/data/staff';
 import { SessionProvider } from '@/app/SessionProvider';
 import { createTestData, disposeTestData, renderWithData } from '@/test/renderWithData';
+import { signInAs } from '@/test/session';
 import { KitchenScreen } from './KitchenScreen';
 import { TablesScreen } from './TablesScreen';
 import { TablesSection } from './TablesSection';
@@ -148,7 +149,7 @@ describe('a waiter asking for a treat or a void', () => {
     await createStaff(data.db, { name: 'Mert', role: 'owner', pin: '1234' }, before);
     await createStaff(data.db, { name: 'Zeynep', role: 'manager', pin: '4444' }, before);
     const ali = await createStaff(data.db, { name: 'Ali', role: 'cashier', pin: '2222' }, before);
-    localStorage.setItem('rk.staff', ali.id);
+    await signInAs(data.db, ali.id);
     const [table] = await listDiningTables(data.db);
     const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
     const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();

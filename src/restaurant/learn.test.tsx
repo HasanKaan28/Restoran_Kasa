@@ -8,6 +8,7 @@ import { createStaff } from '@/data/staff';
 import { createTestData, renderWithData } from '@/test/renderWithData';
 import { KitchenScreen } from './KitchenScreen';
 import { TablesScreen } from './TablesScreen';
+import { signInAs } from '@/test/session';
 
 describe('a new owner’s first evening', () => {
   it('shows a setup list on the floor that follows the data and links to each place', async () => {
@@ -65,7 +66,7 @@ describe('a new owner’s first evening', () => {
       { name: 'Ayşe', role: 'cashier', pin: '1234' },
       new Date(),
     );
-    localStorage.setItem('rk.staff', ayse.id);
+    await signInAs(data.db, ayse.id);
     await renderWithData(
       <SessionProvider>
         <TablesScreen />

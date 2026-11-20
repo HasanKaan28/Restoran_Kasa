@@ -15,6 +15,7 @@ import { cartReducer, emptyCart, loadCart } from './cart';
 import { withCheckDigit } from '@/domain/scaleBarcode';
 import { checkout, singlePayment } from './checkout';
 import { PosScreen } from './PosScreen';
+import { signInAs } from '@/test/session';
 
 const milk = { barcode: '8690000000017', name: 'Süt', sellPrice: 4250, vatRate: 1 } as const;
 
@@ -122,7 +123,7 @@ describe('PosScreen', () => {
       { name: 'Ayşe', role: 'cashier', pin: '1234' },
       new Date(),
     );
-    localStorage.setItem('rk.staff', ayse.id);
+    await signInAs(data.db, ayse.id);
     await renderWithData(
       <SessionProvider>
         <PosScreen />

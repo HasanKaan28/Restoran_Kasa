@@ -30,26 +30,3 @@ const OPEN_SESSION: Session = {
 export function useSession(): Session {
   return useContext(SessionContext) ?? OPEN_SESSION;
 }
-
-const STORAGE_KEY = 'rk.staff';
-
-/** The person signed in on this device, kept across a reload. */
-export function loadSessionStaffId(): string | null {
-  try {
-    return localStorage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function saveSessionStaffId(staffId: string | null): void {
-  try {
-    if (staffId === null) {
-      localStorage.removeItem(STORAGE_KEY);
-    } else {
-      localStorage.setItem(STORAGE_KEY, staffId);
-    }
-  } catch {
-    // Storage blocked: the session lasts until the page is closed.
-  }
-}
