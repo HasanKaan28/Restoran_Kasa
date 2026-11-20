@@ -42,7 +42,14 @@ export function downloadText(
 function cellOf({ product, stockMilli, categoryName }: ProductRow, field: ImportField): string {
   switch (field) {
     case 'barcode':
-      return product.barcode ? `="${product.barcode}"` : '';
+      // Only a barcode as the app makes them goes inside ="…": one synced from elsewhere could
+      // close the quote and run a formula.
+      if (!product.barcode) {
+        return '';
+      }
+      return /^[0-9A-Za-z-]{1,64}$/.test(product.barcode)
+        ? `="${product.barcode}"`
+        : csvText(product.barcode);
     case 'name':
       return csvText(product.name);
     case 'category':

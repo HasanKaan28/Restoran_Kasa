@@ -68,6 +68,24 @@ describe('productsToCsv', () => {
     ]);
   });
 
+  it('never lets a synced barcode break out of its ="…" into a formula', () => {
+    // Barcodes typed here are letters, digits and "-"; one synced from another register may hold
+    // anything, and inside ="…" a quote would end the text and run what follows.
+    const evil = '1"&HYPERLINK("https://example.com")&"';
+    const [row] = buildProductRows(
+      indexProducts([{ ...(products[0] as ProductRecord), barcode: evil }]),
+      new Map(),
+      [dairy],
+      { text: '', filter: 'all', category: 'any' },
+    );
+    const line =
+      productsToCsv([row as (typeof rows)[number]])
+        .slice(1)
+        .split('\r\n')[1] ?? '';
+    expect(line.startsWith('"1""&HYPERLINK(""https://example.com"")&"""')).toBe(true);
+    expect(line).not.toContain('="1"');
+  });
+
   it('round-trips through the importer', () => {
     const table = parseCsv(decodeText(new TextEncoder().encode(productsToCsv(rows))));
     const read = readImportRows(table, guessMapping(table[0] ?? []), true);
