@@ -38,7 +38,9 @@ describe('storage quota', () => {
     await server.addMarket('m1');
     const { userId } = await server.addDevice('m1', 'K1');
     const session = server.as(userId);
-    await session.rpc('sync_push', [[sale('s1', Array.from({ length: 300 }, () => crypto.randomUUID()).join(''))]]);
+    await session.rpc('sync_push', [
+      [sale('s1', Array.from({ length: 300 }, () => crypto.randomUUID()).join(''))],
+    ]);
     const [usage] = await server.query<{ bytes: string }>(
       "select bytes from app.market_usage where market_id = 'm1'",
     );
@@ -91,7 +93,9 @@ describe('app.prune', () => {
       "select op_id from app.applied_ops where market_id = 'm3' order by op_id",
     );
     expect(ops.map((o) => o.op_id)).toEqual(['op-s1', 'recent']);
-    const codes = await server.query<{ code: string }>('select code from app.pairings order by code');
+    const codes = await server.query<{ code: string }>(
+      'select code from app.pairings order by code',
+    );
     expect(codes.map((c) => c.code)).toEqual(['LIVE11', 'NEW111']);
     expect(await server.query("select 1 from app.devices where market_id = 'm3'")).toHaveLength(1);
   });
