@@ -2335,6 +2335,317 @@ button.tk__item:hover {
   }
 }
 
+/* The QR menu: the printed table card beside the guest's phone. The phone draws the menu as the
+   guest page does (src/menu/page.ts), in the app's colours; the card stays black on white in
+   both themes, because it is paper. */
+.qr__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(32px, 6vw, 88px);
+  align-items: center;
+}
+.qr__points {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  margin: 28px 0 0;
+  padding: 0;
+  color: var(--text-2);
+}
+.qr__points li {
+  position: relative;
+  padding-left: 30px;
+}
+.qr__points li::before {
+  content: '';
+  position: absolute;
+  top: 0.4em;
+  left: 3px;
+  width: 13px;
+  height: 7px;
+  border-left: 2px solid var(--olive);
+  border-bottom: 2px solid var(--olive);
+  transform: rotate(-45deg);
+}
+.qr__stage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(20px, 3vw, 40px);
+}
+.qr-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 196px;
+  margin: 0;
+  padding: 20px 18px 18px;
+  border-radius: 6px;
+  background: #fff;
+  color: #000;
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+  font-family: var(--display);
+  transform: rotate(-4deg);
+}
+.qr-card__name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.qr-card__code {
+  display: block;
+  width: 136px;
+  height: 136px;
+}
+.qr-card__table {
+  font-size: 27px;
+  font-weight: 800;
+  font-stretch: 85%;
+  line-height: 1;
+}
+.qr-card__hint {
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.qr__phone {
+  flex: none;
+  width: 300px;
+}
+.gm {
+  height: 560px;
+}
+.gm__scroll {
+  position: relative;
+  height: 100%;
+  padding: 0 14px 18px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.gm__scroll::-webkit-scrollbar {
+  display: none;
+}
+.gm__scroll:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: -4px;
+}
+.gm__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 36px 0 10px;
+}
+.gm__eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--app-accent);
+}
+.gm__name {
+  font: 750 25px/1.05 var(--display);
+  letter-spacing: -0.02em;
+}
+.gm__table {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--app-line-strong);
+  background: var(--app-surface);
+  font: 650 12.5px/1.3 var(--display);
+}
+.gm__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--app-accent);
+}
+.gm__search {
+  position: relative;
+  margin: 6px 0 6px;
+}
+.gm__search svg {
+  position: absolute;
+  top: 50%;
+  left: 11px;
+  width: 16px;
+  height: 16px;
+  color: var(--app-text-2);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.gm__search input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px 0 34px;
+  border-radius: 10px;
+  border: 1px solid var(--app-line-strong);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 13.5px;
+}
+.gm__search input::placeholder {
+  color: var(--app-text-2);
+}
+.gm__search input:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+.gm__status {
+  margin: 4px 0 6px;
+  font-size: 12px;
+  color: var(--app-text-2);
+}
+.gm__status:empty {
+  display: none;
+}
+.gm__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  /* No margin above: a stuck row keeps its margin, and the menu would show through it. */
+  margin: 0 -14px;
+  padding: 10px 14px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--app-line);
+  background: var(--app-bg);
+}
+.gm__tabs::-webkit-scrollbar {
+  display: none;
+}
+.gm__tab {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--app-line-strong);
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  font: 650 12.5px/1 var(--display);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.16s var(--ease-out);
+}
+.gm__tab:active {
+  transform: scale(0.96);
+}
+.gm__tab[aria-current='true'] {
+  border-color: var(--app-text);
+  background: var(--app-text);
+  color: var(--app-bg);
+}
+.gm.is-searching .gm__tabs {
+  display: none;
+}
+.gm__section {
+  padding-top: 14px;
+}
+.gm__section[hidden],
+.gm__dish[hidden] {
+  display: none;
+}
+h3.gm__title {
+  margin: 0 0 7px;
+  font: 700 17px/1.1 var(--display);
+  letter-spacing: -0.01em;
+}
+.gm__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--app-line);
+  border-radius: 12px;
+  background: var(--app-surface);
+}
+.gm__dish {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px;
+}
+.gm__dish + .gm__dish {
+  border-top: 1px solid var(--app-line);
+}
+.gm__row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+.gm__row b {
+  font-weight: 600;
+}
+.gm__row i {
+  flex: 1;
+  min-width: 10px;
+  border-bottom: 1px dotted var(--app-line-strong);
+}
+.gm__row span {
+  font: 650 13.5px/1 var(--display);
+  white-space: nowrap;
+}
+.gm__desc {
+  font-size: 12px;
+  color: var(--app-text-2);
+}
+.gm__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.gm__chips span {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--app-line);
+  background: var(--app-bg);
+  font-size: 11px;
+  color: var(--app-text-2);
+}
+.gm__chips b {
+  font-family: var(--display);
+  color: var(--app-text);
+}
+.gm__opt {
+  font-size: 11px;
+  color: var(--app-text-2);
+}
+.gm__foot {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--app-text-2);
+}
+@media (max-width: 1023px) {
+  .qr__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .qr__stage {
+    flex-direction: column;
+  }
+  .qr-card {
+    transform: rotate(-2deg);
+  }
+  .qr__phone {
+    width: min(100%, 300px);
+  }
+}
+
 /* Setup: three steps on a line, a vertical rail on phones. */
 .steps {
   list-style: none;

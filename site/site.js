@@ -1482,12 +1482,107 @@
     setSync();
   }
 
+  /* The QR menu's phone: the guest page's sticky category tabs and its search, over the sample
+     menu written in the page. Nothing is fetched. */
+  function initGuestMenu() {
+    var box = $('[data-guest-menu]');
+    if (!box) return;
+    var scroller = $('[data-gm-scroll]', box);
+    var tabRow = $('[data-gm-tabs]', box);
+    var tabs = $$('[data-gm-tab]', box);
+    var sections = $$('[data-gm-section]', box);
+    var search = $('[data-gm-search]', box);
+    var status = $('[data-gm-status]', box);
+    var folded = { ı: 'i', ç: 'c', ğ: 'g', ö: 'o', ş: 's', ü: 'u' };
+    var fold = function (text) {
+      return text
+        .trim()
+        .toLocaleLowerCase('tr')
+        .replace(/[ıçğöşü]/g, function (letter) {
+          return folded[letter];
+        });
+    };
+    var active = 'corba';
+    var settling = 0;
+
+    function mark(id) {
+      if (id === active) return;
+      active = id;
+      tabs.forEach(function (tab) {
+        var on = tab.getAttribute('data-gm-tab') === id;
+        if (on) {
+          tab.setAttribute('aria-current', 'true');
+          tabRow.scrollTo({
+            left: tab.offsetLeft - (tabRow.clientWidth - tab.offsetWidth) / 2,
+            behavior: reduced() ? 'auto' : 'smooth',
+          });
+        } else {
+          tab.removeAttribute('aria-current');
+        }
+      });
+    }
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var id = tab.getAttribute('data-gm-tab');
+        var section = $('[data-gm-section="' + id + '"]', box);
+        mark(id);
+        clearTimeout(settling);
+        settling = setTimeout(function () {
+          settling = 0;
+        }, 700);
+        scroller.scrollTo({
+          top: section.offsetTop - tabRow.offsetHeight,
+          behavior: reduced() ? 'auto' : 'smooth',
+        });
+      });
+    });
+
+    // The tab of the section under the sticky row is marked as the menu scrolls.
+    scroller.addEventListener(
+      'scroll',
+      function () {
+        if (settling || box.classList.contains('is-searching')) return;
+        var line = scroller.scrollTop + tabRow.offsetHeight + 8;
+        var current = sections[0];
+        sections.forEach(function (section) {
+          if (section.offsetTop <= line) current = section;
+        });
+        mark(current.getAttribute('data-gm-section'));
+      },
+      { passive: true }
+    );
+
+    search.addEventListener('input', function () {
+      var needle = fold(search.value);
+      var found = 0;
+      box.classList.toggle('is-searching', needle !== '');
+      sections.forEach(function (section) {
+        var any = false;
+        $$('.gm__dish', section).forEach(function (dish) {
+          var desc = $('.gm__desc', dish);
+          var text = $('b', dish).textContent + ' ' + (desc ? desc.textContent : '');
+          var hit = needle === '' || fold(text).indexOf(needle) !== -1;
+          dish.hidden = !hit;
+          if (hit) {
+            any = true;
+            found++;
+          }
+        });
+        section.hidden = !any;
+      });
+      status.textContent =
+        needle === '' ? '' : found ? found + ' yemek bulundu' : '“' + search.value.trim() + '” menüde yok.';
+    });
+  }
+
   function start() {
     initTheme();
     initPos();
     initStory();
     initBill();
     initOutage();
+    initGuestMenu();
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start);
   else start();

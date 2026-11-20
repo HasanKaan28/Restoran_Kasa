@@ -207,7 +207,7 @@
             </li>
             <li class="tile tile--masalar reveal">
               <h3>Masalar</h3>
-              <p>Salon, bahçe, teras. Her masada adisyon toplamı, kaç dakikadır açık olduğu ve servise hazır bekleyenler; hazırı olan masa yeşil çerçevelenir.</p>
+              <p>Salon, bahçe, teras. Her masada adisyon toplamı, kaç dakikadır açık olduğu ve servise hazır bekleyenler; hazırı olan masa yeşil çerçevelenir. Masadaki QR kart misafire <a href="#qr-menu">menüyü</a> açar.</p>
             </li>
             <li class="tile tile--hesap reveal">
               <div class="tile__text">
@@ -439,7 +439,111 @@
         </div>
       </section>
 
-      <section id="kurulum" class="section section--raised" aria-labelledby="setup-title">
+      <!-- The QR menu: the card on the table and the guest's phone after scanning it. The menu in
+           the phone is sample data written here, not a call to any server; site.js makes its tabs
+           and search work. Without JavaScript it is still the whole menu. -->
+      <section id="qr-menu" class="section section--raised qr" aria-labelledby="qr-title">
+        <div class="wrap qr__grid">
+          <div class="qr__copy">
+            <h2 id="qr-title">Menünüzü QR ile gösterin</h2>
+            <p class="section-lead">
+              Misafir masadaki kartı telefonunun kamerasıyla okutur, menünüzü görür: kategoriler, fiyatlar,
+              porsiyonlar. Uygulama da üyelik de gerekmez. Menü'de bir fiyatı değiştirdiğinizde QR menü de
+              değişir.
+            </p>
+            <ul class="qr__points">
+              <li>Ayarlar → QR menü'den açın; bağlantıyı kopyalayın ya da önizleyin.</li>
+              <li>Her masaya kendi kartı: A4 sayfaya altı kart ya da tek kart, siyah beyaz yazdırın.</li>
+              <li>Misafir yalnız menüyü görür. Maliyet, stok, personel ve satışlar görünmez.</li>
+              <li>İstediğiniz an kapatın; bağlantıyı yenileyince eski kartlar çalışmaz.</li>
+            </ul>
+          </div>
+
+          <div class="qr__stage">
+            <!-- The table card as it prints: black on white whatever the theme. The code opens this
+                 section of the site. -->
+            <figure class="qr-card">
+              <span class="qr-card__name">Ocakbaşı Hasan</span>
+              <svg class="qr-card__code" viewBox="0 0 37 37" role="img" aria-label="Örnek QR kod" shape-rendering="crispEdges">
+                <rect width="37" height="37" fill="#fff" />
+                <path fill="#000" d="M4 4h7v1h-7zM12 4h4v1h-4zM17 4h1v1h-1zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h7v1h-7zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h3v1h-3zM20 5h3v1h-3zM24 5h1v1h-1zM26 5h1v1h-1zM32 5h1v1h-1zM4 6h1v1h-1zM6 6h3v1h-3zM10 6h1v1h-1zM14 6h1v1h-1zM16 6h3v1h-3zM22 6h1v1h-1zM24 6h1v1h-1zM26 6h1v1h-1zM28 6h3v1h-3zM32 6h1v1h-1zM4 7h1v1h-1zM6 7h3v1h-3zM10 7h1v1h-1zM12 7h1v1h-1zM15 7h1v1h-1zM17 7h2v1h-2zM21 7h1v1h-1zM24 7h1v1h-1zM26 7h1v1h-1zM28 7h3v1h-3zM32 7h1v1h-1zM4 8h1v1h-1zM6 8h3v1h-3zM10 8h1v1h-1zM13 8h1v1h-1zM15 8h1v1h-1zM18 8h2v1h-2zM21 8h3v1h-3zM26 8h1v1h-1zM28 8h3v1h-3zM32 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM14 9h5v1h-5zM20 9h2v1h-2zM23 9h1v1h-1zM26 9h1v1h-1zM32 9h1v1h-1zM4 10h7v1h-7zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h7v1h-7zM12 11h1v1h-1zM15 11h2v1h-2zM19 11h1v1h-1zM21 11h1v1h-1zM23 11h1v1h-1zM4 12h1v1h-1zM6 12h2v1h-2zM9 12h3v1h-3zM13 12h2v1h-2zM16 12h1v1h-1zM18 12h1v1h-1zM21 12h2v1h-2zM26 12h1v1h-1zM29 12h1v1h-1zM31 12h2v1h-2zM4 13h2v1h-2zM7 13h1v1h-1zM13 13h2v1h-2zM17 13h1v1h-1zM20 13h1v1h-1zM22 13h2v1h-2zM25 13h4v1h-4zM32 13h1v1h-1zM5 14h1v1h-1zM8 14h1v1h-1zM10 14h1v1h-1zM12 14h3v1h-3zM17 14h1v1h-1zM20 14h1v1h-1zM25 14h3v1h-3zM30 14h2v1h-2zM4 15h1v1h-1zM6 15h3v1h-3zM13 15h2v1h-2zM17 15h1v1h-1zM20 15h1v1h-1zM22 15h2v1h-2zM25 15h1v1h-1zM27 15h1v1h-1zM32 15h1v1h-1zM5 16h1v1h-1zM7 16h2v1h-2zM10 16h12v1h-12zM27 16h1v1h-1zM29 16h2v1h-2zM4 17h1v1h-1zM6 17h2v1h-2zM9 17h1v1h-1zM11 17h2v1h-2zM15 17h2v1h-2zM19 17h3v1h-3zM23 17h1v1h-1zM25 17h2v1h-2zM30 17h3v1h-3zM5 18h3v1h-3zM9 18h3v1h-3zM14 18h1v1h-1zM16 18h3v1h-3zM22 18h3v1h-3zM26 18h3v1h-3zM30 18h3v1h-3zM9 19h1v1h-1zM11 19h1v1h-1zM13 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM23 19h1v1h-1zM25 19h2v1h-2zM28 19h1v1h-1zM31 19h1v1h-1zM5 20h1v1h-1zM8 20h1v1h-1zM10 20h1v1h-1zM18 20h1v1h-1zM22 20h1v1h-1zM25 20h1v1h-1zM28 20h2v1h-2zM31 20h1v1h-1zM5 21h1v1h-1zM7 21h2v1h-2zM11 21h1v1h-1zM14 21h1v1h-1zM16 21h1v1h-1zM19 21h3v1h-3zM24 21h1v1h-1zM27 21h1v1h-1zM29 21h3v1h-3zM4 22h1v1h-1zM6 22h1v1h-1zM8 22h3v1h-3zM13 22h8v1h-8zM24 22h2v1h-2zM27 22h2v1h-2zM30 22h1v1h-1zM7 23h2v1h-2zM12 23h1v1h-1zM14 23h1v1h-1zM16 23h6v1h-6zM24 23h2v1h-2zM30 23h1v1h-1zM5 24h2v1h-2zM8 24h1v1h-1zM10 24h5v1h-5zM16 24h6v1h-6zM23 24h8v1h-8zM12 25h1v1h-1zM16 25h1v1h-1zM21 25h2v1h-2zM24 25h1v1h-1zM28 25h5v1h-5zM4 26h7v1h-7zM12 26h1v1h-1zM16 26h1v1h-1zM18 26h1v1h-1zM22 26h3v1h-3zM26 26h1v1h-1zM28 26h2v1h-2zM31 26h1v1h-1zM4 27h1v1h-1zM10 27h1v1h-1zM12 27h2v1h-2zM16 27h3v1h-3zM20 27h1v1h-1zM24 27h1v1h-1zM28 27h2v1h-2zM32 27h1v1h-1zM4 28h1v1h-1zM6 28h3v1h-3zM10 28h1v1h-1zM13 28h1v1h-1zM15 28h1v1h-1zM19 28h3v1h-3zM24 28h5v1h-5zM30 28h3v1h-3zM4 29h1v1h-1zM6 29h3v1h-3zM10 29h1v1h-1zM12 29h2v1h-2zM19 29h3v1h-3zM23 29h1v1h-1zM25 29h1v1h-1zM27 29h3v1h-3zM32 29h1v1h-1zM4 30h1v1h-1zM6 30h3v1h-3zM10 30h1v1h-1zM12 30h4v1h-4zM17 30h2v1h-2zM20 30h1v1h-1zM23 30h2v1h-2zM27 30h1v1h-1zM30 30h1v1h-1zM32 30h1v1h-1zM4 31h1v1h-1zM10 31h1v1h-1zM14 31h1v1h-1zM19 31h1v1h-1zM24 31h1v1h-1zM26 31h1v1h-1zM29 31h1v1h-1zM31 31h1v1h-1zM4 32h7v1h-7zM12 32h1v1h-1zM14 32h1v1h-1zM18 32h1v1h-1zM20 32h1v1h-1zM22 32h3v1h-3zM26 32h2v1h-2zM29 32h1v1h-1zM31 32h1v1h-1z" />
+              </svg>
+              <span class="qr-card__table">Masa 7</span>
+              <figcaption class="qr-card__hint">Menüyü görmek için okutun</figcaption>
+            </figure>
+
+            <div class="dev dev--phone qr__phone">
+              <span class="dev__ear" aria-hidden="true"></span>
+              <div class="dev__glass app gm" data-guest-menu>
+                <div class="gm__scroll" tabindex="0" role="region" aria-label="Örnek QR menü: Ocakbaşı Hasan" data-gm-scroll>
+                  <div class="gm__head">
+                    <span class="gm__eyebrow">Menü</span>
+                    <strong class="gm__name">Ocakbaşı Hasan</strong>
+                    <span class="gm__table"><span class="gm__dot" aria-hidden="true"></span>Masa 7</span>
+                  </div>
+                  <div class="gm__search">
+                    <label class="sr-only" for="gm-search">Örnek menüde ara</label>
+                    <!-- Tabler Icons (MIT): search. -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>
+                    <input id="gm-search" type="search" placeholder="Menüde ara" autocomplete="off" enterkeyhint="search" data-gm-search />
+                  </div>
+                  <p class="gm__status" role="status" data-gm-status></p>
+                  <div class="gm__tabs" role="group" aria-label="Örnek menünün kategorileri" data-gm-tabs>
+                    <button type="button" class="gm__tab" data-gm-tab="corba" aria-current="true">Çorbalar</button>
+                    <button type="button" class="gm__tab" data-gm-tab="izgara">Izgara</button>
+                    <button type="button" class="gm__tab" data-gm-tab="meze">Meze</button>
+                    <button type="button" class="gm__tab" data-gm-tab="tatli">Tatlılar</button>
+                    <button type="button" class="gm__tab" data-gm-tab="icecek">İçecekler</button>
+                  </div>
+                  <section class="gm__section" data-gm-section="corba" aria-label="Çorbalar">
+                    <h3 class="gm__title" aria-hidden="true">Çorbalar</h3>
+                    <ul class="gm__list">
+                      <li class="gm__dish"><span class="gm__row"><b>Ezogelin çorbası</b><i aria-hidden="true"></i><span>₺120</span></span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Mercimek çorbası</b><i aria-hidden="true"></i><span>₺120</span></span><span class="gm__desc">Limon ve kıtır ekmekle</span></li>
+                    </ul>
+                  </section>
+                  <section class="gm__section" data-gm-section="izgara" aria-label="Izgara">
+                    <h3 class="gm__title" aria-hidden="true">Izgara</h3>
+                    <ul class="gm__list">
+                      <li class="gm__dish"><span class="gm__row"><b>Adana kebap</b><i aria-hidden="true"></i><span>₺450</span></span><span class="gm__desc">Zırh kıyması, közlenmiş biber ve domatesle</span><span class="gm__chips"><span>Yarım <b>₺250</b></span><span>1,5 <b>₺650</b></span></span><span class="gm__opt">Acı: Acılı, Acısız</span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Izgara köfte</b><i aria-hidden="true"></i><span>₺380</span></span><span class="gm__opt">Pişme: Az pişmiş, Orta, İyi pişmiş</span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Kuzu şiş</b><i aria-hidden="true"></i><span>₺520</span></span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Urfa kebap</b><i aria-hidden="true"></i><span>₺450</span></span><span class="gm__chips"><span>Yarım <b>₺250</b></span></span></li>
+                    </ul>
+                  </section>
+                  <section class="gm__section" data-gm-section="meze" aria-label="Meze">
+                    <h3 class="gm__title" aria-hidden="true">Meze</h3>
+                    <ul class="gm__list">
+                      <li class="gm__dish"><span class="gm__row"><b>Ezme</b><i aria-hidden="true"></i><span>₺110</span></span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Haydari</b><i aria-hidden="true"></i><span>₺120</span></span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Humus</b><i aria-hidden="true"></i><span>₺130</span></span><span class="gm__desc">Tahin, nohut, kimyon</span></li>
+                    </ul>
+                  </section>
+                  <section class="gm__section" data-gm-section="tatli" aria-label="Tatlılar">
+                    <h3 class="gm__title" aria-hidden="true">Tatlılar</h3>
+                    <ul class="gm__list">
+                      <li class="gm__dish"><span class="gm__row"><b>Fırın sütlaç</b><i aria-hidden="true"></i><span>₺120</span></span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Künefe</b><i aria-hidden="true"></i><span>₺180</span></span><span class="gm__desc">Hatay peyniriyle, sıcak servis</span></li>
+                    </ul>
+                  </section>
+                  <section class="gm__section" data-gm-section="icecek" aria-label="İçecekler">
+                    <h3 class="gm__title" aria-hidden="true">İçecekler</h3>
+                    <ul class="gm__list">
+                      <li class="gm__dish"><span class="gm__row"><b>Ayran</b><i aria-hidden="true"></i><span>₺50</span></span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Çay</b><i aria-hidden="true"></i><span>₺25</span></span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Şalgam</b><i aria-hidden="true"></i><span>₺60</span></span><span class="gm__opt">Acı: Acılı, Acısız</span></li>
+                      <li class="gm__dish"><span class="gm__row"><b>Türk kahvesi</b><i aria-hidden="true"></i><span>₺70</span></span><span class="gm__opt">Şeker: Sade, Az şekerli, Orta, Şekerli</span></li>
+                    </ul>
+                  </section>
+                  <p class="gm__foot">Alerjen ve içerik bilgisi için garsonumuza sorabilirsiniz.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="kurulum" class="section" aria-labelledby="setup-title">
         <div class="wrap">
           <h2 id="setup-title">Üç adımda kurulum</h2>
           <ol class="steps">
@@ -460,7 +564,7 @@
         </div>
       </section>
 
-      <section id="indir" class="section">
+      <section id="indir" class="section section--raised">
         <div class="wrap">
           <div class="download__head">
             <h2>İndirin</h2>
@@ -495,7 +599,7 @@
         </div>
       </section>
 
-      <section id="sss" class="section section--raised">
+      <section id="sss" class="section">
         <div class="wrap faq">
           <h2>Sorular</h2>
           <div class="faq__list">
@@ -510,6 +614,10 @@
             <details>
               <summary>Hesabı kişi kişi bölebilir miyim?</summary>
               <p>Evet. Hesap penceresinde her kişinin yediklerini seçip ödemesini alın; kalanlar masada açık kalır. İsterseniz kişi sayısını yazın, kişi başı tutar görünür.</p>
+            </details>
+            <details>
+              <summary>Misafir menüyü telefonundan görebilir mi?</summary>
+              <p>Evet. Ayarlar → QR menü'yü açın ve masa kartlarını yazdırın; kartı okutan misafir menüyü uygulama ya da üyelik olmadan telefonunda görür. Fiyatlar Menü'deki gibidir; maliyet, stok ve satışlar görünmez.</p>
             </details>
             <details>
               <summary>Verilerim nerede duruyor?</summary>
