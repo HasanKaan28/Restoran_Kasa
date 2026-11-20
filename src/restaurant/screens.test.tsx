@@ -67,6 +67,23 @@ describe('the waiter’s floor', () => {
     expect(await screen.findByRole('heading', { name: 'B9', level: 1 })).toBeInTheDocument();
   });
 
+  it('shows open takeaway orders above the tables, so a phone reaches them at once', async () => {
+    const data = await restaurant();
+    for (let n = 2; n <= 12; n += 1) {
+      await createDiningTable(data.db, { name: `S${n}`, area: 'Salon' }, new Date());
+    }
+    const ayran = await data.db.products.filter((one) => one.name === 'Ayran').first();
+    const waiter = { deviceCode: 'K1' };
+    const paket = await openTab(data.db, { label: 'Paket 1', ...waiter }, new Date());
+    await addTabItem(data.db, paket.id, ayran!, { qtyMilli: 1000 }, waiter, new Date());
+    await renderWithData(<TablesScreen />, data);
+
+    const takeaway = await screen.findByRole('region', { name: 'Paket siparişler' });
+    const tables = screen.getByRole('list', { name: 'Masalar' });
+    expect(takeaway.compareDocumentPosition(tables) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(takeaway).getByRole('button', { name: 'Paket 1 · ₺40,00' })).toBeInTheDocument();
+  });
+
   it('takes an order at a table, sends it, and takes the payment', async () => {
     const data = await restaurant();
     await renderWithData(<TablesScreen />, data);

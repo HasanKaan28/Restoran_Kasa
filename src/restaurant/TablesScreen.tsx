@@ -169,6 +169,24 @@ export function TablesScreen(): JSX.Element {
             Paket sipariş
           </Button>
         </div>
+        {floor && floor.takeaway.length > 0 ? (
+          // Above the tables: on a phone, below them, the orders waiting at the counter were a
+          // long scroll past every table away.
+          <section aria-labelledby="takeaway-heading" className="flex flex-col gap-2">
+            <h2 id="takeaway-heading" className="text-lg font-semibold">
+              Paket siparişler
+            </h2>
+            <ul className="flex flex-wrap gap-2">
+              {floor.takeaway.map(({ tab, total, ready }) => (
+                <li key={tab.id}>
+                  <Button onClick={() => openTabScreen(tab.id)}>
+                    {`${tab.label ?? 'Paket'} · ${formatTRY(total)}${ready > 0 ? ` · ${ready} hazır` : ''}`}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         {areas.length > 1 ? (
           <ChoiceGroup<string>
             legend="Bölüm"
@@ -268,22 +286,6 @@ export function TablesScreen(): JSX.Element {
             );
           })}
         </ul>
-        {floor && floor.takeaway.length > 0 ? (
-          <section aria-labelledby="takeaway-heading" className="flex flex-col gap-2">
-            <h2 id="takeaway-heading" className="text-lg font-semibold">
-              Paket siparişler
-            </h2>
-            <ul className="flex flex-wrap gap-2">
-              {floor.takeaway.map(({ tab, total, ready }) => (
-                <li key={tab.id}>
-                  <Button onClick={() => openTabScreen(tab.id)}>
-                    {`${tab.label ?? 'Paket'} · ${formatTRY(total)}${ready > 0 ? ` · ${ready} hazır` : ''}`}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
         {floor && floor.others.length > 0 ? (
           <section aria-labelledby="others-heading" className="flex flex-col gap-2">
             <h2 id="others-heading" className="text-lg font-semibold">
