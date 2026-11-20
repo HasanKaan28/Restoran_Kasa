@@ -61,10 +61,14 @@ function isAppUrl(url) {
   }
 }
 
+/** What the app's own page may have besides the camera. */
+const PAGE_PERMISSIONS = new Set(['clipboard-sanitized-write', 'notifications']);
+
 /**
  * Whether the page may have a permission it asks for (Electron grants every one unless told).
- * The app's own page gets the camera, video only, for the barcode scanner, and writing to the
- * clipboard (copying the QR menu's link); nothing else, and nothing for any other page.
+ * The app's own page gets the camera, video only, for the barcode scanner, writing to the
+ * clipboard (copying the QR menu's link) and notifications ("Masa 5 hazır"); nothing else, and
+ * nothing for any other page.
  */
 function permissionAllowed(permission, requestingUrl, details = {}) {
   if (!isAppUrl(requestingUrl)) {
@@ -74,7 +78,7 @@ function permissionAllowed(permission, requestingUrl, details = {}) {
     const types = details.mediaTypes ?? [];
     return types.length > 0 && types.every((type) => type === 'video');
   }
-  return permission === 'clipboard-sanitized-write';
+  return PAGE_PERMISSIONS.has(permission);
 }
 
 /** The same answer to the page's checks (whether a camera may be listed, say). */
@@ -85,7 +89,7 @@ function permissionCheckAllowed(permission, requestingOrigin, details = {}) {
   if (permission === 'media') {
     return details.mediaType !== 'audio';
   }
-  return permission === 'clipboard-sanitized-write';
+  return PAGE_PERMISSIONS.has(permission);
 }
 
 /**

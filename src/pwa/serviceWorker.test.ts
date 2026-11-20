@@ -241,3 +241,66 @@ describe('the service worker and a new deploy', () => {
     expect([...kept]).toEqual(['mk2-2.0.0', 'rk-1.0.0+new']);
   });
 });
+
+describe('a tapped notification', () => {
+  type ClickEvent = {
+    notification: { data?: { tabId?: string }; close(): void };
+    waitUntil(promise: Promise<unknown>): void;
+  };
+
+  function startWithWindows(windows: { url: string; postMessage(message: unknown): void }[]) {
+    let onClick: ((event: ClickEvent) => void) | undefined;
+    const opened: string[] = [];
+    const focused: string[] = [];
+    runInNewContext(serviceWorker, {
+      URL,
+      self: {
+        location: { href: 'https://restorankasa.vercel.app/app/sw.js?v=1.0.0' },
+        addEventListener: (type: string, listener: (event: ClickEvent) => void) => {
+          if (type === 'notificationclick') {
+            onClick = listener;
+          }
+        },
+        clients: {
+          matchAll: () =>
+            Promise.resolve(
+              windows.map((client) => ({
+                ...client,
+                focus: () => Promise.resolve(focused.push(client.url)),
+              })),
+            ),
+          openWindow: (url: string) => Promise.resolve(opened.push(url)),
+        },
+      },
+    });
+    async function click(tabId: string) {
+      let work: Promise<unknown> = Promise.resolve();
+      let closed = false;
+      onClick?.({
+        notification: { data: { tabId }, close: () => (closed = true) },
+        waitUntil: (promise) => (work = promise),
+      });
+      await work;
+      return closed;
+    }
+    return { click, opened, focused };
+  }
+
+  it('brings the open app forward and asks it to open the tab', async () => {
+    const messages: unknown[] = [];
+    const worker = startWithWindows([
+      { url: 'https://restorankasa.vercel.app/app/menu.html?masa=5', postMessage: () => {} },
+      { url: 'https://restorankasa.vercel.app/app/#/tables', postMessage: (m) => messages.push(m) },
+    ]);
+    expect(await worker.click('tab-5')).toBe(true);
+    expect(messages).toEqual([{ type: 'rk-open-tab', tabId: 'tab-5' }]);
+    expect(worker.focused).toEqual(['https://restorankasa.vercel.app/app/#/tables']);
+    expect(worker.opened).toEqual([]);
+  });
+
+  it('opens the app at the tab when no window of it is open', async () => {
+    const worker = startWithWindows([]);
+    await worker.click('tab-5');
+    expect(worker.opened).toEqual(['https://restorankasa.vercel.app/app/#/tables/tab-5']);
+  });
+});

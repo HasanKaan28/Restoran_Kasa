@@ -17,6 +17,7 @@ import { currentPlatform } from '@/server/pairing';
 import { forgetSkippedWelcome, shouldWelcome } from './welcome';
 import { ServerMissingScreen, WelcomeScreen } from './WelcomeScreen';
 import { Updates } from '@/updates/Updates';
+import { ReadyNotifier } from '@/notify/ReadyNotifier';
 
 /** The app, with word of a new release (and the desktop's update screen) over whatever shows. */
 export function App(): JSX.Element {
@@ -86,6 +87,7 @@ function AppContent(): JSX.Element {
         <MoveBanner />
         <SessionProvider>
           <Screens route={route} />
+          <ReadyNotifier route={route} />
         </SessionProvider>
       </DataProvider>
     </ErrorBoundary>

@@ -110,17 +110,17 @@ describe('electron security', () => {
     expect(CONTENT_SECURITY_POLICY).not.toContain('*');
   });
 
-  it('grants the page only the camera, for the barcode scanner, and writing the clipboard', () => {
+  it('grants the page only the camera, writing the clipboard and "order ready" notifications', () => {
     const page = 'app://market/index.html#/pos';
     expect(permissionAllowed('media', page, { mediaTypes: ['video'] })).toBe(true);
     expect(permissionAllowed('clipboard-sanitized-write', page, {})).toBe(true);
-    // A microphone, a location, notifications, USB or serial devices: never.
+    expect(permissionAllowed('notifications', page, {})).toBe(true);
+    // A microphone, a location, USB or serial devices: never.
     expect(permissionAllowed('media', page, { mediaTypes: ['audio'] })).toBe(false);
     expect(permissionAllowed('media', page, { mediaTypes: ['video', 'audio'] })).toBe(false);
     expect(permissionAllowed('media', page, {})).toBe(false);
     for (const permission of [
       'geolocation',
-      'notifications',
       'midi',
       'clipboard-read',
       'hid',
@@ -137,6 +137,7 @@ describe('electron security', () => {
       false,
     );
     expect(permissionAllowed('clipboard-sanitized-write', 'file:///C:/x.html', {})).toBe(false);
+    expect(permissionAllowed('notifications', 'https://example.com/', {})).toBe(false);
   });
 
   it('answers the page’s permission checks the same way', () => {
@@ -144,6 +145,7 @@ describe('electron security', () => {
     expect(permissionCheckAllowed('media', 'app://market', { mediaType: 'unknown' })).toBe(true);
     expect(permissionCheckAllowed('media', 'app://market', { mediaType: 'audio' })).toBe(false);
     expect(permissionCheckAllowed('clipboard-sanitized-write', 'app://market', {})).toBe(true);
+    expect(permissionCheckAllowed('notifications', 'app://market', {})).toBe(true);
     expect(permissionCheckAllowed('geolocation', 'app://market', {})).toBe(false);
     expect(permissionCheckAllowed('media', 'https://example.com', { mediaType: 'video' })).toBe(
       false,

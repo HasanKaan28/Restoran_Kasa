@@ -147,3 +147,23 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// A tapped "Masa 5 hazır" notification (src/notify/system.ts): brings the app forward and asks
+// it to open that tab; with no window of the app open, opens one at the tab's address.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const tabId = event.notification.data && event.notification.data.tabId;
+  const address = typeof tabId === 'string' ? `./#/tables/${tabId}` : './';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const app = windows.find((client) => !/\/(menu|yonetim)\.html/.test(client.url));
+      if (app) {
+        if (typeof tabId === 'string') {
+          app.postMessage({ type: 'rk-open-tab', tabId });
+        }
+        return app.focus();
+      }
+      return self.clients.openWindow(new URL(address, self.location.href).href);
+    }),
+  );
+});
