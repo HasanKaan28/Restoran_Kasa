@@ -14,6 +14,7 @@ import {
   readyToServe,
   requestBill,
   tabBill,
+  tabTitle,
 } from '@/data/restaurant';
 import type { TabRecord } from '@/data/types';
 import { Button, ChoiceGroup, Dialog, EmptyState, ToastRegion, useToast } from '@/design';
@@ -79,7 +80,19 @@ export function TablesScreen(): JSX.Element {
     const takeaway = tabs
       .filter((tab) => tab.tableId === undefined)
       .map((tab) => ({ tab, ...(totals.get(tab.id) ?? { total: 0, ready: 0 }) }));
-    return { seated, takeaway };
+    // A table shows one tab. A second open tab on it (two registers opened it before either heard
+    // of the other's) or one on a table taken out of use would be out of reach of its bill.
+    const shownIds = new Set(seated.flatMap((table) => (table.tab ? [table.tab.id] : [])));
+    const others = await Promise.all(
+      tabs
+        .filter((tab) => tab.tableId !== undefined && !shownIds.has(tab.id))
+        .map(async (tab) => ({
+          tab,
+          title: await tabTitle(db, tab),
+          ...(totals.get(tab.id) ?? { total: 0, ready: 0 }),
+        })),
+    );
+    return { seated, takeaway, others };
   }, [db]);
 
   if (openId) {
@@ -265,6 +278,26 @@ export function TablesScreen(): JSX.Element {
                 <li key={tab.id}>
                   <Button onClick={() => openTabScreen(tab.id)}>
                     {`${tab.label ?? 'Paket'} · ${formatTRY(total)}${ready > 0 ? ` · ${ready} hazır` : ''}`}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {floor && floor.others.length > 0 ? (
+          <section aria-labelledby="others-heading" className="flex flex-col gap-2">
+            <h2 id="others-heading" className="text-lg font-semibold">
+              Diğer açık adisyonlar
+            </h2>
+            <p className="text-sm text-text-2">
+              Aynı masada açılmış ikinci bir adisyon ya da kaldırılmış bir masanın adisyonu. Açıp
+              hesabını alın ya da “Taşı / birleştir” ile masasına katın.
+            </p>
+            <ul className="flex flex-wrap gap-2">
+              {floor.others.map(({ tab, title, total, ready }) => (
+                <li key={tab.id}>
+                  <Button onClick={() => openTabScreen(tab.id)}>
+                    {`${title} · ${formatTRY(total)}${ready > 0 ? ` · ${ready} hazır` : ''}`}
                   </Button>
                 </li>
               ))}

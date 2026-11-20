@@ -40,6 +40,33 @@ async function restaurant() {
 }
 
 describe('the waiter’s floor', () => {
+  it('keeps every open tab within reach, even two on one table or one on a removed table', async () => {
+    const data = await restaurant();
+    const [s1] = await listDiningTables(data.db);
+    const s2 = await createDiningTable(data.db, { name: 'S2', area: 'Salon' }, new Date());
+    const gone = await createDiningTable(data.db, { name: 'B9', area: 'Bahçe' }, new Date());
+    const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
+    const ayran = await data.db.products.filter((one) => one.name === 'Ayran').first();
+    const waiter = { deviceCode: 'K1' };
+    const first = await openTab(data.db, { tableId: s1!.id, ...waiter }, new Date());
+    await addTabItem(data.db, first.id, kebab!, { qtyMilli: 1000 }, waiter, new Date());
+    // Two registers opened S1 before either heard of the other's tab, as sync brings it in.
+    const second = await openTab(data.db, { tableId: s2.id, ...waiter }, new Date());
+    await addTabItem(data.db, second.id, ayran!, { qtyMilli: 1000 }, waiter, new Date());
+    await data.db.tabs.update(second.id, { tableId: s1!.id });
+    // A table taken out of use on another register while its tab was open there.
+    const third = await openTab(data.db, { tableId: gone.id, ...waiter }, new Date());
+    await addTabItem(data.db, third.id, ayran!, { qtyMilli: 2000 }, waiter, new Date());
+    await data.db.diningTables.update(gone.id, { archivedAt: new Date().toISOString() });
+    await renderWithData(<TablesScreen />, data);
+
+    expect(await screen.findByRole('button', { name: 'S1, dolu, ₺450,00' })).toBeInTheDocument();
+    const others = await screen.findByRole('region', { name: 'Diğer açık adisyonlar' });
+    expect(within(others).getByRole('button', { name: 'S1 · ₺40,00' })).toBeInTheDocument();
+    await userEvent.click(within(others).getByRole('button', { name: 'B9 · ₺80,00' }));
+    expect(await screen.findByRole('heading', { name: 'B9', level: 1 })).toBeInTheDocument();
+  });
+
   it('takes an order at a table, sends it, and takes the payment', async () => {
     const data = await restaurant();
     await renderWithData(<TablesScreen />, data);
