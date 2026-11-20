@@ -14,6 +14,7 @@ import {
   readyToServe,
   requestBill,
   tabBill,
+  tabParts,
   tabTitle,
 } from '@/data/restaurant';
 import type { TabRecord } from '@/data/types';
@@ -63,7 +64,9 @@ export function TablesScreen(): JSX.Element {
       const ready = bill.lines.filter(
         (line) => line.item.status === 'ready' && !line.item.servedAt,
       ).length;
-      totals.set(tab.id, { total: bill.total, ready });
+      // Shares paid by amount are off what the table still owes.
+      const paid = (await tabParts(db, tab.id)).reduce((sum, part) => sum + part.amount, 0);
+      totals.set(tab.id, { total: bill.total - paid, ready });
     }
     const seated: FloorTable[] = tables.map((table) => {
       const tab = tabs.find((open) => open.tableId === table.id);

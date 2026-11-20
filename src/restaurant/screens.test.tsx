@@ -9,6 +9,7 @@ import {
   listDiningTables,
   openTab,
   openTabs,
+  payTabAmount,
   sendTab,
 } from '@/data/restaurant';
 import { expectedCash } from '@/data/cash';
@@ -264,6 +265,22 @@ describe('paying part in cash and the rest by card', () => {
 });
 
 describe('paying one guest’s share by amount', () => {
+  it('shows on the floor what is left once a share is paid', async () => {
+    const data = await restaurant();
+    const [table] = await listDiningTables(data.db);
+    const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
+    const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
+    await addTabItem(data.db, tab.id, kebab!, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
+    await sendTab(data.db, tab.id, new Date());
+    await payTabAmount(
+      data.db,
+      { tabId: tab.id, method: 'card', amount: 15000, deviceCode: 'K1' },
+      new Date(),
+    );
+    await renderWithData(<TablesScreen />, data);
+    expect(await screen.findByRole('button', { name: 'S1, dolu, ₺300,00' })).toBeInTheDocument();
+  });
+
   it('takes shares, shows what is left, and closes the table on the last one', async () => {
     const { data, bill } = await billOf490();
     await userEvent.click(within(bill).getByRole('radio', { name: 'Tutar ile öde' }));
