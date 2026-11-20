@@ -32,6 +32,15 @@ describe('opening the till in the morning', () => {
     expect(await screen.findByText('Kasa açıldı · ₺500,00')).toBeInTheDocument();
   });
 
+  it('asks once the menu arrives, as on a register that has just joined', async () => {
+    const data = createTestData();
+    await renderWithData(<Screens route="tables" />, data);
+    await screen.findByRole('heading', { name: 'Masalar' });
+    expect(screen.queryByRole('dialog', { name: 'Kasayı aç' })).toBeNull();
+    await createProduct(data.db, { name: 'Ayran', sellPrice: 4000, vatRate: 1 }, new Date());
+    expect(await screen.findByRole('dialog', { name: 'Kasayı aç' })).toBeInTheDocument();
+  });
+
   it('lets it wait for today, and asks no more today', async () => {
     const data = await restaurant();
     const first = await renderWithData(<Screens route="tables" />, data);

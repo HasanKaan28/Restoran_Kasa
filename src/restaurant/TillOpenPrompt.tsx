@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent, type JSX } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, type FormEvent, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { useMarketSettings } from '@/app/marketSettings';
 import { useSession } from '@/app/session';
@@ -41,35 +42,31 @@ export function TillOpenPrompt(): JSX.Element | null {
   const session = useSession();
   const { cutoffMinutes } = useMarketSettings();
   const toast = useToast();
-  const [asking, setAsking] = useState(false);
+  // Put off or opened here: asked no more in this view, whatever the query says next.
+  const [settled, setSettled] = useState(false);
   const [text, setText] = useState('');
   const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
   const allowed = session.can('closeDay');
   const day = businessDate(new Date(), { cutoffMinutes });
 
-  useEffect(() => {
+  // Watched, not read once: on a register just joined, the menu arrives by sync after the floor
+  // first shows.
+  const toOpen = useLiveQuery(async () => {
     if (!allowed || readDismissed() === dismissedFor(settings.deviceCode, day)) {
-      return;
+      return false;
     }
-    let live = true;
-    void (async () => {
-      // A restaurant still being set up (no menu yet) is not asked about its till.
-      const hasMenu = (await db.products.count()) > 0;
-      const toOpen =
-        hasMenu && (await tillToOpen(db, settings.deviceCode, new Date(), cutoffMinutes));
-      if (live) {
-        setAsking(toOpen);
-      }
-    })().catch(() => undefined);
-    return () => {
-      live = false;
-    };
+    // A restaurant still being set up (no menu yet) is not asked about its till.
+    if ((await db.products.count()) === 0) {
+      return false;
+    }
+    return tillToOpen(db, settings.deviceCode, new Date(), cutoffMinutes);
   }, [allowed, db, settings.deviceCode, cutoffMinutes, day]);
+  const asking = toOpen === true && !settled;
 
   function putOff() {
     saveDismissed(dismissedFor(settings.deviceCode, day));
-    setAsking(false);
+    setSettled(true);
   }
 
   async function open(event: FormEvent<HTMLFormElement>) {
@@ -87,12 +84,12 @@ export function TillOpenPrompt(): JSX.Element | null {
         { deviceCode: settings.deviceCode, openingCash: opening },
         new Date(),
       );
-      setAsking(false);
+      setSettled(true);
       toast.show(`Kasa açıldı · ${formatTRY(opening)}`);
       void runner.run();
     } catch {
       // Opened meanwhile (another tab of the app): nothing more to ask.
-      setAsking(false);
+      setSettled(true);
     } finally {
       setSaving(false);
     }
