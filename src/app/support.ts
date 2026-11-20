@@ -19,6 +19,12 @@ export const SUPPORT = {
     message: `Merhaba, Restoran Kasa paketimdeki cihaz sınırına ulaştım (${limit}). Ek cihaz istiyorum.`,
     fallback: 'Ek cihaz için satıcınızla iletişime geçin.',
   }),
+  /** A device that could not join because the licence ran out; the market's name is not known yet. */
+  licenseExpired: {
+    label: 'Lisansı uzatmak için WhatsApp’tan yazın',
+    message: 'Merhaba, Restoran Kasa lisansımı uzatmak istiyorum.',
+    fallback: 'Lisansı uzatmak için satıcınızla iletişime geçin.',
+  },
   license: (marketName: string) => ({
     label: 'Lisansı uzatmak için WhatsApp’tan yazın',
     message: `Merhaba, ${marketName} için Restoran Kasa lisansımı uzatmak istiyorum.`,

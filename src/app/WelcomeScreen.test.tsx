@@ -17,6 +17,10 @@ function setup(overrides: Partial<Parameters<typeof WelcomeScreen>[0]> = {}) {
     current: DEFAULT_DEVICE,
     open: vi.fn(async () => ({ claimed })),
     join: vi.fn(async () => ({ claimed: { ...claimed, deviceCode: 'K2' } })),
+    claim: vi.fn(async (input: { deviceCode: string }) => ({
+      ...claimed,
+      deviceCode: input.deviceCode,
+    })),
     onDone: vi.fn(),
     supportNumber: '905321112233' as string | null,
     ...overrides,
@@ -252,7 +256,130 @@ describe('WelcomeScreen', () => {
     expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
       'Restoran kur',
       'Restorana giriş yap',
+      'Bağlantı koduyla bağlan',
     ]);
+  });
+
+  describe('joining with a pairing code', () => {
+    const openForm = () =>
+      userEvent.click(screen.getByRole('button', { name: 'Bağlantı koduyla bağlan' }));
+
+    it('keeps the option below the two main ones, lower in emphasis', () => {
+      setup();
+      const buttons = screen.getAllByRole('button');
+      expect(buttons[2]).toHaveTextContent('Bağlantı koduyla bağlan');
+      expect(buttons[0]?.className).not.toBe(buttons[2]?.className);
+    });
+
+    it('claims the code, uppercased, and hints where it comes from', async () => {
+      const props = setup();
+      await openForm();
+      expect(
+        screen.getByText('Satıcınızın ya da restoran sahibinin verdiği 8 haneli kod'),
+      ).toBeInTheDocument();
+      await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'abcd2345');
+      expect(screen.getByLabelText('Bağlantı kodu')).toHaveValue('ABCD2345');
+      await userEvent.type(screen.getByLabelText('Cihaz adı'), 'Bar kasası');
+      await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
+
+      expect(props.claim).toHaveBeenCalledWith({
+        code: 'ABCD2345',
+        deviceCode: 'K1',
+        deviceName: 'Bar kasası',
+      });
+      expect(props.onDone).toHaveBeenCalledWith(
+        expect.objectContaining({
+          marketId: 'kursunlu-ab12cd',
+          deviceName: 'Bar kasası',
+          paired: true,
+        }),
+      );
+    });
+
+    it('takes a pasted code with spaces and lower case', async () => {
+      const props = setup();
+      await openForm();
+      await userEvent.click(screen.getByLabelText('Bağlantı kodu'));
+      await userEvent.paste(' abcd 2345 ');
+      expect(screen.getByLabelText('Bağlantı kodu')).toHaveValue('ABCD2345');
+      await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
+      expect(props.claim).toHaveBeenCalledWith(expect.objectContaining({ code: 'ABCD2345' }));
+    });
+
+    it('names the device after its code when no name is given', async () => {
+      const props = setup();
+      await openForm();
+      await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD2345');
+      await userEvent.clear(screen.getByLabelText('Kasa kodu'));
+      await userEvent.type(screen.getByLabelText('Kasa kodu'), 'k7');
+      await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
+      expect(props.claim).toHaveBeenCalledWith({
+        code: 'ABCD2345',
+        deviceCode: 'K7',
+        deviceName: 'Kasa K7',
+      });
+    });
+
+    it('needs all eight characters before it connects', async () => {
+      setup();
+      await openForm();
+      await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD23');
+      expect(screen.getByRole('button', { name: 'Bağla' })).toBeDisabled();
+    });
+
+    it('offers to take the place of the register that holds the Kasa kodu', async () => {
+      const taken = Object.assign(new Error('K1 kodu bu restoranda kullanılıyor.'), {
+        taken: true,
+      });
+      const claim = vi
+        .fn()
+        .mockRejectedValueOnce(taken)
+        .mockResolvedValueOnce({ ...claimed, deviceCode: 'K1' });
+      const props = setup({ claim });
+      await openForm();
+      await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD2345');
+      await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('K1 kodu bu restoranda');
+
+      await userEvent.click(screen.getByLabelText(/K1 cihazının yerine geç/));
+      await userEvent.click(screen.getByRole('button', { name: 'Yerine geç' }));
+      expect(claim).toHaveBeenLastCalledWith(expect.objectContaining({ replace: true }));
+      expect(props.onDone).toHaveBeenCalled();
+    });
+
+    it('writes to the seller when the plan is full', async () => {
+      const full = Object.assign(new Error('Paketinizin cihaz sınırı dolu (5 cihaz).'), {
+        deviceLimit: 5,
+      });
+      setup({ claim: vi.fn().mockRejectedValue(full) });
+      await openForm();
+      await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD2345');
+      await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('cihaz sınırı dolu');
+      expect(screen.getByRole('link', { name: 'Ek cihaz için WhatsApp’tan yazın' })).toBeVisible();
+    });
+
+    it('shows an expired licence and offers the seller', async () => {
+      setup({
+        claim: vi.fn().mockRejectedValue(
+          Object.assign(new Error('Lisansın süresi doldu; yeni cihaz bağlanamaz.'), {
+            licenseExpired: true,
+          }),
+        ),
+      });
+      await openForm();
+      await userEvent.type(screen.getByLabelText('Bağlantı kodu'), 'ABCD2345');
+      await userEvent.click(screen.getByRole('button', { name: 'Bağla' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Lisansın süresi doldu');
+      expect(screen.getByRole('link', { name: /WhatsApp/ })).toBeVisible();
+    });
+
+    it('goes back to the choices', async () => {
+      setup();
+      await openForm();
+      await userEvent.click(screen.getByRole('button', { name: 'Geri' }));
+      expect(screen.getByRole('button', { name: 'Restoran kur' })).toBeVisible();
+    });
   });
 
   it('appears on every device that is not yet paired', () => {

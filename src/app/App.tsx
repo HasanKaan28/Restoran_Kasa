@@ -13,7 +13,7 @@ import { useRoute } from './route';
 import { deviceClient, ownerClient } from '@/server/client';
 import { SERVER } from '@/server/config';
 import { joinMarket, openMarket } from '@/server/onboarding';
-import { currentPlatform } from '@/server/pairing';
+import { currentPlatform, pairDevice } from '@/server/pairing';
 import { forgetSkippedWelcome, shouldWelcome } from './welcome';
 import { ServerMissingScreen, WelcomeScreen } from './WelcomeScreen';
 import { Updates } from '@/updates/Updates';
@@ -70,6 +70,7 @@ function AppContent(): JSX.Element {
               ...input,
             })
           }
+          claim={(input) => pairDevice({ device: deviceClient(server), platform, ...input })}
           onDone={(next) => {
             if (finishPairing(next)) {
               window.location.reload();

@@ -255,6 +255,9 @@ export async function pairDevice({
     if (limit !== null) {
       Object.assign(error, { deviceLimit: limit });
     }
+    if (claimed.error.message.includes('license_expired')) {
+      Object.assign(error, { licenseExpired: true });
+    }
     throw error;
   }
   memo.clear();

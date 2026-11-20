@@ -4,6 +4,7 @@ import { activationCodeOf } from '@/domain/activationCode';
 import type { OnboardingResult } from '@/server/onboarding';
 import {
   pairedSettings,
+  type ClaimedDevice,
   type FullPlan,
   type OwnedMarket,
   type OwnedRegister,
@@ -21,9 +22,14 @@ export type WelcomeScreenProps = {
   open(
     input: Credentials & { marketName: string; activationCode: string },
   ): Promise<OnboardingResult>;
-  join(
-    input: Credentials & { marketId?: string; replaceCode?: string },
-  ): Promise<OnboardingResult>;
+  join(input: Credentials & { marketId?: string; replaceCode?: string }): Promise<OnboardingResult>;
+  /** Binds this device with a pairing code from the seller or the restaurant's owner. */
+  claim(input: {
+    code: string;
+    deviceCode: string;
+    deviceName: string;
+    replace?: boolean;
+  }): Promise<ClaimedDevice>;
   onDone(settings: DeviceSettings): void;
   /** The seller's WhatsApp number; this build's by default. */
   supportNumber?: string | null;
@@ -39,6 +45,16 @@ const deviceLimitOf = (error: unknown): number | null =>
   error instanceof Error && typeof (error as { deviceLimit?: unknown }).deviceLimit === 'number'
     ? (error as unknown as { deviceLimit: number }).deviceLimit
     : null;
+
+const licenseExpiredOf = (error: unknown): boolean =>
+  error instanceof Error && (error as { licenseExpired?: unknown }).licenseExpired === true;
+
+/** The pairing code as typed or pasted: capitals and digits only, at most eight. */
+const pairingCodeOf = (text: string) =>
+  text
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 8);
 
 /** A register as the owner knows it: its code, its name and when it was last seen. */
 const registerLabel = (register: OwnedRegister) =>
@@ -57,10 +73,11 @@ export function WelcomeScreen({
   current,
   open,
   join,
+  claim,
   onDone,
   supportNumber,
 }: WelcomeScreenProps): JSX.Element {
-  const [mode, setMode] = useState<'choose' | 'open' | 'join'>('choose');
+  const [mode, setMode] = useState<'choose' | 'open' | 'join' | 'pair'>('choose');
   const [activationCode, setActivationCode] = useState('');
   const [marketName, setMarketName] = useState('');
   const [email, setEmail] = useState('');
@@ -73,6 +90,12 @@ export function WelcomeScreen({
   const [replaceCode, setReplaceCode] = useState('');
   const [error, setError] = useState<string>();
   const [deviceLimit, setDeviceLimit] = useState<number | null>(null);
+  const [licenseExpired, setLicenseExpired] = useState(false);
+  const [pairCode, setPairCode] = useState('');
+  const [deviceCode, setDeviceCode] = useState(current.deviceCode);
+  const [deviceName, setDeviceName] = useState('');
+  // Another register holds the Kasa kodu: set once the server says so, ticked to take it over.
+  const [takeover, setTakeover] = useState<boolean>();
   const [notice, setNotice] = useState<string>();
   const [busy, setBusy] = useState(false);
   const support = supportNumber === undefined ? {} : { number: supportNumber };
@@ -99,12 +122,14 @@ export function WelcomeScreen({
     setBusy(true);
     setError(undefined);
     setDeviceLimit(null);
+    setLicenseExpired(false);
     setNotice(undefined);
     try {
       settle(await task());
     } catch (reason) {
       setError(failed(reason));
       setDeviceLimit(deviceLimitOf(reason));
+      setLicenseExpired(licenseExpiredOf(reason));
     } finally {
       setBusy(false);
     }
@@ -142,10 +167,43 @@ export function WelcomeScreen({
     );
   }
 
-  function choose(next: 'open' | 'join') {
+  async function submitPair(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || pairCode.length !== 8) {
+      return;
+    }
+    const registerCode = deviceCode.trim().toUpperCase() || current.deviceCode;
+    const name = deviceName.trim() || `Kasa ${registerCode}`;
+    setBusy(true);
+    setError(undefined);
+    setDeviceLimit(null);
+    setLicenseExpired(false);
+    try {
+      const claimed = await claim({
+        code: pairCode,
+        deviceCode: registerCode,
+        deviceName: name,
+        ...(takeover ? { replace: true } : {}),
+      });
+      onDone(pairedSettings(current, claimed, name, false));
+    } catch (reason) {
+      if ((reason as { taken?: boolean }).taken && takeover === undefined) {
+        setTakeover(false);
+      }
+      setError(failed(reason));
+      setDeviceLimit(deviceLimitOf(reason));
+      setLicenseExpired(licenseExpiredOf(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function choose(next: 'open' | 'join' | 'pair') {
     setMode(next);
     setError(undefined);
     setDeviceLimit(null);
+    setLicenseExpired(false);
+    setTakeover(undefined);
     setNotice(undefined);
     setMarkets(undefined);
     setFull(undefined);
@@ -161,6 +219,7 @@ export function WelcomeScreen({
       {deviceLimit !== null ? (
         <SupportLink topic={SUPPORT.devices(deviceLimit)} {...support} />
       ) : null}
+      {licenseExpired ? <SupportLink topic={SUPPORT.licenseExpired} {...support} /> : null}
       {notice ? (
         <p role="status" className="font-medium">
           {notice}
@@ -181,7 +240,9 @@ export function WelcomeScreen({
                 ? 'Yeni restoran'
                 : mode === 'join'
                   ? 'Bu cihazı restoranınıza ekleyin'
-                  : 'Hoş geldiniz'}
+                  : mode === 'pair'
+                    ? 'Bağlantı koduyla bağlan'
+                    : 'Hoş geldiniz'}
             </p>
           </div>
         </div>
@@ -192,6 +253,9 @@ export function WelcomeScreen({
               Restoran kur
             </Button>
             <Button onClick={() => choose('join')}>Restorana giriş yap</Button>
+            <Button variant="ghost" onClick={() => choose('pair')}>
+              Bağlantı koduyla bağlan
+            </Button>
             <p className="text-sm text-text-2">
               Restoranı ilk kez kuruyorsanız satıcınızın gönderdiği kurulum koduyla “Restoran kur”.
               Başka bir cihazda kurduysanız aynı e-posta ve şifreyle “Restorana giriş yap”: bu cihaz
@@ -294,6 +358,54 @@ export function WelcomeScreen({
             {messages}
             <Button type="submit" variant="primary" disabled={busy || !password}>
               {full ? 'Yerine geç' : 'Giriş yap'}
+            </Button>
+            <Button variant="ghost" onClick={() => setMode('choose')}>
+              Geri
+            </Button>
+          </form>
+        ) : null}
+
+        {mode === 'pair' ? (
+          <form className="flex flex-col gap-3" onSubmit={(event) => void submitPair(event)}>
+            <TextField
+              label="Bağlantı kodu"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              hint="Satıcınızın ya da restoran sahibinin verdiği 8 haneli kod"
+              value={pairCode}
+              onChange={(event) => setPairCode(pairingCodeOf(event.target.value))}
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                label="Kasa kodu"
+                autoComplete="off"
+                maxLength={4}
+                value={deviceCode}
+                onChange={(event) => setDeviceCode(event.target.value.toUpperCase())}
+              />
+              <TextField
+                label="Cihaz adı"
+                maxLength={40}
+                placeholder={`Kasa ${deviceCode.trim().toUpperCase() || current.deviceCode}`}
+                value={deviceName}
+                onChange={(event) => setDeviceName(event.target.value)}
+              />
+            </div>
+            {takeover !== undefined ? (
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={takeover}
+                  onChange={(event) => setTakeover(event.target.checked)}
+                  className="size-5"
+                />
+                {`${deviceCode.trim().toUpperCase()} cihazının yerine geç (eski cihaz iptal edilir)`}
+              </label>
+            ) : null}
+            {messages}
+            <Button type="submit" variant="primary" disabled={busy || pairCode.length !== 8}>
+              {takeover ? 'Yerine geç' : 'Bağla'}
             </Button>
             <Button variant="ghost" onClick={() => setMode('choose')}>
               Geri
