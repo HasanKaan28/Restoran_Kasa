@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createCategory, deleteCategory, listCategories } from '@/data/categories';
 import { createProduct, deleteProduct } from '@/data/products';
+import { recordSale } from '@/data/sales';
 import { recordStockMovement } from '@/data/stock';
 import type { ProductRecord } from '@/data/types';
 import { createTestData, renderWithData } from '@/test/renderWithData';
@@ -46,6 +47,27 @@ describe('ProductsScreen', () => {
     expect(screen.getByRole('row', { name: /Simit/ })).toHaveTextContent('0 adet');
     expect(screen.getByText('2 ürün')).toBeInTheDocument();
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+  });
+
+  it('shows no stock for a kitchen whose dishes only ever went out on sales', async () => {
+    const data = createTestData();
+    const kebab = await createProduct(
+      data.db,
+      { name: 'Adana kebap', sellPrice: 45000, vatRate: 10 },
+      at,
+    );
+    await recordSale(data.db, {
+      deviceCode: 'K1',
+      at,
+      lines: [{ productId: kebab.id, qtyMilli: 4000 }],
+      payments: [{ method: 'cash', amount: 180000 }],
+    });
+    await renderWithData(<ProductsScreen />, data);
+
+    // Nobody counts kebabs: "−4 adet" in red on every dish would read as something gone wrong.
+    const row = await screen.findByRole('row', { name: /Adana kebap/ });
+    expect(row).not.toHaveTextContent('adet');
+    expect(screen.queryByRole('columnheader', { name: 'Stok' })).toBeNull();
   });
 
   it('finds products by name and filters by category and critical stock', async () => {

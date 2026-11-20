@@ -320,8 +320,11 @@ function ProductTable({
       <p className="py-8 text-center text-text-2">Aramaya uyan ürün yok.</p>
     );
   }
-  // A kitchen that does not count stock is not shown a column of "0 adet".
-  const tracksStock = rows.some((row) => row.stockMilli !== 0 || row.critical);
+  // A kitchen that does not count stock is not shown a column of "0 adet", nor of the "−4 adet"
+  // its sales alone leave: stock is counted once some is in, or a critical level is set.
+  const tracksStock = rows.some(
+    (row) => row.stockMilli > 0 || row.product.criticalLevelMilli > 0 || row.critical,
+  );
   return (
     <div className="flex flex-col gap-3">
       <table className="w-full table-fixed border-collapse text-left">
