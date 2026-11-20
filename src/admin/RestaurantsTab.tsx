@@ -1,47 +1,54 @@
-import { useEffect, useState, type JSX } from 'react';
+import { ChevronRight, Search } from 'lucide-react';
+import { useState, type JSX } from 'react';
 import { Button, ChoiceGroup, SelectField, TextField } from '@/design';
-import type { OperatorApi, Restaurant } from './api';
-import { dayText, lastSeenText, licenseText, MAX_DAYS, PERIODS, PLANS, type PlanId } from './model';
+import type { Activity, OperatorApi, Restaurant } from './api';
+import {
+  activityText,
+  dayText,
+  devicesText,
+  lastSeenText,
+  licenseText,
+  MAX_DAYS,
+  PERIODS,
+  PLANS,
+  statusText,
+  type PlanId,
+} from './model';
+import { CHIPS, failed, TONES, useLoad } from './load';
+import { Alert, Loading } from './ui';
 
 /** A sold period in days, or a number of days typed in. */
 type Period = number | 'custom';
 
-const failed = (error: unknown) =>
-  error instanceof Error ? error.message : 'Bağlantı kurulamadı.';
-
-const TONES = { ok: 'text-success', warning: 'text-warning', danger: 'text-danger' } as const;
 const EDGES = { ok: 'edge-ready', warning: 'edge-bill', danger: 'edge-late' } as const;
 
 /** Every restaurant with its plan, licence and registers; the seller extends or changes them. */
 export function RestaurantsTab({
   api,
+  onOpen,
   now = () => new Date(),
 }: {
   api: OperatorApi;
+  onOpen(marketId: string): void;
   now?: () => Date;
 }): JSX.Element {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>();
-  const [error, setError] = useState<string>();
-
-  // Bumped to read the list again: after a change, or "Yenile".
-  const [version, setVersion] = useState(0);
-  const reload = () => setVersion((now) => now + 1);
-
-  useEffect(() => {
-    let live = true;
-    api.listRestaurants().then(
-      (list) => {
-        if (live) {
-          setRestaurants(list);
-          setError(undefined);
-        }
-      },
-      (reason: unknown) => live && setError(failed(reason)),
-    );
-    return () => {
-      live = false;
-    };
-  }, [api, version]);
+  const { data, error, reload } = useLoad(
+    () => Promise.all([api.listRestaurants(), api.activity().catch(() => [])]),
+    'restaurants',
+  );
+  const [query, setQuery] = useState('');
+  const [showDeleted, setShowDeleted] = useState(false);
+  const restaurants = data?.[0];
+  const activity = new Map(data?.[1].map((row) => [row.id, row]));
+  const needle = query.trim().toLocaleLowerCase('tr');
+  const deleted = restaurants?.filter((item) => item.deletedAt !== null).length ?? 0;
+  const shown = restaurants?.filter(
+    (item) =>
+      (showDeleted || item.deletedAt === null) &&
+      (needle === '' ||
+        item.name.toLocaleLowerCase('tr').includes(needle) ||
+        (item.ownerEmail ?? '').toLocaleLowerCase('tr').includes(needle)),
+  );
 
   return (
     <section aria-labelledby="restaurants" className="flex flex-col gap-3">
@@ -53,29 +60,54 @@ export function RestaurantsTab({
           Yenile
         </Button>
       </div>
-      {error ? (
-        <p role="alert" className="font-medium text-danger">
-          {error}
-        </p>
-      ) : null}
-      {restaurants === undefined && !error ? (
-        <p role="status" className="text-text-2">
-          Yükleniyor…
-        </p>
-      ) : null}
+      {error ? <Alert>{error}</Alert> : null}
+      {restaurants === undefined && !error ? <Loading /> : null}
       {restaurants?.length === 0 ? <p className="text-text-2">Henüz restoran yok.</p> : null}
       {restaurants && restaurants.length > 0 ? (
-        <ul className="flex flex-col gap-3">
-          {restaurants.map((restaurant) => (
-            <RestaurantRow
-              key={restaurant.id}
-              restaurant={restaurant}
-              api={api}
-              now={now()}
-              onChanged={reload}
+        <>
+          <div className="relative">
+            <TextField
+              label="Restoran ara"
+              type="search"
+              placeholder="Ad ya da e-posta"
+              className="w-full pl-10"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
             />
-          ))}
-        </ul>
+            <Search
+              aria-hidden="true"
+              size={18}
+              className="pointer-events-none absolute bottom-[15px] left-3.5 text-muted"
+            />
+          </div>
+          {deleted > 0 ? (
+            <label className="flex min-h-11 items-center gap-2 text-sm text-text-2">
+              <input
+                type="checkbox"
+                className="size-4 accent-accent"
+                checked={showDeleted}
+                onChange={(event) => setShowDeleted(event.target.checked)}
+              />
+              {`Silinenleri de göster (${deleted})`}
+            </label>
+          ) : null}
+          {shown?.length === 0 ? (
+            <p className="text-text-2">Bu aramaya uyan restoran yok.</p>
+          ) : null}
+          <ul className="flex flex-col gap-3">
+            {shown?.map((restaurant) => (
+              <RestaurantRow
+                key={restaurant.id}
+                restaurant={restaurant}
+                activity={activity.get(restaurant.id)}
+                api={api}
+                now={now()}
+                onOpen={() => onOpen(restaurant.id)}
+                onChanged={reload}
+              />
+            ))}
+          </ul>
+        </>
       ) : null}
     </section>
   );
@@ -83,30 +115,48 @@ export function RestaurantsTab({
 
 function RestaurantRow({
   restaurant,
+  activity,
   api,
   now,
+  onOpen,
   onChanged,
 }: {
   restaurant: Restaurant;
+  activity: Activity | undefined;
   api: OperatorApi;
   now: Date;
+  onOpen(): void;
   onChanged(): void;
 }): JSX.Element {
   const [open, setOpen] = useState<'extend' | 'plan' | null>(null);
   const license = licenseText(restaurant.licenseExpiresAt, now);
-  const devices =
-    restaurant.maxDevices === null
-      ? `${restaurant.devices} cihaz · sınırsız`
-      : `${restaurant.devices} / ${restaurant.maxDevices} cihaz`;
+  const state = statusText(restaurant.status, restaurant.deletedAt);
   const toggle = (next: 'extend' | 'plan') => setOpen((now) => (now === next ? null : next));
+  const edge = state.tone === 'ok' ? EDGES[license.tone] : 'edge-quiet';
 
   return (
-    <li className={`slip ${EDGES[license.tone]} flex flex-col gap-2 px-4 py-3`}>
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="font-display text-label font-semibold">{restaurant.name}</h3>
+    <li className={`slip ${edge} flex flex-col gap-2 px-4 py-3`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h3 className="min-w-0 font-display text-label font-semibold">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="-mx-1 inline-flex min-h-11 max-w-full items-center gap-1 rounded-control px-1 text-left hover:bg-bg"
+          >
+            <span className="truncate">{restaurant.name}</span>
+            <ChevronRight aria-hidden="true" size={18} className="shrink-0 text-muted" />
+          </button>
+        </h3>
         <span className="rounded-chip bg-bg px-2.5 py-0.5 text-meta font-semibold text-text-2">
           {restaurant.planName}
         </span>
+        {state.tone === 'ok' ? null : (
+          <span
+            className={`rounded-chip px-2.5 py-0.5 text-meta font-semibold ${CHIPS[state.tone]}`}
+          >
+            {state.text}
+          </span>
+        )}
       </div>
       {restaurant.ownerEmail ? (
         <p className="truncate text-sm text-text-2">{restaurant.ownerEmail}</p>
@@ -123,9 +173,20 @@ function RestaurantRow({
           ) : null}
         </dd>
         <dt className="text-muted">Cihaz</dt>
-        <dd>{devices}</dd>
+        <dd>
+          {devicesText(restaurant.devices, restaurant.maxDevices)}
+          {restaurant.maxDevicesOverride !== null ? (
+            <span className="text-text-2"> · özel sınır</span>
+          ) : null}
+        </dd>
         <dt className="text-muted">Son görülme</dt>
         <dd>{lastSeenText(restaurant.lastSeenAt, now)}</dd>
+        {activity ? (
+          <>
+            <dt className="text-muted">30 gün</dt>
+            <dd>{activityText(activity)}</dd>
+          </>
+        ) : null}
         <dt className="text-muted">Açılış</dt>
         <dd>{dayText(restaurant.createdAt)}</dd>
       </dl>
@@ -136,13 +197,16 @@ function RestaurantRow({
         <Button aria-expanded={open === 'plan'} onClick={() => toggle('plan')}>
           Paket değiştir
         </Button>
+        <Button variant="ghost" onClick={onOpen}>
+          Yönet
+        </Button>
       </div>
       {open === 'extend' ? (
         restaurant.licenseExpiresAt === null ? (
           <p className="text-sm text-text-2">Bu restoranın lisansı süresiz; uzatmaya gerek yok.</p>
         ) : (
           <ExtendForm
-            restaurant={restaurant}
+            marketId={restaurant.id}
             api={api}
             onDone={() => {
               setOpen(null);
@@ -153,7 +217,8 @@ function RestaurantRow({
       ) : null}
       {open === 'plan' ? (
         <PlanForm
-          restaurant={restaurant}
+          marketId={restaurant.id}
+          current={restaurant.plan}
           api={api}
           onDone={() => {
             setOpen(null);
@@ -165,12 +230,12 @@ function RestaurantRow({
   );
 }
 
-function ExtendForm({
-  restaurant,
+export function ExtendForm({
+  marketId,
   api,
   onDone,
 }: {
-  restaurant: Restaurant;
+  marketId: string;
   api: OperatorApi;
   onDone(): void;
 }): JSX.Element {
@@ -188,7 +253,7 @@ function ExtendForm({
     setBusy(true);
     setError(undefined);
     try {
-      await api.extendLicense(restaurant.id, days);
+      await api.extendLicense(marketId, days);
       onDone();
     } catch (reason) {
       setError(failed(reason));
@@ -200,7 +265,7 @@ function ExtendForm({
     <div className="flex flex-col gap-3 rounded-control border border-line bg-bg p-3">
       <ChoiceGroup<Period>
         legend="Eklenecek süre"
-        name={`extend-${restaurant.id}`}
+        name={`extend-${marketId}`}
         wrap
         value={period}
         onChange={setPeriod}
@@ -222,11 +287,7 @@ function ExtendForm({
         />
       ) : null}
       <p className="text-meta text-muted">Süre bitmediyse bitiş gününe, bittiyse bugüne eklenir.</p>
-      {error ? (
-        <p role="alert" className="text-sm font-medium text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Alert>{error}</Alert> : null}
       <Button variant="primary" disabled={busy} onClick={() => void extend()}>
         Süreyi uzat
       </Button>
@@ -234,16 +295,18 @@ function ExtendForm({
   );
 }
 
-function PlanForm({
-  restaurant,
+export function PlanForm({
+  marketId,
+  current,
   api,
   onDone,
 }: {
-  restaurant: Restaurant;
+  marketId: string;
+  current: PlanId;
   api: OperatorApi;
   onDone(): void;
 }): JSX.Element {
-  const [plan, setPlan] = useState<PlanId>(restaurant.plan);
+  const [plan, setPlan] = useState<PlanId>(current);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
@@ -251,7 +314,7 @@ function PlanForm({
     setBusy(true);
     setError(undefined);
     try {
-      await api.setPlan(restaurant.id, plan);
+      await api.setPlan(marketId, plan);
       onDone();
     } catch (reason) {
       setError(failed(reason));
@@ -270,16 +333,8 @@ function PlanForm({
       <p className="text-meta text-muted">
         Küçük bir pakete geçince bağlı cihazlar çalışmaya devam eder; yalnız yeni cihaz eklenemez.
       </p>
-      {error ? (
-        <p role="alert" className="text-sm font-medium text-danger">
-          {error}
-        </p>
-      ) : null}
-      <Button
-        variant="primary"
-        disabled={busy || plan === restaurant.plan}
-        onClick={() => void save()}
-      >
+      {error ? <Alert>{error}</Alert> : null}
+      <Button variant="primary" disabled={busy || plan === current} onClick={() => void save()}>
         Paketi kaydet
       </Button>
     </div>

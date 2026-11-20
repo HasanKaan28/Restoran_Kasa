@@ -1,87 +1,31 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { ActivationCode, OperatorClient, Restaurant } from './api';
+import {
+  activationCode as code,
+  fakeOperatorClient as fakeClient,
+  operatorAnswers as operator,
+  restaurantRow as restaurant,
+} from '@/test/operatorClient';
 import { AdminApp } from './AdminApp';
 
-type Answer = (args: Record<string, unknown>) => { data?: unknown; error?: { message: string } };
-
-/** A stand-in for the seller's Supabase client: a session, and each RPC answered by a function. */
-function fakeClient(answers: Record<string, Answer>, signedIn = false) {
-  let session: { user: { email: string } } | null = signedIn
-    ? { user: { email: 'satici@example.com' } }
-    : null;
-  const calls: { fn: string; args: Record<string, unknown> }[] = [];
-  const auth = {
-    getSession: vi.fn(async () => ({ data: { session } })),
-    signInWithPassword: vi.fn(async ({ email }: { email: string }) => {
-      session = { user: { email } };
-      return { data: { session }, error: null };
-    }),
-    signUp: vi.fn(async () => ({ data: { session: null }, error: null })),
-    signOut: vi.fn(async () => {
-      session = null;
-      return { error: null };
-    }),
-  };
-  const client = {
-    auth,
-    async rpc(fn: string, args: Record<string, unknown> = {}) {
-      calls.push({ fn, args });
-      const answer = answers[fn]?.(args) ?? {};
-      return { data: answer.data ?? null, error: answer.error ?? null };
-    },
-  } as unknown as OperatorClient;
-  return { client, calls, auth };
-}
-
-const code = (fields: Partial<ActivationCode>): ActivationCode => ({
-  code: 'RK-AAAA-BBBB-CCCC',
-  plan: 'restoran',
-  planName: 'Restoran',
-  days: 365,
-  note: null,
-  createdAt: '2026-11-19T10:00:00Z',
-  usedAt: null,
-  revokedAt: null,
-  marketId: null,
-  marketName: null,
-  status: 'unused',
-  ...fields,
-});
-
-const restaurant = (fields: Partial<Restaurant>): Restaurant => ({
-  id: 'kebapci-halil-ab12cd',
-  name: 'Kebapçı Halil',
-  status: 'active',
-  plan: 'restoran',
-  planName: 'Restoran',
-  maxDevices: 5,
-  createdAt: '2026-11-01T10:00:00Z',
-  licenseExpiresAt: new Date(Date.now() + 40 * 86_400_000).toISOString(),
-  devices: 2,
-  lastSeenAt: new Date(Date.now() - 3 * 3_600_000).toISOString(),
-  ownerEmail: 'halil@example.com',
-  ...fields,
-});
-
-const operator = (extra: Record<string, Answer> = {}) => ({
-  operator_whoami: () => ({ data: true }),
-  list_activation_codes: () => ({ data: [] }),
-  list_markets: () => ({ data: [] }),
-  ...extra,
-});
-
 describe('the yönetim page', () => {
-  it('signs the seller in and opens the codes', async () => {
+  it('signs the seller in and opens the overview', async () => {
     const fake = fakeClient(operator());
     render(<AdminApp client={fake.client} />);
     await userEvent.type(await screen.findByLabelText('E-posta'), 'satici@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
     await userEvent.click(screen.getByRole('button', { name: 'Giriş yap' }));
 
-    expect(await screen.findByRole('heading', { name: 'Yeni kurulum kodu' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Kodlar' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByRole('heading', { name: 'Özet' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Özet' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Özet',
+      'Restoranlar',
+      'Kodlar',
+      'Duyuru',
+      'Geçmiş',
+    ]);
     expect(fake.auth.signInWithPassword).toHaveBeenCalledWith({
       email: 'satici@example.com',
       password: 'gizli-sifre',
@@ -120,6 +64,7 @@ describe('the yönetim page', () => {
       true,
     );
     render(<AdminApp client={fake.client} />);
+    await userEvent.click(await screen.findByRole('tab', { name: 'Kodlar' }));
     await userEvent.selectOptions(await screen.findByLabelText('Paket'), 'qr');
     await userEvent.click(screen.getByText('6 ay sezon'));
     await userEvent.type(screen.getByLabelText('Not'), 'Kebapçı Halil, Adana');
@@ -150,6 +95,7 @@ describe('the yönetim page', () => {
       true,
     );
     render(<AdminApp client={fake.client} />);
+    await userEvent.click(await screen.findByRole('tab', { name: 'Kodlar' }));
     await userEvent.click(await screen.findByText('Özel'));
     await userEvent.type(screen.getByLabelText('Gün sayısı'), '4000');
     await userEvent.click(screen.getByRole('button', { name: 'Kod üret' }));
@@ -168,7 +114,7 @@ describe('the yönetim page', () => {
     ];
     const fake = fakeClient(
       operator({
-        list_activation_codes: () => ({ data: codes }),
+        operator_list_codes: () => ({ data: codes }),
         revoke_activation_code: ({ code: revoked }) => {
           codes = codes.map((item) =>
             item.code === revoked ? { ...item, status: 'revoked' as const } : item,
@@ -179,6 +125,7 @@ describe('the yönetim page', () => {
       true,
     );
     render(<AdminApp client={fake.client} />);
+    await userEvent.click(await screen.findByRole('tab', { name: 'Kodlar' }));
     // A busy machine may take a while for the session, the operator check and the list.
     const list = await screen.findByRole('list', {}, { timeout: 5000 });
     const unused = within(list).getByText('RK-NEWW-CODE-2222').closest('li') as HTMLElement;

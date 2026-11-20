@@ -1,43 +1,46 @@
-import { Check, Copy, MessageCircle } from 'lucide-react';
+import { MessageCircle, Search } from 'lucide-react';
 import { useEffect, useState, type FormEvent, type JSX } from 'react';
 import { Button, ChoiceGroup, SelectField, TextField } from '@/design';
 import { whatsAppShareUrl } from '@/domain/whatsapp';
-import type { ActivationCode, OperatorApi } from './api';
+import type { ActivationCode, CodeStatus, OperatorApi } from './api';
 import { codeMessage, dayText, MAX_DAYS, PERIODS, periodLabel, PLANS, type PlanId } from './model';
+import { failed, useLoad } from './load';
+import { Alert, CopyButton, Loading } from './ui';
 
 /** A sold period in days, or a number of days typed in. */
 type Period = number | 'custom';
 
-type Issued = { code: string; plan: PlanId; days: number };
+type Issued = { codes: string[]; plan: PlanId; days: number };
 
-const failed = (error: unknown) =>
-  error instanceof Error ? error.message : 'Bağlantı kurulamadı.';
+/** How long the search waits after the last key before it asks the server. */
+const SEARCH_DELAY_MS = 300;
+const MAX_BULK = 50;
 
-/** A new code for a restaurant, sent on WhatsApp, and the latest codes with what became of each. */
+type StatusFilter = CodeStatus | 'all';
+
+/**
+ * New codes for restaurants, sent on WhatsApp or copied in bulk, and the latest codes with what
+ * became of each, filtered by state or searched by note.
+ */
 export function CodesTab({ api }: { api: OperatorApi }): JSX.Element {
-  const [codes, setCodes] = useState<ActivationCode[]>();
-  const [listError, setListError] = useState<string>();
   const [issued, setIssued] = useState<Issued>();
-
-  // Bumped to read the list again: after a new code, a revoke, or "Yenile".
-  const [version, setVersion] = useState(0);
-  const reload = () => setVersion((now) => now + 1);
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    let live = true;
-    api.listCodes().then(
-      (list) => {
-        if (live) {
-          setCodes(list);
-          setListError(undefined);
-        }
-      },
-      (error: unknown) => live && setListError(failed(error)),
-    );
-    return () => {
-      live = false;
-    };
-  }, [api, version]);
+    const timer = setTimeout(() => setSearch(query.trim()), SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const {
+    data: codes,
+    error,
+    reload,
+  } = useLoad(
+    () => api.listCodes({ status: status === 'all' ? null : status, search }),
+    `codes:${status}:${search}`,
+  );
 
   return (
     <>
@@ -52,7 +55,7 @@ export function CodesTab({ api }: { api: OperatorApi }): JSX.Element {
             reload();
           }}
         />
-        {issued ? <IssuedCode issued={issued} /> : null}
+        {issued ? <IssuedCodes issued={issued} /> : null}
       </section>
 
       <section aria-labelledby="recent-codes" className="flex flex-col gap-3">
@@ -64,27 +67,68 @@ export function CodesTab({ api }: { api: OperatorApi }): JSX.Element {
             Yenile
           </Button>
         </div>
-        {listError ? (
-          <p role="alert" className="font-medium text-danger">
-            {listError}
+        <ChoiceGroup<StatusFilter>
+          legend="Durum"
+          hideLegend
+          name="code-status"
+          variant="chips"
+          value={status}
+          onChange={setStatus}
+          options={[
+            { value: 'all', label: 'Tümü' },
+            { value: 'unused', label: 'Kullanılmadı' },
+            { value: 'used', label: 'Kullanıldı' },
+            { value: 'revoked', label: 'İptal' },
+          ]}
+        />
+        <div className="relative">
+          <TextField
+            label="Notta ara"
+            type="search"
+            placeholder="Restoran, şehir, telefon"
+            className="w-full pl-10"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <Search
+            aria-hidden="true"
+            size={18}
+            className="pointer-events-none absolute bottom-[15px] left-3.5 text-muted"
+          />
+        </div>
+        {error ? <Alert>{error}</Alert> : null}
+        {codes === undefined && !error ? <Loading /> : null}
+        {codes?.length === 0 ? (
+          <p className="text-text-2">
+            {status === 'all' && search === '' ? 'Henüz kod üretilmedi.' : 'Uyan kod yok.'}
           </p>
         ) : null}
-        {codes === undefined && !listError ? (
-          <p role="status" className="text-text-2">
-            Yükleniyor…
-          </p>
-        ) : null}
-        {codes?.length === 0 ? <p className="text-text-2">Henüz kod üretilmedi.</p> : null}
         {codes && codes.length > 0 ? (
-          <ul className="flex flex-col gap-2">
-            {codes.map((code) => (
-              <CodeRow key={code.code} code={code} api={api} onChanged={reload} />
-            ))}
-          </ul>
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-text-2">{`${codes.length} kod`}</p>
+              <CopyButton
+                variant="ghost"
+                className="ml-auto"
+                label="Listedekileri kopyala"
+                text={codes.map(codeLine).join('\n')}
+              />
+            </div>
+            <ul className="flex flex-col gap-2">
+              {codes.map((code) => (
+                <CodeRow key={code.code} code={code} api={api} onChanged={reload} />
+              ))}
+            </ul>
+          </>
         ) : null}
       </section>
     </>
   );
+}
+
+/** One code as a line of text: the code, then its note when it has one. */
+function codeLine(code: ActivationCode): string {
+  return code.note ? `${code.code} · ${code.note}` : code.code;
 }
 
 function IssueForm({
@@ -97,6 +141,7 @@ function IssueForm({
   const [plan, setPlan] = useState<PlanId>('restoran');
   const [period, setPeriod] = useState<Period>(365);
   const [customDays, setCustomDays] = useState('');
+  const [count, setCount] = useState('1');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -108,11 +153,19 @@ function IssueForm({
       setError(`Süre 1 ile ${MAX_DAYS} gün arasında olmalı.`);
       return;
     }
+    const many = Number(count);
+    if (!Number.isInteger(many) || many < 1 || many > MAX_BULK) {
+      setError(`Adet 1 ile ${MAX_BULK} arasında olmalı.`);
+      return;
+    }
     setBusy(true);
     setError(undefined);
     try {
-      const code = await api.issueCode(plan, days, note);
-      onIssued({ code, plan, days });
+      const codes =
+        many === 1
+          ? [await api.issueCode(plan, days, note)]
+          : await api.issueCodes(plan, days, note, many);
+      onIssued({ codes, plan, days });
       setNote('');
     } catch (reason) {
       setError(failed(reason));
@@ -120,6 +173,8 @@ function IssueForm({
       setBusy(false);
     }
   }
+
+  const many = Number(count) > 1;
 
   return (
     <form
@@ -153,74 +208,70 @@ function IssueForm({
           onChange={(event) => setCustomDays(event.target.value)}
         />
       ) : null}
-      <TextField
-        label="Not"
-        hint="Kimin için: restoran adı, şehir, telefon. İsteğe bağlı."
-        maxLength={200}
-        value={note}
-        onChange={(event) => setNote(event.target.value)}
-      />
-      {error ? (
-        <p role="alert" className="font-medium text-danger">
-          {error}
-        </p>
-      ) : null}
+      <div className="grid grid-cols-[6rem_1fr] gap-3">
+        <TextField
+          label="Adet"
+          type="number"
+          inputMode="numeric"
+          value={count}
+          onChange={(event) => setCount(event.target.value)}
+        />
+        <TextField
+          label="Not"
+          hint="Kimin için: restoran adı, şehir, telefon. İsteğe bağlı."
+          maxLength={200}
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </div>
+      {error ? <Alert>{error}</Alert> : null}
       <Button type="submit" variant="primary" size="lg" disabled={busy}>
-        Kod üret
+        {many ? `${Number(count)} kod üret` : 'Kod üret'}
       </Button>
     </form>
   );
 }
 
-function IssuedCode({ issued }: { issued: Issued }): JSX.Element {
-  const [copied, setCopied] = useState(false);
+function IssuedCodes({ issued }: { issued: Issued }): JSX.Element {
   const plan = PLANS.find((item) => item.id === issued.plan)?.name ?? issued.plan;
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(issued.code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // No clipboard (an old browser, an insecure page): the code stays on screen to copy by hand.
-    }
-  }
+  const [first] = issued.codes;
+  const single = issued.codes.length === 1 && first !== undefined;
 
   return (
     <div
       role="status"
-      aria-label="Üretilen kod"
+      aria-label={single ? 'Üretilen kod' : 'Üretilen kodlar'}
       className="slip edge-open flex animate-pop-in flex-col gap-3 p-4"
     >
       <p className="text-sm text-text-2">
         {plan} · {periodLabel(issued.days)}
+        {single ? '' : ` · ${issued.codes.length} kod`}
       </p>
-      <p className="font-mono text-[clamp(1.35rem,6.4vw,2rem)] leading-tight font-medium tracking-wide break-all select-all">
-        {issued.code}
-      </p>
+      {single ? (
+        <p className="font-mono text-[clamp(1.35rem,6.4vw,2rem)] leading-tight font-medium tracking-wide break-all select-all">
+          {first}
+        </p>
+      ) : (
+        <ol className="grid gap-1 font-mono text-body font-medium tracking-wide select-all sm:grid-cols-2">
+          {issued.codes.map((code) => (
+            <li key={code}>{code}</li>
+          ))}
+        </ol>
+      )}
       {/* On a phone the two stack, sending first: that is what the seller came for. */}
       <div className="grid gap-2 sm:flex sm:flex-wrap">
-        <a
-          href={whatsAppShareUrl(codeMessage(issued.code))}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-touch items-center justify-center gap-2 rounded-control border border-transparent bg-accent px-4 font-semibold text-on-accent transition-colors hover:bg-accent-hover"
-        >
-          <MessageCircle aria-hidden="true" size={18} strokeWidth={1.75} />
-          WhatsApp’ta gönder
-        </a>
-        <Button
-          onClick={() => void copy()}
-          icon={
-            copied ? (
-              <Check aria-hidden="true" size={18} strokeWidth={1.75} />
-            ) : (
-              <Copy aria-hidden="true" size={18} strokeWidth={1.75} />
-            )
-          }
-        >
-          {copied ? 'Kopyalandı' : 'Kopyala'}
-        </Button>
+        {single ? (
+          <a
+            href={whatsAppShareUrl(codeMessage(first))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-touch items-center justify-center gap-2 rounded-control border border-transparent bg-accent px-4 font-semibold text-on-accent transition-colors hover:bg-accent-hover"
+          >
+            <MessageCircle aria-hidden="true" size={18} strokeWidth={1.75} />
+            WhatsApp’ta gönder
+          </a>
+        ) : null}
+        <CopyButton text={issued.codes.join('\n')} label={single ? 'Kopyala' : 'Tümünü kopyala'} />
       </div>
     </div>
   );
@@ -274,11 +325,7 @@ function CodeRow({
         {code.planName} · {periodLabel(code.days)} · {dayText(code.createdAt)}
       </p>
       {code.note ? <p className="text-sm">{code.note}</p> : null}
-      {error ? (
-        <p role="alert" className="text-sm font-medium text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Alert>{error}</Alert> : null}
       {code.status === 'unused' ? (
         <div className="flex flex-wrap items-center gap-2">
           {confirming ? (

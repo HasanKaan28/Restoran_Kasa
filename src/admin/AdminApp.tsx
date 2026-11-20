@@ -1,8 +1,12 @@
-import { LogOut } from 'lucide-react';
+import { History, KeyRound, LayoutDashboard, LogOut, Megaphone, Store } from 'lucide-react';
 import { useEffect, useState, type FormEvent, type JSX, type KeyboardEvent } from 'react';
 import { Button, ChoiceGroup, Logo, TextField } from '@/design';
 import { operatorApi, type OperatorApi, type OperatorClient } from './api';
+import { AnnouncementsTab } from './AnnouncementsTab';
 import { CodesTab } from './CodesTab';
+import { HistoryTab } from './HistoryTab';
+import { OverviewTab } from './OverviewTab';
+import { RestaurantDetail } from './RestaurantDetail';
 import { RestaurantsTab } from './RestaurantsTab';
 
 type Phase =
@@ -233,10 +237,13 @@ function SignInForm({
   );
 }
 
-type Tab = 'codes' | 'restaurants';
-const TABS: readonly { id: Tab; label: string }[] = [
-  { id: 'codes', label: 'Kodlar' },
-  { id: 'restaurants', label: 'Restoranlar' },
+type Tab = 'overview' | 'restaurants' | 'codes' | 'announcements' | 'history';
+const TABS: readonly { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: 'overview', label: 'Özet', icon: LayoutDashboard },
+  { id: 'restaurants', label: 'Restoranlar', icon: Store },
+  { id: 'codes', label: 'Kodlar', icon: KeyRound },
+  { id: 'announcements', label: 'Duyuru', icon: Megaphone },
+  { id: 'history', label: 'Geçmiş', icon: History },
 ];
 
 function OperatorPage({
@@ -248,14 +255,29 @@ function OperatorPage({
   email: string;
   onSignOut(): void;
 }): JSX.Element {
-  const [tab, setTab] = useState<Tab>('codes');
+  const [tab, setTab] = useState<Tab>('overview');
+  // A restaurant opened from any tab; its detail takes the panel until "Geri".
+  const [opened, setOpened] = useState<string | null>(null);
+
+  function choose(next: Tab) {
+    setTab(next);
+    setOpened(null);
+    document.documentElement.scrollTo?.({ top: 0 });
+  }
+
+  function open(marketId: string) {
+    setOpened(marketId);
+    document.documentElement.scrollTo?.({ top: 0 });
+  }
 
   function onTabKey(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
       return;
     }
-    const next: Tab = tab === 'codes' ? 'restaurants' : 'codes';
-    setTab(next);
+    const at = TABS.findIndex((item) => item.id === tab);
+    const step = event.key === 'ArrowRight' ? 1 : -1;
+    const next = TABS[(at + step + TABS.length) % TABS.length]?.id ?? tab;
+    choose(next);
     document.getElementById(`tab-${next}`)?.focus();
   }
 
@@ -274,40 +296,63 @@ function OperatorPage({
             Çıkış
           </Button>
         </div>
+        {/* On a phone the tabs sit at the bottom, under the thumb, as the app's own do. */}
         <div
           role="tablist"
           aria-label="Yönetim"
           onKeyDown={onTabKey}
-          className="mx-auto flex max-w-3xl gap-1 px-4"
+          className="mx-auto flex max-w-3xl gap-1 px-4 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-20 max-sm:gap-0 max-sm:border-t max-sm:border-line max-sm:bg-surface max-sm:px-0 max-sm:pb-[env(safe-area-inset-bottom)]"
         >
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              id={`tab-${item.id}`}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.id}
-              aria-controls={`panel-${item.id}`}
-              tabIndex={tab === item.id ? 0 : -1}
-              onClick={() => setTab(item.id)}
-              className={`min-h-touch flex-1 border-b-2 px-4 font-semibold transition-colors sm:flex-none ${
-                tab === item.id
-                  ? 'border-accent text-text'
-                  : 'border-transparent text-text-2 hover:text-text'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+          {TABS.map((item) => {
+            const Icon = item.icon;
+            const selected = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                id={`tab-${item.id}`}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={`panel-${item.id}`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => choose(item.id)}
+                className={`flex min-h-touch items-center justify-center gap-2 font-semibold transition-colors max-sm:min-w-0 max-sm:flex-1 max-sm:flex-col max-sm:gap-0.5 max-sm:py-2 max-sm:text-meta sm:border-b-2 sm:px-3 ${
+                  selected
+                    ? 'text-text sm:border-accent max-sm:text-accent'
+                    : 'text-text-2 hover:text-text sm:border-transparent'
+                }`}
+              >
+                <Icon aria-hidden="true" size={20} strokeWidth={selected ? 2.25 : 1.75} />
+                <span className="max-sm:max-w-full max-sm:truncate">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </header>
       <main
         id={`panel-${tab}`}
         role="tabpanel"
         aria-labelledby={`tab-${tab}`}
-        className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+        className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-sm:pb-[calc(6rem+env(safe-area-inset-bottom))]"
       >
-        {tab === 'codes' ? <CodesTab api={api} /> : <RestaurantsTab api={api} />}
+        {opened ? (
+          <RestaurantDetail
+            key={opened}
+            api={api}
+            marketId={opened}
+            onBack={() => setOpened(null)}
+          />
+        ) : tab === 'overview' ? (
+          <OverviewTab api={api} onOpen={open} />
+        ) : tab === 'restaurants' ? (
+          <RestaurantsTab api={api} onOpen={open} />
+        ) : tab === 'codes' ? (
+          <CodesTab api={api} />
+        ) : tab === 'announcements' ? (
+          <AnnouncementsTab api={api} />
+        ) : (
+          <HistoryTab api={api} onOpen={open} />
+        )}
       </main>
     </div>
   );

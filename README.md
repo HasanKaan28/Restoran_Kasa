@@ -145,7 +145,15 @@ select id from auth.users where lower(email) = lower('seller@example.com') and n
 He then issues codes (plan, 14 days trial / 1 month / 3 months / 6-month season / 1 year or any
 number of days, a note), copies them or sends them on WhatsApp, revokes unused ones, and sees every
 restaurant with its plan, days left, registers and when one was last seen; he can extend a
-licence (from its end, or from today once it has ended) and change the plan.
+licence (from its end, or from today once it has ended) and change the plan. The page opens on an
+overview (restaurants by state, codes, registers, licences ending this week with a one-tap
+extension); a restaurant's detail lets him suspend or activate it, set its licence end, give it its
+own register limit, rename it and its registers, revoke a register, run its QR menu, make a support
+pairing code, keep a private note and delete it softly (suspended and marked, nothing removed).
+He can also issue codes in bulk, filter and search them, send a dismissible announcement to one
+restaurant's registers or all, and read the log of every change he made (`app.operator_log`).
+**The seller sees aggregated usage only** (counts of synced sales, tabs, rows and active registers);
+no sale, tab, customer or other record ever reaches the yönetim page.
 
 **Environment:** `VITE_SUPPORT_WHATSAPP` is the seller's number, digits only with the country code
 (`905xxxxxxxxx`). The first screen's "Kodunuz yok mu?" link, the device-limit message and the
@@ -210,7 +218,7 @@ Sales history, v1 users and supplier records are not brought over.
 | `src/data` | The Dexie database, every write as one transaction with its sync queue entry |
 | `src/sync` | Push and pull of the queue, applying pulled rows |
 | `src/app`, `src/design` | App shell, session, routing, shared components and tokens |
-| `src/admin` | The seller's yönetim page (`yonetim.html`): activation codes and restaurants |
+| `src/admin` | The seller's yönetim page (`yonetim.html`): overview, restaurants, codes, announcements, history |
 | `src/pos`, `src/products`, `src/stock`, `src/customers`, `src/suppliers`, `src/reports`, `src/invoices`, `src/settings` | The screens |
 | `src/import`, `src/pwa` | v1 backup import, service worker registration |
 | `electron/` | The desktop main process and its tested security helpers |

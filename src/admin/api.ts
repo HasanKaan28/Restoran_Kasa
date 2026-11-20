@@ -59,13 +59,92 @@ export type Restaurant = {
   status: string;
   plan: PlanId;
   planName: string;
+  /** The restaurant's own limit when the operator set one, else its plan's; null: any number. */
   maxDevices: number | null;
+  planMaxDevices: number | null;
+  maxDevicesOverride: number | null;
   createdAt: string;
+  /** Set when the operator deleted it (softly: it is suspended and kept). */
+  deletedAt: string | null;
   licenseExpiresAt: string | null;
   devices: number;
   lastSeenAt: string | null;
   ownerEmail: string | null;
 };
+
+export type Overview = {
+  restaurants: Record<
+    'total' | 'active' | 'suspended' | 'expiring' | 'expired' | 'deleted',
+    number
+  >;
+  codes: Record<'issued' | 'used' | 'unused' | 'revoked', number>;
+  devices: { total: number; seenToday: number };
+  expiring: {
+    id: string;
+    name: string;
+    status: string;
+    planName: string;
+    licenseExpiresAt: string;
+  }[];
+};
+
+/** What a restaurant synced in the last 30 days, as counts only. */
+export type Activity = { sales: number; tabs: number; activeDevices: number };
+
+export type Device = {
+  id: string;
+  code: string;
+  name: string;
+  platform: string;
+  createdAt: string;
+  lastSeenAt: string | null;
+  revokedAt: string | null;
+};
+
+export type RestaurantDetail = {
+  id: string;
+  name: string;
+  status: string;
+  deletedAt: string | null;
+  plan: PlanId;
+  planName: string;
+  planMaxDevices: number | null;
+  maxDevicesOverride: number | null;
+  maxDevices: number | null;
+  licenseExpiresAt: string | null;
+  createdAt: string;
+  ownerEmail: string | null;
+  storage: { bytes: number; limitBytes: number };
+  rowCounts: { table: string; count: number }[];
+  lastSyncAt: string | null;
+  qrMenu: { enabled: boolean; slug: string } | null;
+  note: string | null;
+  devices: Device[];
+  activity: Activity;
+};
+
+export type LogEntry = {
+  id: number;
+  at: string;
+  action: string;
+  marketId: string | null;
+  marketName: string | null;
+  operatorEmail: string | null;
+  details: Record<string, unknown>;
+};
+
+export type Announcement = {
+  id: string;
+  marketId: string | null;
+  marketName: string | null;
+  message: string;
+  createdAt: string;
+  expiresAt: string | null;
+  removedAt: string | null;
+  live: boolean;
+};
+
+export type CodeFilter = { status: CodeStatus | null; search: string };
 
 const OFFLINE = 'Bağlantı kurulamadı. İnternet bağlantısını kontrol edin.';
 
@@ -79,6 +158,17 @@ const MESSAGES: Record<string, string> = {
   code_not_found: 'Kod bulunamadı.',
   market_not_found: 'Restoran bulunamadı.',
   license_unlimited: 'Bu restoranın lisansı süresiz; uzatılmaz.',
+  license_expired: 'Restoran askıda ya da lisansı bitmiş: önce etkinleştirin ya da süreyi uzatın.',
+  bad_status: 'Durum geçersiz.',
+  bad_date: 'Tarih bugünden en çok 10 yıl önce ya da sonra olabilir.',
+  bad_max_devices: 'Cihaz sınırı 1 ile 999 arasında olmalı.',
+  bad_name: 'Ad 1 ile 60 karakter arasında olmalı.',
+  bad_count: 'Adet 1 ile 50 arasında olmalı.',
+  bad_message: 'Duyuru 1 ile 280 karakter arasında olmalı.',
+  note_too_long: 'Not en çok 2000 karakter olabilir.',
+  name_mismatch: 'Yazılan ad restoranın adıyla aynı değil.',
+  device_not_found: 'Cihaz bulunamadı.',
+  announcement_not_found: 'Duyuru bulunamadı.',
 };
 
 export function explain(message: string): string {
@@ -86,7 +176,10 @@ export function explain(message: string): string {
   return known ? (MESSAGES[known] as string) : OFFLINE;
 }
 
-/** The operator functions of the server (supabase/migrations/20261121120000_activation.sql). */
+/**
+ * The operator functions of the server (supabase/migrations/20261121120000_activation.sql and
+ * 20261127120000_operator_console.sql).
+ */
 export function operatorApi(client: OperatorClient) {
   async function call<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
     let answer: { data: unknown; error: Failure };
@@ -104,13 +197,83 @@ export function operatorApi(client: OperatorClient) {
     whoami: () => call<boolean>('operator_whoami'),
     issueCode: (plan: PlanId, days: number, note: string) =>
       call<string>('issue_activation_code', { plan_id: plan, days, note: note.trim() }),
-    listCodes: (limit = 100) => call<ActivationCode[]>('list_activation_codes', { lim: limit }),
+    issueCodes: (plan: PlanId, days: number, note: string, count: number) =>
+      call<string[]>('operator_issue_codes', { plan_id: plan, days, note: note.trim(), count }),
+    listCodes: (filter: CodeFilter = { status: null, search: '' }, limit = 200) =>
+      call<ActivationCode[]>('operator_list_codes', {
+        lim: limit,
+        status: filter.status,
+        search: filter.search.trim() || null,
+      }),
     revokeCode: (code: string) => call<void>('revoke_activation_code', { code }),
     listRestaurants: (limit = 200) => call<Restaurant[]>('list_markets', { lim: limit }),
     extendLicense: (marketId: string, days: number) =>
       call<{ licenseExpiresAt: string }>('extend_license', { market_id: marketId, days }),
     setPlan: (marketId: string, plan: PlanId) =>
       call<void>('set_market_plan', { market_id: marketId, plan_id: plan }),
+    overview: () => call<Overview>('operator_overview'),
+    restaurant: (marketId: string) =>
+      call<RestaurantDetail>('operator_market', { market_id: marketId }),
+    activity: (limit = 200) =>
+      call<({ id: string; name: string } & Activity)[]>('operator_activity', { lim: limit }),
+    history: ({
+      limit = 50,
+      beforeId = null,
+      marketId = null,
+    }: { limit?: number; beforeId?: number | null; marketId?: string | null } = {}) =>
+      call<LogEntry[]>('operator_history', {
+        lim: limit,
+        before_id: beforeId,
+        market_id: marketId,
+      }),
+    setStatus: (marketId: string, status: 'active' | 'suspended') =>
+      call<{ status: string; deletedAt: string | null }>('operator_set_market_status', {
+        market_id: marketId,
+        status,
+      }),
+    setLicense: (marketId: string, expiresAt: string | null) =>
+      call<{ licenseExpiresAt: string | null }>('operator_set_license', {
+        market_id: marketId,
+        expires_at: expiresAt,
+      }),
+    setMaxDevices: (marketId: string, maxDevices: number | null) =>
+      call<{ maxDevices: number | null }>('operator_set_max_devices', {
+        market_id: marketId,
+        max_devices: maxDevices,
+      }),
+    renameRestaurant: (marketId: string, name: string) =>
+      call<{ name: string }>('operator_rename_market', { market_id: marketId, name: name.trim() }),
+    setQrMenu: (marketId: string, enabled: boolean) =>
+      call<{ enabled: boolean; slug: string }>('operator_set_qr_menu', {
+        market_id: marketId,
+        enabled,
+      }),
+    rotateQrMenu: (marketId: string) =>
+      call<{ enabled: boolean; slug: string }>('operator_rotate_qr_menu', { market_id: marketId }),
+    createPairing: (marketId: string) =>
+      call<{ code: string; expiresAt: string }>('operator_create_pairing', {
+        market_id: marketId,
+      }),
+    setNote: (marketId: string, note: string) =>
+      call<void>('operator_set_note', { market_id: marketId, note }),
+    deleteRestaurant: (marketId: string, confirmName: string) =>
+      call<{ deletedAt: string }>('operator_delete_market', {
+        market_id: marketId,
+        confirm_name: confirmName,
+      }),
+    revokeDevice: (deviceId: string) =>
+      call<void>('operator_revoke_device', { device_id: deviceId }),
+    renameDevice: (deviceId: string, name: string) =>
+      call<void>('operator_rename_device', { device_id: deviceId, name: name.trim() }),
+    announce: (marketId: string | null, message: string, days: number | null) =>
+      call<{ id: string }>('operator_set_announcement', {
+        market_id: marketId,
+        message: message.trim(),
+        days,
+      }),
+    removeAnnouncement: (id: string) => call<void>('operator_remove_announcement', { id }),
+    listAnnouncements: (limit = 100) =>
+      call<Announcement[]>('operator_list_announcements', { lim: limit }),
   };
 }
 
