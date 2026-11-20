@@ -185,6 +185,8 @@ export async function pairDevice({
   deviceName,
   platform,
   replace = false,
+  marketId,
+  claims,
 }: {
   device: ServerClient;
   code: string;
@@ -193,25 +195,36 @@ export async function pairDevice({
   platform: Platform;
   /** Take the code over from the register that holds it; that register is revoked. */
   replace?: boolean;
+  /** The market the code was made for, when this device made it (Restoran kur, giriş yap). */
+  marketId?: string;
+  /** Where the code of a claim still waiting for its answer is kept; the browser's storage. */
+  claims?: ClaimMemo;
 }): Promise<ClaimedDevice> {
   const registerCode = deviceCode.trim().toUpperCase();
+  const pairingCode = code.trim().toUpperCase();
+  const memo = claims ?? browserClaims();
   const { data } = await device.auth.getSession();
   if (data.session) {
-    // A claim whose answer was lost already bound this session: take that result. A revoked
-    // register can never claim again with its old session, so it starts a new one.
     const mine = await currentDevice(device);
-    if (mine && !mine.revoked) {
+    // A claim whose answer was lost already bound this session: take that result, but only
+    // for that same claim. A session left over from another restaurant (its register settings
+    // gone, the session not) would otherwise bind this device back to that one.
+    const retry = mine?.marketId === marketId || memo.read() === pairingCode;
+    if (mine && !mine.revoked && retry) {
+      memo.clear();
       return withoutRevoked(mine);
     }
     if (mine) {
+      // A revoked register, or another restaurant's: this device starts a session of its own.
       await device.auth.signOut({ scope: 'local' });
       await signInAnonymously(device);
     }
   } else {
     await signInAnonymously(device);
   }
+  memo.write(pairingCode);
   const claimed = await device.rpc('claim_device', {
-    code: code.trim().toUpperCase(),
+    code: pairingCode,
     device_code: registerCode,
     device_name: deviceName.trim(),
     platform,
@@ -221,16 +234,17 @@ export async function pairDevice({
     if (claimed.error.message.includes('already_registered')) {
       const mine = await currentDevice(device);
       if (mine && !mine.revoked) {
+        memo.clear();
         return withoutRevoked(mine);
       }
+    }
+    if (isRefusal(claimed.error.message)) {
+      memo.clear();
     }
     // Refused, so nothing is bound to this session: it goes, and no stray one stays on the
     // device. Kept when the answer was lost (the claim may have gone through, and the same
     // session picks it up next time) and when the code's register is to be taken over next.
-    if (
-      isRefusal(claimed.error.message) &&
-      !claimed.error.message.includes('device_code_taken')
-    ) {
+    if (isRefusal(claimed.error.message) && !claimed.error.message.includes('device_code_taken')) {
       await device.auth.signOut({ scope: 'local' });
     }
     const error = new Error(explain(claimed.error.message, registerCode));
@@ -243,7 +257,32 @@ export async function pairDevice({
     }
     throw error;
   }
+  memo.clear();
   return claimed.data as ClaimedDevice;
+}
+
+/** The pairing code of the claim this device sent last and has had no answer for. */
+export type ClaimMemo = { read(): string | null; write(code: string): void; clear(): void };
+
+const CLAIM_KEY = 'rk.claim';
+
+function browserClaims(): ClaimMemo {
+  const storage = (): Storage | undefined =>
+    typeof localStorage === 'undefined' ? undefined : localStorage;
+  // Storage that cannot be read or written only loses the retry of a lost answer.
+  const attempt = <T>(act: (store: Storage) => T, fallback: T): T => {
+    try {
+      const store = storage();
+      return store ? act(store) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  return {
+    read: () => attempt((store) => store.getItem(CLAIM_KEY), null),
+    write: (code) => attempt((store) => store.setItem(CLAIM_KEY, code), undefined),
+    clear: () => attempt((store) => store.removeItem(CLAIM_KEY), undefined),
+  };
 }
 
 async function signInAnonymously(device: ServerClient): Promise<void> {

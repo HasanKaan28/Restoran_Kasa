@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DEVICE } from '@/app/device';
 import { OWNER_CLIENT_OPTIONS, type ServerClient } from './client';
 import { serverConfig } from './config';
-import { createPairingCode, pairDevice, pairedSettings, unpairedSettings } from './pairing';
+import {
+  createPairingCode,
+  pairDevice,
+  pairedSettings,
+  unpairedSettings,
+  type ClaimMemo,
+} from './pairing';
 import {
   DeviceRevokedError,
   DeviceUnpairedError,
@@ -36,6 +42,20 @@ function fakeClient(
 }
 
 afterEach(() => vi.restoreAllMocks());
+
+/** A claim memo held in memory, starting with `code`. */
+function memo(code: string | null): ClaimMemo {
+  let kept = code;
+  return {
+    read: () => kept,
+    write: (next) => {
+      kept = next;
+    },
+    clear: () => {
+      kept = null;
+    },
+  };
+}
 
 describe('server config', () => {
   it('refuses a secret key in the app', () => {
@@ -257,15 +277,94 @@ describe('pairing', () => {
       my_device: { data: { ...mine, revoked: false } },
     });
     auth.getSession.mockResolvedValue({ data: { session: { user: {} } } } as never);
+    // The code of the claim sent last, kept until its answer came.
+    const claims = memo('ABCD2345');
     const claimed = await pairDevice({
       device: client,
-      code: 'ABCD2345',
+      code: 'abcd2345',
       deviceCode: 'K2',
       deviceName: 'Kasa 2',
       platform: 'web',
+      claims,
     });
     expect(claimed).toEqual(mine);
     expect(calls.map((call) => call.fn)).not.toContain('claim_device');
+    expect(claims.read()).toBeNull();
+  });
+
+  it('picks up a lost claim for the restaurant this device made the code for', async () => {
+    const mine = { marketId: 'kursunlu', marketName: 'K', deviceId: 'd1', deviceCode: 'K2' };
+    const { client, calls, auth } = fakeClient({
+      my_device: { data: { ...mine, revoked: false } },
+    });
+    auth.getSession.mockResolvedValue({ data: { session: { user: {} } } } as never);
+    const claimed = await pairDevice({
+      device: client,
+      code: 'NEWCODE2',
+      deviceCode: '',
+      deviceName: '',
+      platform: 'web',
+      marketId: 'kursunlu',
+      claims: memo(null),
+    });
+    expect(claimed).toEqual(mine);
+    expect(calls.map((call) => call.fn)).not.toContain('claim_device');
+  });
+
+  it('never binds back to the restaurant a leftover session belongs to', async () => {
+    const { client, calls, auth } = fakeClient({
+      my_device: {
+        data: {
+          marketId: 'eski',
+          marketName: 'Eski',
+          deviceId: 'old',
+          deviceCode: 'K1',
+          revoked: false,
+        },
+      },
+      claim_device: {
+        data: { marketId: 'yeni', marketName: 'Yeni', deviceId: 'new', deviceCode: 'K1' },
+      },
+    });
+    auth.getSession.mockResolvedValue({ data: { session: { user: {} } } } as never);
+    const claims = memo(null);
+    const claimed = await pairDevice({
+      device: client,
+      code: 'ABCD2345',
+      deviceCode: '',
+      deviceName: '',
+      platform: 'web',
+      claims,
+    });
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(auth.signInAnonymously).toHaveBeenCalled();
+    expect(calls.map((call) => call.fn)).toContain('claim_device');
+    expect(claimed).toMatchObject({ marketId: 'yeni', deviceId: 'new' });
+    expect(claims.read()).toBeNull();
+  });
+
+  it('keeps the code of a claim whose answer was lost, for the retry', async () => {
+    const lost = fakeClient({ claim_device: { error: { message: 'Failed to fetch' } } });
+    const claims = memo(null);
+    await pairDevice({
+      device: lost.client,
+      code: 'abcd2345',
+      deviceCode: '',
+      deviceName: '',
+      platform: 'web',
+      claims,
+    }).catch(() => undefined);
+    expect(claims.read()).toBe('ABCD2345');
+    const refused = fakeClient({ claim_device: { error: { message: 'pairing_invalid' } } });
+    await pairDevice({
+      device: refused.client,
+      code: 'abcd2345',
+      deviceCode: '',
+      deviceName: '',
+      platform: 'web',
+      claims,
+    }).catch(() => undefined);
+    expect(claims.read()).toBeNull();
   });
 
   it('starts a new session for a revoked register', async () => {

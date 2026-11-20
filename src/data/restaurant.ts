@@ -145,6 +145,32 @@ async function openTabAt(db: MarketDb, tableId: string): Promise<TabRecord | und
   return tabs.find((tab) => tab.status === 'open');
 }
 
+/**
+ * Opens again every one of these tabs that was closed as cancelled (left with nothing on it) but
+ * has a line to pay after all: one ordered on another register before the close reached it. The
+ * change is queued, so every register opens it. Runs inside the caller's transaction, which must
+ * include `tabs`, `tabItems` and `outbox`. Returns how many opened.
+ */
+export async function reopenCancelledWithLines(
+  db: MarketDb,
+  tabIds: Iterable<string>,
+  at: Date,
+): Promise<number> {
+  let reopened = 0;
+  for (const tabId of new Set(tabIds)) {
+    const tab = await db.tabs.get(tabId);
+    if (tab?.status !== 'cancelled') {
+      continue;
+    }
+    if ((await db.tabItems.where('tabId').equals(tabId).filter(payable).count()) === 0) {
+      continue;
+    }
+    await patch(db, 'tabs', tabId, { status: 'open', closedAt: null }, at);
+    reopened += 1;
+  }
+  return reopened;
+}
+
 /** Moves a tab to a table with no open tab of its own. */
 export async function moveTab(
   db: MarketDb,

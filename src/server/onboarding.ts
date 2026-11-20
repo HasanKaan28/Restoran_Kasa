@@ -166,8 +166,10 @@ export async function openMarket({
     return { confirmEmail: true };
   }
   let code: string;
+  let marketId: string;
   try {
     const market = await openOrFinish(owner, marketName, activationCode);
+    marketId = market.id;
     code = await makePairingCode(owner, market).catch((reason: unknown) => {
       throw notBound(reason);
     });
@@ -176,7 +178,14 @@ export async function openMarket({
   }
   try {
     return {
-      claimed: await pairDevice({ device, code, deviceCode: '', deviceName: '', platform }),
+      claimed: await pairDevice({
+        device,
+        code,
+        deviceCode: '',
+        deviceName: '',
+        platform,
+        marketId,
+      }),
     };
   } catch (reason) {
     throw notBound(reason);
@@ -209,11 +218,13 @@ export async function joinMarket({
 }): Promise<OnboardingResult> {
   await signInOwner(owner, email, password);
   let code: string;
+  let chosen: string;
   try {
     const { markets, market } = await chooseMarket(owner, marketId);
     if (!market) {
       return { markets };
     }
+    chosen = market.id;
     if (!replaceCode) {
       const full = await fullPlan(owner, market);
       if (full) {
@@ -232,6 +243,7 @@ export async function joinMarket({
       deviceCode: replaceCode ?? '',
       deviceName: '',
       platform,
+      marketId: chosen,
       ...(replaceCode ? { replace: true } : {}),
     }),
   };

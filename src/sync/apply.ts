@@ -1,5 +1,6 @@
 import type { MarketDb } from '@/data/db';
 import { canonicalBarcode } from '@/data/products';
+import { reopenCancelledWithLines } from '@/data/restaurant';
 import { parkRows, type ParkedRow } from './issues';
 import type { ServerRow, SyncTable } from './protocol';
 
@@ -82,7 +83,20 @@ export async function applyServerRows(db: MarketDb, rows: readonly ServerRow[]):
       }
     }
     await parkRows(db, parked);
+    // Lines ordered on a tab that another register closed as empty meanwhile: it opens again.
+    await reopenCancelledWithLines(db, touchedTabs(rows), new Date());
   });
+}
+
+/** The tabs pulled rows are about: the tabs themselves and those of their lines. */
+function touchedTabs(rows: readonly ServerRow[]): string[] {
+  return rows.flatMap((row) =>
+    row.table === 'tabs'
+      ? [row.id]
+      : row.table === 'tabItems' && typeof row.row.tabId === 'string'
+        ? [row.row.tabId]
+        : [],
+  );
 }
 
 async function applyEvent(db: MarketDb, { table, id, row }: ServerRow): Promise<void> {

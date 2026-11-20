@@ -15,6 +15,8 @@ import {
   kitchenTickets,
   markReady,
   openTab,
+  payTabItems,
+  removeNewItem,
   sendTab,
 } from '@/data/restaurant';
 import { recordReturn, returnedQuantities } from '@/data/returns';
@@ -126,6 +128,60 @@ describe.each(SERVERS)('the $name server', ({ make }) => {
     await syncOnce(a, toA);
     expect((await a.tabItems.get(plate.id))?.status).toBe('ready');
     expect(await kitchenTickets(a, 'kitchen')).toEqual([]);
+  });
+
+  it('reopens an empty tab closed on one register when lines for it come from another', async () => {
+    const kebab = await createProduct(
+      a,
+      { name: 'Adana kebap', sellPrice: 45000, vatRate: 10 },
+      at,
+    );
+    const table = await createDiningTable(a, { name: '5', area: 'Salon' }, at);
+    const tab = await openTab(a, { tableId: table.id, deviceCode: 'K1' }, at);
+    await syncOnce(a, toA);
+    await syncOnce(b, toB);
+    // B orders on the table; A, not having those lines yet, leaves the empty table.
+    const plate = await addTabItem(
+      b,
+      tab.id,
+      kebab,
+      { qtyMilli: 1000 },
+      { deviceCode: 'K2' },
+      later(1),
+    );
+    await sendTab(b, tab.id, later(1));
+    await payTabItems(a, { tabId: tab.id, itemIds: [], payments: [], deviceCode: 'K1' }, later(2));
+    expect((await a.tabs.get(tab.id))?.status).toBe('cancelled');
+    await syncOnce(a, toA);
+
+    await syncOnce(b, toB);
+    expect(await b.tabs.get(tab.id)).toMatchObject({ status: 'open' });
+    expect((await b.tabs.get(tab.id))?.closedAt).toBeUndefined();
+    await syncOnce(a, toA);
+    expect(await a.tabs.get(tab.id)).toMatchObject({ status: 'open' });
+    expect((await a.tabItems.get(plate.id))?.status).toBe('sent');
+    await syncOnce(b, toB);
+    await syncOnce(a, toA);
+    const [stored] = await backend.rows('tabs');
+    expect(stored).toMatchObject({ status: 'open' });
+    expect(stored?.closedAt).toBeUndefined();
+  });
+
+  it('leaves a cancelled tab closed when nothing live comes for it', async () => {
+    const kebab = await createProduct(
+      a,
+      { name: 'Adana kebap', sellPrice: 45000, vatRate: 10 },
+      at,
+    );
+    const table = await createDiningTable(a, { name: '6', area: 'Salon' }, at);
+    const tab = await openTab(a, { tableId: table.id, deviceCode: 'K1' }, at);
+    const plate = await addTabItem(a, tab.id, kebab, { qtyMilli: 1000 }, { deviceCode: 'K1' }, at);
+    await removeNewItem(a, plate.id, later(1));
+    await payTabItems(a, { tabId: tab.id, itemIds: [], payments: [], deviceCode: 'K1' }, later(2));
+    await syncOnce(a, toA);
+    await syncOnce(b, toB);
+    expect((await b.tabs.get(tab.id))?.status).toBe('cancelled');
+    expect(await pendingCount(b)).toBe(0);
   });
 
   it('merges a second insert of a record', async () => {
