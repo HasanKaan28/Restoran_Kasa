@@ -15,6 +15,18 @@ export type ClaimedDevice = {
 
 export type Platform = 'windows' | 'android' | 'web';
 
+/** A live register of a market, as its owner's list shows it. */
+export type OwnedRegister = {
+  id: string;
+  code: string;
+  name: string;
+  platform: string;
+  lastSeenAt: string | null;
+};
+
+/** The plan has no room for another register: these are the ones a new device can replace. */
+export type FullPlan = { market: OwnedMarket; limit: number; devices: OwnedRegister[] };
+
 /** What the server's refusals mean to the person at the register. */
 const MESSAGES: Record<string, string> = {
   not_owner: 'Bu hesap bu restoranın sahibi değil.',
@@ -25,6 +37,9 @@ const MESSAGES: Record<string, string> = {
   license_expired: 'Lisansın süresi doldu; yeni cihaz bağlanamaz. Uzatmak için bize yazın.',
 };
 const OFFLINE = 'Bağlantı kurulamadı. İnternet bağlantısını kontrol edin.';
+/** The owner's account was made but its email is not confirmed yet (the project asks for it). */
+export const CONFIRM_EMAIL =
+  'E-postanızı onaylayın, sonra tekrar deneyin. Onay bağlantısı kayıt olurken e-postanıza gönderildi.';
 
 /** A refusal because another register holds the code; the person may take it over. */
 export type TakenError = Error & { taken: true };
@@ -50,6 +65,90 @@ function explain(message: string, deviceCode?: string): string {
   return known ? (MESSAGES[known] as string) : OFFLINE;
 }
 
+/** Whether the server said no (rather than the answer being lost on the way). */
+function isRefusal(message: string): boolean {
+  return (
+    deviceLimitIn(message) !== null ||
+    message.includes('device_code_taken') ||
+    Object.keys(MESSAGES).some((key) => message.includes(key))
+  );
+}
+
+/** Signs the owner in, or says why not in the register's words. */
+export async function signInOwner(
+  owner: ServerClient,
+  email: string,
+  password: string,
+  wrongPassword = 'E-posta ya da şifre yanlış.',
+): Promise<void> {
+  const signIn = await owner.auth.signInWithPassword({ email: email.trim(), password });
+  if (signIn.error) {
+    const { message } = signIn.error;
+    throw new Error(
+      /not confirmed/i.test(message)
+        ? CONFIRM_EMAIL
+        : /invalid login/i.test(message)
+          ? wrongPassword
+          : OFFLINE,
+    );
+  }
+}
+
+/** The signed-in owner's markets, and the one meant: the only one, or the one chosen. */
+export async function chooseMarket(
+  owner: ServerClient,
+  marketId?: string,
+): Promise<{ markets: OwnedMarket[]; market?: OwnedMarket }> {
+  const owned = await owner.rpc('owner_markets');
+  if (owned.error) {
+    throw new Error(explain(owned.error.message));
+  }
+  const markets = (owned.data ?? []) as OwnedMarket[];
+  if (markets.length === 0) {
+    throw new Error('Bu hesabın sahibi olduğu restoran yok.');
+  }
+  const market = marketId
+    ? markets.find((item) => item.id === marketId)
+    : markets.length === 1
+      ? markets[0]
+      : undefined;
+  return { markets, ...(market ? { market } : {}) };
+}
+
+/**
+ * The plan's limit and live registers when the market has no room for another, else null. Null
+ * too from a server that cannot list them yet (before owner_devices): the claim then decides.
+ */
+export async function fullPlan(owner: ServerClient, market: OwnedMarket): Promise<FullPlan | null> {
+  const listed = await owner.rpc('owner_devices', { market_id: market.id });
+  if (listed.error) {
+    if (
+      listed.error.code === 'PGRST202' ||
+      /could not find the function|does not exist/i.test(listed.error.message)
+    ) {
+      return null;
+    }
+    throw new Error(explain(listed.error.message));
+  }
+  const room = listed.data as { maxDevices: number | null; devices: OwnedRegister[] } | null;
+  if (!room) {
+    return null;
+  }
+  const { maxDevices, devices } = room;
+  return maxDevices !== null && devices.length >= maxDevices
+    ? { market, limit: maxDevices, devices }
+    : null;
+}
+
+/** A ten-minute pairing code for the signed-in owner's market. */
+export async function makePairingCode(owner: ServerClient, market: OwnedMarket): Promise<string> {
+  const made = await owner.rpc('create_pairing', { market_id: market.id });
+  if (made.error) {
+    throw new Error(explain(made.error.message));
+  }
+  return String(made.data);
+}
+
 /**
  * Signs the owner in, makes a ten-minute pairing code for their market and signs out again.
  * With several markets and none chosen, returns the markets instead.
@@ -65,34 +164,13 @@ export async function createPairingCode({
   password: string;
   marketId?: string;
 }): Promise<PairingCodeResult> {
-  const signIn = await owner.auth.signInWithPassword({ email: email.trim(), password });
-  if (signIn.error) {
-    throw new Error(
-      /invalid login/i.test(signIn.error.message) ? 'E-posta ya da şifre yanlış.' : OFFLINE,
-    );
-  }
+  await signInOwner(owner, email, password);
   try {
-    const owned = await owner.rpc('owner_markets');
-    if (owned.error) {
-      throw new Error(explain(owned.error.message));
-    }
-    const markets = (owned.data ?? []) as OwnedMarket[];
-    if (markets.length === 0) {
-      throw new Error('Bu hesabın sahibi olduğu restoran yok.');
-    }
-    const market = marketId
-      ? markets.find((item) => item.id === marketId)
-      : markets.length === 1
-        ? markets[0]
-        : undefined;
+    const { markets, market } = await chooseMarket(owner, marketId);
     if (!market) {
       return { markets };
     }
-    const made = await owner.rpc('create_pairing', { market_id: market.id });
-    if (made.error) {
-      throw new Error(explain(made.error.message));
-    }
-    return { code: String(made.data), market };
+    return { code: await makePairingCode(owner, market), market };
   } finally {
     // Only this sign-in ends; the owner's sessions on other devices stay.
     await owner.auth.signOut({ scope: 'local' });
@@ -145,6 +223,15 @@ export async function pairDevice({
       if (mine && !mine.revoked) {
         return withoutRevoked(mine);
       }
+    }
+    // Refused, so nothing is bound to this session: it goes, and no stray one stays on the
+    // device. Kept when the answer was lost (the claim may have gone through, and the same
+    // session picks it up next time) and when the code's register is to be taken over next.
+    if (
+      isRefusal(claimed.error.message) &&
+      !claimed.error.message.includes('device_code_taken')
+    ) {
+      await device.auth.signOut({ scope: 'local' });
     }
     const error = new Error(explain(claimed.error.message, registerCode));
     if (claimed.error.message.includes('device_code_taken')) {

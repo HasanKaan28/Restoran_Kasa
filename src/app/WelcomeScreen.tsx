@@ -2,7 +2,13 @@ import { useState, type FormEvent, type JSX } from 'react';
 import { Button, Logo, SelectField, TextField } from '@/design';
 import { activationCodeOf } from '@/domain/activationCode';
 import type { OnboardingResult } from '@/server/onboarding';
-import { pairedSettings, type OwnedMarket } from '@/server/pairing';
+import {
+  pairedSettings,
+  type FullPlan,
+  type OwnedMarket,
+  type OwnedRegister,
+} from '@/server/pairing';
+import { formatDateTime } from '@/pos/format';
 import { ActivationCodeField } from './ActivationCodeField';
 import type { DeviceSettings } from './device';
 import { SUPPORT } from './support';
@@ -15,7 +21,9 @@ export type WelcomeScreenProps = {
   open(
     input: Credentials & { marketName: string; activationCode: string },
   ): Promise<OnboardingResult>;
-  join(input: Credentials & { marketId?: string }): Promise<OnboardingResult>;
+  join(
+    input: Credentials & { marketId?: string; replaceCode?: string },
+  ): Promise<OnboardingResult>;
   onDone(settings: DeviceSettings): void;
   /** The seller's WhatsApp number; this build's by default. */
   supportNumber?: string | null;
@@ -31,6 +39,14 @@ const deviceLimitOf = (error: unknown): number | null =>
   error instanceof Error && typeof (error as { deviceLimit?: unknown }).deviceLimit === 'number'
     ? (error as unknown as { deviceLimit: number }).deviceLimit
     : null;
+
+/** A register as the owner knows it: its code, its name and when it was last seen. */
+const registerLabel = (register: OwnedRegister) =>
+  [
+    register.code,
+    register.name,
+    ...(register.lastSeenAt ? [`son görülme ${formatDateTime(register.lastSeenAt)}`] : []),
+  ].join(' · ');
 
 /**
  * The app's first screen: open the restaurant with its own email and the seller's one-time code,
@@ -52,6 +68,9 @@ export function WelcomeScreen({
   const [repeat, setRepeat] = useState('');
   const [markets, setMarkets] = useState<OwnedMarket[]>();
   const [marketId, setMarketId] = useState('');
+  // The plan has no room for this device: it may take the place of one of these registers.
+  const [full, setFull] = useState<FullPlan>();
+  const [replaceCode, setReplaceCode] = useState('');
   const [error, setError] = useState<string>();
   const [deviceLimit, setDeviceLimit] = useState<number | null>(null);
   const [notice, setNotice] = useState<string>();
@@ -65,8 +84,14 @@ export function WelcomeScreen({
     } else if ('markets' in result) {
       setMarkets(result.markets);
       setMarketId(result.markets[0]?.id ?? '');
+    } else if ('full' in result) {
+      setFull(result.full);
+      setReplaceCode(result.full.devices[0]?.code ?? '');
+      setDeviceLimit(result.full.limit);
     } else {
-      setNotice('E-postanıza gelen bağlantıya tıklayın, sonra “Restorana giriş yap” ile girin.');
+      setNotice(
+        'E-postanızı onaylayın, sonra tekrar deneyin: e-postanıza gelen bağlantıya tıklayın, sonra “Restoranı kur”a yeniden basın. Kurulum kodunuz kullanılmadı.',
+      );
     }
   }
 
@@ -108,7 +133,12 @@ export function WelcomeScreen({
   function submitJoin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void run(() =>
-      join({ email: email.trim(), password, ...(markets && marketId ? { marketId } : {}) }),
+      join({
+        email: email.trim(),
+        password,
+        ...(markets && marketId ? { marketId } : {}),
+        ...(full && replaceCode ? { marketId: full.market.id, replaceCode } : {}),
+      }),
     );
   }
 
@@ -118,6 +148,7 @@ export function WelcomeScreen({
     setDeviceLimit(null);
     setNotice(undefined);
     setMarkets(undefined);
+    setFull(undefined);
   }
 
   const messages = (
@@ -240,9 +271,29 @@ export function WelcomeScreen({
                 options={markets.map((market) => ({ value: market.id, label: market.name }))}
               />
             ) : null}
+            {full ? (
+              <div className="flex flex-col gap-2 rounded-control border border-line p-3">
+                <p role="status" className="font-medium">
+                  {`${full.market.name}: paketinizin cihaz sınırı dolu (${full.limit} cihaz).`}
+                </p>
+                <p className="text-sm text-text-2">
+                  Bu cihaz artık kullanılmayan bir kasanın yerine geçebilir. Seçilen kasa
+                  restorandan çıkarılır; o cihazda gönderilmemiş işlem varsa restorana ulaşmaz.
+                </p>
+                <SelectField
+                  label="Yerine geçeceği kasa"
+                  value={replaceCode}
+                  onChange={(event) => setReplaceCode(event.target.value)}
+                  options={full.devices.map((register) => ({
+                    value: register.code,
+                    label: registerLabel(register),
+                  }))}
+                />
+              </div>
+            ) : null}
             {messages}
             <Button type="submit" variant="primary" disabled={busy || !password}>
-              Giriş yap
+              {full ? 'Yerine geç' : 'Giriş yap'}
             </Button>
             <Button variant="ghost" onClick={() => setMode('choose')}>
               Geri

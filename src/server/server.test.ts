@@ -202,6 +202,36 @@ describe('pairing', () => {
     expect(refused).toMatchObject({ deviceLimit: 5 });
   });
 
+  it('leaves no anonymous session behind when the server refuses the claim', async () => {
+    for (const message of ['device_limit 1', 'pairing_invalid', 'license_expired']) {
+      const refused = fakeClient({ claim_device: { error: { message } } });
+      await pairDevice({
+        device: refused.client,
+        code: 'ABCD2345',
+        deviceCode: '',
+        deviceName: '',
+        platform: 'web',
+      }).catch(() => undefined);
+      expect(refused.auth.signOut, message).toHaveBeenCalledWith({ scope: 'local' });
+    }
+  });
+
+  it('keeps the session when the claim may still have gone through, or a takeover is next', async () => {
+    // A lost answer may hide a claim the server made: the same session picks it up next time.
+    // A code held by another register is taken over next, with the same session.
+    for (const message of ['Failed to fetch', 'device_code_taken']) {
+      const kept = fakeClient({ claim_device: { error: { message } } });
+      await pairDevice({
+        device: kept.client,
+        code: 'ABCD2345',
+        deviceCode: 'K1',
+        deviceName: '',
+        platform: 'web',
+      }).catch(() => undefined);
+      expect(kept.auth.signOut, message).not.toHaveBeenCalled();
+    }
+  });
+
   it('says when the licence has lapsed, so no register can be added', async () => {
     const lapsed = fakeClient({ claim_device: { error: { message: 'license_expired' } } });
     await expect(

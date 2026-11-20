@@ -81,8 +81,9 @@ describe('WelcomeScreen', () => {
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
     await userEvent.type(screen.getByLabelText('Şifre (tekrar)'), 'gizli-sifre');
     await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
+    // Nothing was opened: the same form, once the email is confirmed, opens the restaurant.
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'E-postanıza gelen bağlantıya tıklayın, sonra “Restorana giriş yap” ile girin.',
+      'E-postanızı onaylayın, sonra tekrar deneyin: e-postanıza gelen bağlantıya tıklayın, sonra “Restoranı kur”a yeniden basın. Kurulum kodunuz kullanılmadı.',
     );
   });
 
@@ -165,6 +166,49 @@ describe('WelcomeScreen', () => {
     expect(screen.getByRole('link', { name: 'Ek cihaz için WhatsApp’tan yazın' })).toHaveAttribute(
       'href',
       expect.stringContaining('https://wa.me/905321112233?text='),
+    );
+  });
+
+  it('lets a new device take the place of a register when the plan is full', async () => {
+    const full = {
+      market: { id: 'kursunlu-ab12cd', name: 'Kurşunlu Market' },
+      limit: 1,
+      devices: [
+        {
+          id: 'd1',
+          code: 'K1',
+          name: 'Kasa K1',
+          platform: 'android',
+          lastSeenAt: '2026-11-19T10:00:00.000Z',
+        },
+      ],
+    };
+    const join = vi.fn(async (input: { replaceCode?: string }) =>
+      input.replaceCode ? { claimed } : { full },
+    );
+    const props = setup({ join });
+    await userEvent.click(screen.getByRole('button', { name: 'Restorana giriş yap' }));
+    await userEvent.type(screen.getByLabelText('E-posta'), 'emin@example.com');
+    await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
+    await userEvent.click(screen.getByRole('button', { name: 'Giriş yap' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Kurşunlu Market: paketinizin cihaz sınırı dolu (1 cihaz).',
+    );
+    expect(screen.getByLabelText('Yerine geçeceği kasa')).toHaveDisplayValue(
+      'K1 · Kasa K1 · son görülme 19/11 13:00',
+    );
+    expect(screen.getByRole('link', { name: 'Ek cihaz için WhatsApp’tan yazın' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Yerine geç' }));
+
+    expect(join).toHaveBeenLastCalledWith({
+      email: 'emin@example.com',
+      password: 'gizli-sifre',
+      marketId: 'kursunlu-ab12cd',
+      replaceCode: 'K1',
+    });
+    expect(props.onDone).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceCode: 'K1', paired: true }),
     );
   });
 
