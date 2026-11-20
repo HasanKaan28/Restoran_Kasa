@@ -47,6 +47,10 @@ export type TestServer = {
   addUser(options?: { email?: string; anonymous?: boolean }): Promise<string>;
   addDevice(marketId: string, code: string): Promise<{ userId: string; deviceId: string }>;
   addOwner(marketId: string, email?: string): Promise<string>;
+  /** A fresh activation code, as the operator issues it. */
+  addActivationCode(options?: { plan?: string; days?: number }): Promise<string>;
+  /** Makes the user an operator, as the controller does by hand in the SQL editor. */
+  addOperator(userId: string): Promise<void>;
 };
 
 export async function createTestServer(): Promise<TestServer> {
@@ -137,6 +141,17 @@ export async function createTestServer(): Promise<TestServer> {
         [marketId, userId],
       );
       return userId;
+    },
+    async addActivationCode({ plan = 'restoran', days = 30 } = {}) {
+      const [row] = await query<{ code: string }>(
+        `insert into app.activation_codes (code, plan_id, days)
+         values (app.new_activation_code(), $1, $2) returning code`,
+        [plan, days],
+      );
+      return row?.code as string;
+    },
+    async addOperator(userId) {
+      await query('insert into app.operators (user_id) values ($1)', [userId]);
     },
   };
 }

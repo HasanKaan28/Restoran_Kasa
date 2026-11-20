@@ -127,7 +127,14 @@ describe('pairing', () => {
     expect(await server.as(device).rpc('my_device')).toBeNull();
 
     const claimed = await claim(device, await server.as(owner).rpc('create_pairing', ['a']));
-    expect(await server.as(device).rpc<Mine>('my_device')).toEqual({ ...claimed, revoked: false });
+    expect(await server.as(device).rpc<Mine>('my_device')).toEqual({
+      ...claimed,
+      revoked: false,
+      plan: 'restoran',
+      planName: 'Restoran',
+      maxDevices: 5,
+      licenseExpiresAt: null,
+    });
 
     await server.as(owner).rpc('revoke_device', [claimed.deviceId]);
     expect((await server.as(device).rpc<Mine>('my_device')).revoked).toBe(true);
