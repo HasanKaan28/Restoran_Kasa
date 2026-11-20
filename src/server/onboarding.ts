@@ -27,6 +27,12 @@ function explainSignUp(message: string): string {
 }
 
 function explainMarket(message: string): string {
+  if (message.includes('activation_invalid')) {
+    return 'Kod geçersiz ya da kullanılmış.';
+  }
+  if (message.includes('activation_required')) {
+    return 'Uygulamanın bu sürümü eski. Güncel sürümü yükleyin.';
+  }
   if (message.includes('too_many_markets')) {
     return 'Bu hesapla en çok 3 restoran açılabilir.';
   }
@@ -38,8 +44,9 @@ function explainMarket(message: string): string {
 
 /**
  * The first screen's "Restoran kur": signs the shop up with its own email (or in, if the email
- * already has an account), opens the restaurant and binds this device as its first register. The
- * owner's session is dropped at the end; only the register's own session stays on the device.
+ * already has an account), opens the restaurant with the seller's one-time activation code and
+ * binds this device as its first register. The owner's session is dropped at the end; only the
+ * register's own session stays on the device.
  */
 export async function openMarket({
   owner,
@@ -47,6 +54,7 @@ export async function openMarket({
   email,
   password,
   marketName,
+  activationCode,
   platform,
 }: {
   owner: ServerClient;
@@ -54,6 +62,8 @@ export async function openMarket({
   email: string;
   password: string;
   marketName: string;
+  /** RK-XXXX-XXXX-XXXX; the server takes it however it was typed. */
+  activationCode: string;
   platform: Platform;
 }): Promise<OnboardingResult> {
   const credentials = { email: email.trim(), password };
@@ -76,7 +86,10 @@ export async function openMarket({
   }
   let code: string;
   try {
-    const opened = await owner.rpc('create_own_market', { name: marketName.trim() });
+    const opened = await owner.rpc('create_own_market', {
+      name: marketName.trim(),
+      code: activationCode.trim(),
+    });
     if (opened.error) {
       throw new Error(explainMarket(opened.error.message));
     }

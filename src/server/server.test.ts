@@ -186,6 +186,22 @@ describe('pairing', () => {
     ).rejects.toThrow('Kod geçersiz ya da süresi doldu. Yeni kod üretin.');
   });
 
+  it('says when the plan has no room for another register, and how many it allows', async () => {
+    const full = fakeClient({ claim_device: { error: { message: 'device_limit 5' } } });
+    const refused = await pairDevice({
+      device: full.client,
+      code: 'ABCD2345',
+      deviceCode: '',
+      deviceName: '',
+      platform: 'android',
+    }).catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(Error);
+    expect((refused as Error).message).toBe(
+      'Paketinizdeki cihaz sınırına ulaşıldı (5). Ek cihaz için bize yazın.',
+    );
+    expect(refused).toMatchObject({ deviceLimit: 5 });
+  });
+
   it('picks up a claim whose answer was lost', async () => {
     const mine = {
       marketId: 'kursunlu',

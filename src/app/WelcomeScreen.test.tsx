@@ -18,6 +18,7 @@ function setup(overrides: Partial<Parameters<typeof WelcomeScreen>[0]> = {}) {
     open: vi.fn(async () => ({ claimed })),
     join: vi.fn(async () => ({ claimed: { ...claimed, deviceCode: 'K2' } })),
     onDone: vi.fn(),
+    supportNumber: '905321112233' as string | null,
     ...overrides,
   };
   render(<WelcomeScreen {...props} />);
@@ -28,16 +29,19 @@ describe('WelcomeScreen', () => {
   it('opens a market with the shop’s own email', async () => {
     const props = setup();
     await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.type(screen.getByLabelText('Kurulum kodu'), 'abcd efgh jkmn');
     await userEvent.type(screen.getByLabelText('Restoran adı'), 'Kurşunlu Market');
     await userEvent.type(screen.getByLabelText('E-posta'), 'emin@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
     await userEvent.type(screen.getByLabelText('Şifre (tekrar)'), 'gizli-sifre');
     await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
 
+    expect(screen.getByLabelText('Kurulum kodu')).toHaveValue('ABCD-EFGH-JKMN');
     expect(props.open).toHaveBeenCalledWith({
       marketName: 'Kurşunlu Market',
       email: 'emin@example.com',
       password: 'gizli-sifre',
+      activationCode: 'RK-ABCD-EFGH-JKMN',
     });
     expect(props.onDone).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -53,6 +57,7 @@ describe('WelcomeScreen', () => {
   it('checks the password before asking the server', async () => {
     const props = setup();
     await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.type(screen.getByLabelText('Kurulum kodu'), 'ABCDEFGHJKMN');
     await userEvent.type(screen.getByLabelText('Restoran adı'), 'M');
     await userEvent.type(screen.getByLabelText('E-posta'), 'a@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'kisa');
@@ -70,6 +75,7 @@ describe('WelcomeScreen', () => {
   it('tells the shop to confirm its email', async () => {
     setup({ open: vi.fn(async () => ({ confirmEmail: true as const })) });
     await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.type(screen.getByLabelText('Kurulum kodu'), 'ABCDEFGHJKMN');
     await userEvent.type(screen.getByLabelText('Restoran adı'), 'M');
     await userEvent.type(screen.getByLabelText('E-posta'), 'a@example.com');
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
@@ -77,6 +83,88 @@ describe('WelcomeScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       'E-postanıza gelen bağlantıya tıklayın, sonra “Restorana giriş yap” ile girin.',
+    );
+  });
+
+  it('takes the code out of a pasted WhatsApp message', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.click(screen.getByLabelText('Kurulum kodu'));
+    await userEvent.paste(
+      'Restoran Kasa kurulum kodunuz: RK-ABCD-EFGH-JKMN  Uygulama: https://restorankasa.vercel.app/app/ → Restoran kur',
+    );
+    expect(screen.getByLabelText('Kurulum kodu')).toHaveValue('ABCD-EFGH-JKMN');
+  });
+
+  it('asks for the whole code before asking the server', async () => {
+    const props = setup();
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.type(screen.getByLabelText('Kurulum kodu'), 'ABCD-EF');
+    await userEvent.type(screen.getByLabelText('Restoran adı'), 'M');
+    await userEvent.type(screen.getByLabelText('E-posta'), 'a@example.com');
+    await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
+    await userEvent.type(screen.getByLabelText('Şifre (tekrar)'), 'gizli-sifre');
+    await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Kurulum kodunu eksiksiz yazın');
+    expect(props.open).not.toHaveBeenCalled();
+  });
+
+  it('says a wrong or used code plainly', async () => {
+    setup({
+      open: vi.fn(async () => {
+        throw new Error('Kod geçersiz ya da kullanılmış.');
+      }),
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    await userEvent.type(screen.getByLabelText('Kurulum kodu'), 'ABCDEFGHJKMN');
+    await userEvent.type(screen.getByLabelText('Restoran adı'), 'M');
+    await userEvent.type(screen.getByLabelText('E-posta'), 'a@example.com');
+    await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
+    await userEvent.type(screen.getByLabelText('Şifre (tekrar)'), 'gizli-sifre');
+    await userEvent.click(screen.getByRole('button', { name: 'Restoranı kur' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kod geçersiz ya da kullanılmış.');
+  });
+
+  it('offers a WhatsApp chat with the seller for a code', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    const link = screen.getByRole('link', { name: 'Kodunuz yok mu? WhatsApp’tan yazın' });
+    expect(link).toHaveAttribute(
+      'href',
+      `https://wa.me/905321112233?text=${encodeURIComponent(
+        'Merhaba, Restoran Kasa için kurulum kodu almak istiyorum.',
+      )}`,
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('says whom to ask for a code when the build has no WhatsApp number', async () => {
+    setup({ supportNumber: null });
+    await userEvent.click(screen.getByRole('button', { name: 'Restoran kur' }));
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByText('Kurulum kodu için satıcınızla iletişime geçin.')).toBeInTheDocument();
+  });
+
+  it('offers to write for another device when the plan is full', async () => {
+    const full = Object.assign(
+      new Error('Paketinizdeki cihaz sınırına ulaşıldı (5). Ek cihaz için bize yazın.'),
+      { deviceLimit: 5 },
+    );
+    setup({
+      join: vi.fn(async () => {
+        throw full;
+      }),
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Restorana giriş yap' }));
+    await userEvent.type(screen.getByLabelText('E-posta'), 'emin@example.com');
+    await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
+    await userEvent.click(screen.getByRole('button', { name: 'Giriş yap' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Paketinizdeki cihaz sınırına ulaşıldı (5). Ek cihaz için bize yazın.',
+    );
+    expect(screen.getByRole('link', { name: 'Ek cihaz için WhatsApp’tan yazın' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('https://wa.me/905321112233?text='),
     );
   });
 

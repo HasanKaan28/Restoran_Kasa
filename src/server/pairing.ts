@@ -28,9 +28,22 @@ const OFFLINE = 'Bağlantı kurulamadı. İnternet bağlantısını kontrol edin
 /** A refusal because another register holds the code; the person may take it over. */
 export type TakenError = Error & { taken: true };
 
+/** A refusal because the market's plan has no room for another register; `deviceLimit` is how many. */
+export type DeviceLimitError = Error & { deviceLimit: number };
+
+/** The plan's limit in a 'device_limit 5' refusal, or null for any other. */
+function deviceLimitIn(message: string): number | null {
+  const match = /device_limit\D*(\d+)/.exec(message);
+  return match ? Number(match[1]) : null;
+}
+
 function explain(message: string, deviceCode?: string): string {
   if (message.includes('device_code_taken')) {
     return `${deviceCode ?? 'Bu'} kodu bu restoranda kullanılıyor.`;
+  }
+  const limit = deviceLimitIn(message);
+  if (limit !== null) {
+    return `Paketinizdeki cihaz sınırına ulaşıldı (${limit}). Ek cihaz için bize yazın.`;
   }
   const known = Object.keys(MESSAGES).find((key) => message.includes(key));
   return known ? (MESSAGES[known] as string) : OFFLINE;
@@ -135,6 +148,10 @@ export async function pairDevice({
     const error = new Error(explain(claimed.error.message, registerCode));
     if (claimed.error.message.includes('device_code_taken')) {
       Object.assign(error, { taken: true });
+    }
+    const limit = deviceLimitIn(claimed.error.message);
+    if (limit !== null) {
+      Object.assign(error, { deviceLimit: limit });
     }
     throw error;
   }

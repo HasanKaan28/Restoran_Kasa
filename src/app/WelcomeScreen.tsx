@@ -1,16 +1,24 @@
 import { useState, type FormEvent, type JSX } from 'react';
 import { Button, Logo, SelectField, TextField } from '@/design';
+import { activationCodeOf } from '@/domain/activationCode';
 import type { OnboardingResult } from '@/server/onboarding';
 import { pairedSettings, type OwnedMarket } from '@/server/pairing';
+import { ActivationCodeField } from './ActivationCodeField';
 import type { DeviceSettings } from './device';
+import { SUPPORT } from './support';
+import { SupportLink } from './SupportLink';
 
 type Credentials = { email: string; password: string };
 
 export type WelcomeScreenProps = {
   current: DeviceSettings;
-  open(input: Credentials & { marketName: string }): Promise<OnboardingResult>;
+  open(
+    input: Credentials & { marketName: string; activationCode: string },
+  ): Promise<OnboardingResult>;
   join(input: Credentials & { marketId?: string }): Promise<OnboardingResult>;
   onDone(settings: DeviceSettings): void;
+  /** The seller's WhatsApp number; this build's by default. */
+  supportNumber?: string | null;
 };
 
 const failed = (error: unknown) =>
@@ -18,12 +26,26 @@ const failed = (error: unknown) =>
     ? error.message
     : 'Bağlantı kurulamadı. İnternet bağlantısını kontrol edin.';
 
+/** The plan's register limit when that is why the device could not join, else null. */
+const deviceLimitOf = (error: unknown): number | null =>
+  error instanceof Error && typeof (error as { deviceLimit?: unknown }).deviceLimit === 'number'
+    ? (error as unknown as { deviceLimit: number }).deviceLimit
+    : null;
+
 /**
- * The app's first screen: open the restaurant with its own email, or sign another device into
- * it. Either way this device becomes one of the restaurant's registers; the password is not kept.
+ * The app's first screen: open the restaurant with its own email and the seller's one-time code,
+ * or sign another device into it. Either way this device becomes one of the restaurant's
+ * registers; the password is not kept.
  */
-export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProps): JSX.Element {
+export function WelcomeScreen({
+  current,
+  open,
+  join,
+  onDone,
+  supportNumber,
+}: WelcomeScreenProps): JSX.Element {
   const [mode, setMode] = useState<'choose' | 'open' | 'join'>('choose');
+  const [activationCode, setActivationCode] = useState('');
   const [marketName, setMarketName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,8 +53,10 @@ export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProp
   const [markets, setMarkets] = useState<OwnedMarket[]>();
   const [marketId, setMarketId] = useState('');
   const [error, setError] = useState<string>();
+  const [deviceLimit, setDeviceLimit] = useState<number | null>(null);
   const [notice, setNotice] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const support = supportNumber === undefined ? {} : { number: supportNumber };
 
   function settle(result: OnboardingResult) {
     if ('claimed' in result) {
@@ -49,11 +73,13 @@ export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProp
   async function run(task: () => Promise<OnboardingResult>) {
     setBusy(true);
     setError(undefined);
+    setDeviceLimit(null);
     setNotice(undefined);
     try {
       settle(await task());
     } catch (reason) {
       setError(failed(reason));
+      setDeviceLimit(deviceLimitOf(reason));
     } finally {
       setBusy(false);
     }
@@ -61,6 +87,11 @@ export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProp
 
   function submitOpen(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const code = activationCodeOf(activationCode);
+    if (code === null) {
+      setError('Kurulum kodunu eksiksiz yazın: RK- ve 12 harf ya da rakam.');
+      return;
+    }
     if (password.length < 8) {
       setError('Şifre en az 8 karakter olmalı.');
       return;
@@ -69,7 +100,9 @@ export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProp
       setError('Şifreler aynı değil.');
       return;
     }
-    void run(() => open({ marketName: marketName.trim(), email: email.trim(), password }));
+    void run(() =>
+      open({ marketName: marketName.trim(), email: email.trim(), password, activationCode: code }),
+    );
   }
 
   function submitJoin(event: FormEvent<HTMLFormElement>) {
@@ -82,6 +115,7 @@ export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProp
   function choose(next: 'open' | 'join') {
     setMode(next);
     setError(undefined);
+    setDeviceLimit(null);
     setNotice(undefined);
     setMarkets(undefined);
   }
@@ -92,6 +126,9 @@ export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProp
         <p role="alert" className="font-medium text-danger">
           {error}
         </p>
+      ) : null}
+      {deviceLimit !== null ? (
+        <SupportLink topic={SUPPORT.devices(deviceLimit)} {...support} />
       ) : null}
       {notice ? (
         <p role="status" className="font-medium">
@@ -125,14 +162,19 @@ export function WelcomeScreen({ current, open, join, onDone }: WelcomeScreenProp
             </Button>
             <Button onClick={() => choose('join')}>Restorana giriş yap</Button>
             <p className="text-sm text-text-2">
-              Restoranı ilk kez kuruyorsanız “Restoran kur”. Başka bir cihazda kurduysanız aynı
-              e-posta ve şifreyle “Restorana giriş yap”: bu cihaz o restoranın yeni kasası olur.
+              Restoranı ilk kez kuruyorsanız satıcınızın gönderdiği kurulum koduyla “Restoran kur”.
+              Başka bir cihazda kurduysanız aynı e-posta ve şifreyle “Restorana giriş yap”: bu cihaz
+              o restoranın yeni kasası olur.
             </p>
           </div>
         ) : null}
 
         {mode === 'open' ? (
           <form className="flex flex-col gap-3" onSubmit={submitOpen}>
+            <div className="flex flex-col gap-1">
+              <ActivationCodeField value={activationCode} onChange={setActivationCode} />
+              <SupportLink topic={SUPPORT.code} {...support} />
+            </div>
             <TextField
               label="Restoran adı"
               value={marketName}

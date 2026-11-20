@@ -46,6 +46,7 @@ describe('opening a market', () => {
       email: ' emin@example.com ',
       password: 'gizli-sifre',
       marketName: ' Kurşunlu Market ',
+      activationCode: 'RK-ABCD-EFGH-JKMN',
       platform: 'windows',
     });
 
@@ -54,7 +55,7 @@ describe('opening a market', () => {
       password: 'gizli-sifre',
     });
     expect(owner.calls.map((call) => call.fn)).toEqual(['create_own_market', 'create_pairing']);
-    expect(owner.calls[0]?.args).toEqual({ name: 'Kurşunlu Market' });
+    expect(owner.calls[0]?.args).toEqual({ name: 'Kurşunlu Market', code: 'RK-ABCD-EFGH-JKMN' });
     expect(owner.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(device.calls[0]?.args).toMatchObject({ code: 'ABCD2345', device_code: '' });
     expect(result).toEqual({ claimed });
@@ -69,6 +70,7 @@ describe('opening a market', () => {
       email: 'emin@example.com',
       password: 'gizli-sifre',
       marketName: 'Market',
+      activationCode: 'RK-ABCD-EFGH-JKMN',
       platform: 'web',
     });
     expect(result).toEqual({ confirmEmail: true });
@@ -91,6 +93,7 @@ describe('opening a market', () => {
       email: 'emin@example.com',
       password: 'gizli-sifre',
       marketName: 'Market',
+      activationCode: 'RK-ABCD-EFGH-JKMN',
       platform: 'web',
     });
     expect(owner.auth.signInWithPassword).toHaveBeenCalled();
@@ -109,6 +112,7 @@ describe('opening a market', () => {
         email: 'a@example.com',
         password: '123',
         marketName: 'M',
+        activationCode: 'RK-ABCD-EFGH-JKMN',
         platform: 'web',
       }),
     ).rejects.toThrow('Şifre en az 8 karakter olmalı.');
@@ -120,9 +124,28 @@ describe('opening a market', () => {
         email: 'a@example.com',
         password: 'gizli-sifre',
         marketName: 'M',
+        activationCode: 'RK-ABCD-EFGH-JKMN',
         platform: 'web',
       }),
     ).rejects.toThrow('Bu hesapla en çok 3 restoran açılabilir.');
+  });
+
+  it('says the code is wrong or used, and leaves no owner signed in', async () => {
+    const owner = fakeClient({ create_own_market: { error: { message: 'activation_invalid' } } });
+    const device = fakeClient({});
+    await expect(
+      openMarket({
+        owner: owner.client,
+        device: device.client,
+        email: 'a@example.com',
+        password: 'gizli-sifre',
+        marketName: 'M',
+        activationCode: 'RK-ABCD-EFGH-JKMN',
+        platform: 'web',
+      }),
+    ).rejects.toThrow('Kod geçersiz ya da kullanılmış.');
+    expect(owner.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(device.calls).toEqual([]);
   });
 });
 
