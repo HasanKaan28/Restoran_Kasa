@@ -7,6 +7,9 @@ import { itemLabel, payTabItems, tabBill } from '@/data/restaurant';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
 import { formatTRY, parseTRY } from '@/domain/money';
 import { formatLineQty } from '@/pos/format';
+import { printReceipt } from '@/pos/printReceipt';
+import { buildReceipt } from '@/pos/receipt';
+import { loadReceiptSettings, receiptContext } from '@/pos/receiptSettings';
 
 type Method = 'cash' | 'card';
 
@@ -39,6 +42,10 @@ export function PayDialog({
   const [heads, setHeads] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // This device's receipt settings: with printing on, the bill offers the receipt, ticked when
+  // every sale is to print by itself.
+  const [receipt] = useState(loadReceiptSettings);
+  const [printIt, setPrintIt] = useState(receipt.printing && receipt.autoPrint);
 
   const lines = all?.lines ?? [];
   const chosen = lines.filter((line) => !skipped.has(line.item.id));
@@ -67,7 +74,7 @@ export function PayDialog({
         setError('Alınan para tutardan az.');
         return;
       }
-      await payTabItems(
+      const paid = await payTabItems(
         db,
         {
           tabId,
@@ -80,6 +87,9 @@ export function PayDialog({
         },
         new Date(),
       );
+      if (printIt && 'id' in paid) {
+        printReceipt(buildReceipt(paid, receiptContext(settings, receipt)), receipt.paperWidth);
+      }
       const closed = chosen.length === lines.length;
       onPaid(
         chosenIds.length === 0 ? 'Masa kapatıldı.' : `Ödeme alındı: ${formatTRY(due)}.`,
@@ -192,6 +202,17 @@ export function PayDialog({
                   <p className="pb-3 font-medium">{`Para üstü ${formatTRY(cashGiven - total)}`}</p>
                 ) : null}
               </div>
+            ) : null}
+            {receipt.printing ? (
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start">
+                <input
+                  type="checkbox"
+                  checked={printIt}
+                  onChange={(event) => setPrintIt(event.target.checked)}
+                  className="size-5 accent-accent"
+                />
+                <span>Fiş yazdır</span>
+              </label>
             ) : null}
           </>
         ) : null}

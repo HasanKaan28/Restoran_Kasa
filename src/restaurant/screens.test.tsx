@@ -101,6 +101,61 @@ describe('the waiter’s floor', () => {
   });
 });
 
+describe('the receipt of a payment', () => {
+  async function payKebab(receipt: { printing: boolean; autoPrint: boolean }) {
+    localStorage.setItem(
+      'rk.receipt',
+      JSON.stringify({ ...receipt, paperWidth: 80, shopName: '', header: '', footer: '' }),
+    );
+    const data = await restaurant();
+    await renderWithData(<TablesScreen />, data);
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
+    const menu = await screen.findByRole('region', { name: 'Menü' });
+    await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
+    return screen.findByRole('dialog', { name: 'Hesap' });
+  }
+
+  it('prints by itself when the receipt is set to print after every sale', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const bill = await payKebab({ printing: true, autoPrint: true });
+    expect(await within(bill).findByRole('checkbox', { name: 'Fiş yazdır' })).toBeChecked();
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    expect(document.getElementById('print-root')).toHaveTextContent('Adana kebap');
+    window.dispatchEvent(new Event('afterprint'));
+    print.mockRestore();
+  });
+
+  it('prints when asked, with printing on but not after every sale', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const bill = await payKebab({ printing: true, autoPrint: false });
+    const ask = await within(bill).findByRole('checkbox', { name: 'Fiş yazdır' });
+    expect(ask).not.toBeChecked();
+    await userEvent.click(ask);
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    window.dispatchEvent(new Event('afterprint'));
+    print.mockRestore();
+  });
+
+  it('offers no receipt while printing is off', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const bill = await payKebab({ printing: false, autoPrint: false });
+    // Once the lines are in, where the choice would be.
+    await within(bill).findByRole('checkbox', { name: /Adana kebap/ });
+    expect(within(bill).queryByRole('checkbox', { name: 'Fiş yazdır' })).toBeNull();
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    expect(
+      await screen.findByRole('button', { name: 'S1, boş' }, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(print).not.toHaveBeenCalled();
+    print.mockRestore();
+  });
+});
+
 describe('the kitchen’s screen', () => {
   it('shows what to prepare and takes it off once ready', async () => {
     const data = await restaurant();
