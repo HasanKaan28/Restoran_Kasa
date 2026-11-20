@@ -61,7 +61,8 @@ export function TablesSection({ onDone }: { onDone(message: string): void }): JS
         <div className="w-24">
           <TextField
             label="Ön ek"
-            hint="Ör. B"
+            // A hint under this field alone would lift its label above the row's others.
+            placeholder="Ör. B"
             value={prefix}
             onChange={(event) => setPrefix(event.target.value)}
           />

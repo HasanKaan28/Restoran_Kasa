@@ -76,7 +76,8 @@ export function MenuOptionsEditor({
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium">Seçenekler</p>
         <p className="text-sm text-text-2">
-          Siparişte sorulacaklar: acı, pişme derecesi, soğan. Zorunlu olan seçilmeden ürün eklenmez.
+          Siparişte sorulacaklar: acı, pişme derecesi, soğan. Seçenekleri virgülle ayırın; zorunlu
+          olan seçilmeden ürün eklenmez.
         </p>
         {groups.map((group, index) => (
           <div
@@ -96,7 +97,8 @@ export function MenuOptionsEditor({
             <div className="min-w-0 flex-[2_1_180px]">
               <TextField
                 label="Seçenekler"
-                hint="Virgülle ayırın: Acılı, Acısız"
+                // A hint under this field alone would lift its label above the row's others.
+                placeholder="Acılı, Acısız"
                 autoComplete="off"
                 value={group.choices}
                 onChange={(event) => setGroup(index, { choices: event.target.value })}
