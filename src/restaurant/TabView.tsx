@@ -405,8 +405,9 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
               toast.show(NO_SALE);
               return;
             }
-            void repeatItem(db, lineFor.id, waiter, new Date()).catch(() =>
-              toast.show('Tekrarlanamadı.'),
+            void repeatItem(db, lineFor.id, waiter, new Date()).then(
+              (again) => toast.show(`${itemLabel(again)} eklendi; göndermeyi unutmayın.`),
+              () => toast.show('Tekrarlanamadı.'),
             );
           }}
           onTreat={() => {
@@ -649,7 +650,7 @@ function LineSheet({
           )
         ) : null}
         <Button disabled={!canRepeat} onClick={onRepeat}>
-          Tekrarla
+          {item.unit === 'kg' ? 'Tekrarla' : 'Bir tane daha'}
         </Button>
         <Button onClick={onTreat}>{item.complimentary ? 'İkramı kaldır' : 'İkram'}</Button>
         <Button variant="danger" onClick={onVoid}>

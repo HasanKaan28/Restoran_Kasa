@@ -194,6 +194,28 @@ describe('repeating a line', () => {
   });
 });
 
+describe('repeating a line of several', () => {
+  it('adds one more of a counted dish, not the whole line again', async () => {
+    const { meze } = await menu();
+    const tab = await openTab(db, { label: 'Paket', ...waiter }, at);
+    const two = await addTabItem(db, tab.id, meze, { qtyMilli: 2000 }, waiter, at);
+    await sendTab(db, tab.id, at);
+    expect(await repeatItem(db, two.id, waiter, later(5))).toMatchObject({ qtyMilli: 1000 });
+  });
+
+  it('adds the same weight again of a dish sold by the kilo', async () => {
+    const lamb = await createProduct(
+      db,
+      { name: 'Kuzu çevirme', unit: 'kg', sellPrice: 120000, vatRate: 10 },
+      at,
+    );
+    const tab = await openTab(db, { label: 'Paket', ...waiter }, at);
+    const half = await addTabItem(db, tab.id, lamb, { qtyMilli: 500 }, waiter, at);
+    await sendTab(db, tab.id, at);
+    expect(await repeatItem(db, half.id, waiter, later(5))).toMatchObject({ qtyMilli: 500 });
+  });
+});
+
 describe('the kitchen’s counts and recall', () => {
   it('counts every dish still to make, and brings back the last one marked ready', async () => {
     const { adana, meze, raki } = await menu();

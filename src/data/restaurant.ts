@@ -427,7 +427,11 @@ export async function fireHeld(db: MarketDb, tabId: string, at: Date): Promise<n
   });
 }
 
-/** One more of a line already ordered, the same portion, choices and note: a new line to send. */
+/**
+ * One more of a line already ordered, the same portion, choices and note: a new line to send. One
+ * more is one of a counted dish ("2 Ayran" gives one Ayran, not two), and the same weight of one
+ * sold by the kilo.
+ */
 export async function repeatItem(
   db: MarketDb,
   itemId: string,
@@ -444,7 +448,7 @@ export async function repeatItem(
     item.tabId,
     product,
     {
-      qtyMilli: item.qtyMilli,
+      qtyMilli: item.unit === 'kg' ? item.qtyMilli : 1000,
       ...(item.note ? { note: item.note } : {}),
       ...(item.portion ? { portion: item.portion } : {}),
       ...(item.options ? { options: item.options } : {}),
