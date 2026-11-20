@@ -11,6 +11,7 @@ import {
   openTabs,
   sendTab,
 } from '@/data/restaurant';
+import { expectedCash } from '@/data/cash';
 import { saveServerLicense } from '@/data/license';
 import { recentSales } from '@/data/sales';
 import { createStaff } from '@/data/staff';
@@ -177,6 +178,67 @@ describe('the waiter’s floor', () => {
     await userEvent.type(within(bill).getByLabelText('Alınan'), '500');
     expect(within(bill).queryByRole('alert')).toBeNull();
     expect(within(bill).getByText('Para üstü ₺10,00')).toBeInTheDocument();
+  });
+});
+
+describe('paying part in cash and the rest by card', () => {
+  async function billOf490() {
+    const data = await restaurant();
+    await renderWithData(<TablesScreen />, data);
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
+    const menu = await screen.findByRole('region', { name: 'Menü' });
+    await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
+    await userEvent.click(within(menu).getByRole('button', { name: /Ayran/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
+    const bill = await screen.findByRole('dialog', { name: 'Hesap' });
+    await waitFor(() =>
+      expect(within(bill).getByLabelText('Ödenecek tutar')).toHaveTextContent('₺490,00'),
+    );
+    return { data, bill };
+  }
+
+  it('takes the cash part, the card the rest, as one receipt the till counts right', async () => {
+    const { data, bill } = await billOf490();
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Nakit + Kart' }));
+    await userEvent.type(within(bill).getByLabelText('Nakit kısmı'), '200');
+    expect(within(bill).getByText('Kartla ₺290,00')).toBeInTheDocument();
+    await userEvent.type(within(bill).getByLabelText('Alınan'), '250');
+    expect(within(bill).getByText('Para üstü ₺50,00')).toBeInTheDocument();
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+
+    expect(await screen.findByRole('button', { name: 'S1, boş' })).toBeInTheDocument();
+    expect(await recentSales(data.db)).toMatchObject([
+      {
+        total: 49000,
+        payments: [
+          { method: 'cash', amount: 20000 },
+          { method: 'card', amount: 29000 },
+        ],
+        cashGiven: 25000,
+        change: 5000,
+      },
+    ]);
+    // The drawer expects the cash part only.
+    expect((await expectedCash(data.db, 'K1')).sales).toBe(20000);
+  });
+
+  it('asks for a cash part below the bill, and for a readable amount given', async () => {
+    const { data, bill } = await billOf490();
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Nakit + Kart' }));
+    await userEvent.type(within(bill).getByLabelText('Nakit kısmı'), '490');
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    expect(await within(bill).findByRole('alert')).toHaveTextContent(
+      'Nakit kısmı ödenecek tutardan az olmalı',
+    );
+
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Nakit' }));
+    await userEvent.type(within(bill).getByLabelText('Alınan'), '500..');
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    expect(await within(bill).findByRole('alert')).toHaveTextContent(
+      'Alınan tutarı rakamla girin.',
+    );
+    expect(await recentSales(data.db)).toEqual([]);
   });
 });
 

@@ -14,22 +14,23 @@ import {
   type BillLine,
 } from '@/data/restaurant';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
-import { formatTRY, parseTRY } from '@/domain/money';
+import { formatTRY } from '@/domain/money';
 import { formatLineQty } from '@/pos/format';
 import { printReceipt } from '@/pos/printReceipt';
 import { buildReceipt } from '@/pos/receipt';
 import { loadReceiptSettings, receiptContext } from '@/pos/receiptSettings';
+import { tenderFor, typedAmount, type Tender } from './tender';
 
-type Method = 'cash' | 'card';
-
-const METHODS: readonly { value: Method; label: string }[] = [
+const METHODS: readonly { value: Tender; label: string }[] = [
   { value: 'cash', label: 'Nakit' },
   { value: 'card', label: 'Kart' },
+  { value: 'mixed', label: 'Nakit + Kart' },
 ];
 
 /**
  * The bill: every line left to pay is ticked; untick some to split the bill by what each person
- * had, or share the total by heads. One payment is one receipt. A line the kitchen has not had
+ * had, or share the total by heads; pay it in cash, by card, or part each. One payment is one
+ * receipt. A line the kitchen has not had
  * (still being taken, or a course kept back) is never charged as it stands: the waiter sends it
  * with the bill or takes it off, so nobody pays for food that was never made and no ticket is
  * left on the kitchen's screen for a table already paid.
@@ -49,7 +50,8 @@ export function PayDialog({
   const { cutoffMinutes } = useMarketSettings();
   const all = useLiveQuery(() => tabBill(db, tabId), [db, tabId]);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
-  const [method, setMethod] = useState<Method>('cash');
+  const [method, setMethod] = useState<Tender>('cash');
+  const [cashPart, setCashPart] = useState('');
   const [given, setGiven] = useState('');
   const [heads, setHeads] = useState('');
   const [error, setError] = useState<string>();
@@ -70,12 +72,12 @@ export function PayDialog({
   );
   const total = selected?.total ?? 0;
   const people = Number(heads);
-  let cashGiven: number | undefined;
-  try {
-    cashGiven = given.trim() === '' ? undefined : parseTRY(given);
-  } catch {
-    cashGiven = undefined;
-  }
+  const cashGiven = typedAmount(given) ?? undefined;
+  // The part paid in cash when it is split with a card, while it leaves something for the card.
+  const typedCash = typedAmount(cashPart) ?? undefined;
+  const cashShare =
+    typedCash !== undefined && typedCash > 0 && typedCash < total ? typedCash : undefined;
+  const cashDue = method === 'mixed' ? cashShare : total;
 
   async function pay() {
     setBusy(true);
@@ -87,8 +89,9 @@ export function PayDialog({
       // Named before paying: the last payment closes the tab.
       const tab = await db.tabs.get(tabId);
       const table = tab ? await tabTitle(db, tab) : undefined;
-      if (method === 'cash' && cashGiven !== undefined && cashGiven < due) {
-        setError('Alınan para tutardan az.');
+      const tender = tenderFor(method, due, { cashPart, given });
+      if ('error' in tender) {
+        setError(tender.error);
         return;
       }
       const paid = await payTabItems(
@@ -96,8 +99,8 @@ export function PayDialog({
         {
           tabId,
           itemIds: chosenIds,
-          payments: due > 0 ? [{ method, amount: due }] : [],
-          ...(method === 'cash' && cashGiven !== undefined ? { cashGiven } : {}),
+          payments: tender.payments,
+          ...(tender.cashGiven !== undefined ? { cashGiven: tender.cashGiven } : {}),
           deviceCode: settings.deviceCode,
           staffId: session.staff?.id,
           cutoffMinutes,
@@ -224,14 +227,35 @@ export function PayDialog({
                 <p className="pb-3 text-text-2">{shareText(total, people)}</p>
               ) : null}
             </div>
-            <ChoiceGroup<Method>
+            <ChoiceGroup<Tender>
               legend="Ödeme"
               name="tabPayment"
               options={METHODS}
               value={method}
-              onChange={setMethod}
+              onChange={(next) => {
+                setMethod(next);
+                setError(undefined);
+              }}
             />
-            {method === 'cash' ? (
+            {method === 'mixed' ? (
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="w-40">
+                  <TextField
+                    label="Nakit kısmı"
+                    inputMode="decimal"
+                    value={cashPart}
+                    onChange={(event) => {
+                      setCashPart(event.target.value);
+                      setError(undefined);
+                    }}
+                  />
+                </div>
+                {cashShare !== undefined ? (
+                  <p className="pb-3 font-medium">{`Kartla ${formatTRY(total - cashShare)}`}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {method !== 'card' ? (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="w-40">
                   <TextField
@@ -244,8 +268,8 @@ export function PayDialog({
                     }}
                   />
                 </div>
-                {cashGiven !== undefined && cashGiven >= total ? (
-                  <p className="pb-3 font-medium">{`Para üstü ${formatTRY(cashGiven - total)}`}</p>
+                {cashGiven !== undefined && cashDue !== undefined && cashGiven >= cashDue ? (
+                  <p className="pb-3 font-medium">{`Para üstü ${formatTRY(cashGiven - cashDue)}`}</p>
                 ) : null}
               </div>
             ) : null}
