@@ -85,6 +85,25 @@ describe('the waiter’s floor', () => {
     expect(within(takeaway).getByRole('button', { name: 'Paket 1 · ₺40,00' })).toBeInTheDocument();
   });
 
+  it('closes a table left with nothing ordered, but not one another register opened', async () => {
+    const data = await restaurant();
+    const s2 = await createDiningTable(data.db, { name: 'S2', area: 'Salon' }, new Date());
+    // S2 was opened on the bar's register (K2), whose waiter may be ordering on it right now.
+    const theirs = await openTab(data.db, { tableId: s2.id, deviceCode: 'K2' }, new Date());
+    await renderWithData(<TablesScreen />, data);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
+    await screen.findByRole('region', { name: 'Menü' });
+    await userEvent.click(screen.getByRole('button', { name: 'Masalar' }));
+    expect(await screen.findByRole('button', { name: 'S1, boş' })).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'S2, dolu, ₺0,00' }));
+    await screen.findByRole('region', { name: 'Menü' });
+    await userEvent.click(screen.getByRole('button', { name: 'Masalar' }));
+    await screen.findByRole('button', { name: 'S2, dolu, ₺0,00' });
+    expect((await data.db.tabs.get(theirs.id))?.status).toBe('open');
+  });
+
   it('takes an order at a table, sends it, and takes the payment', async () => {
     const data = await restaurant();
     await renderWithData(<TablesScreen />, data);

@@ -172,14 +172,16 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
     }
   }
 
-  // A table opened and left with nothing ordered is not taken: its tab closes.
+  // A table opened here and left with nothing ordered is not taken: its tab closes. One opened
+  // on another register stays: its waiter may be ordering on it, and those lines, not here yet,
+  // would land on a closed tab.
   async function leave() {
     // Read from the database: a quick tap can come before the screen has loaded the tab.
     const [lines, record] = await Promise.all([
       db.tabItems.where('tabId').equals(tabId).count(),
       db.tabs.get(tabId),
     ]);
-    if (lines === 0 && record?.status === 'open') {
+    if (lines === 0 && record?.status === 'open' && record.deviceCode === settings.deviceCode) {
       await payTabItems(db, { tabId, itemIds: [], payments: [], ...waiter }, new Date());
     }
     onClose();
