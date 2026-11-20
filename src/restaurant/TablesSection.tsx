@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type FormEvent, type JSX } from 'react';
 import { useData } from '@/app/appData';
+import { TableInUseError } from '@/data/errors';
 import { archiveDiningTable, createDiningTable, listDiningTables } from '@/data/restaurant';
 import { Button, TextField } from '@/design';
 import { SettingsSection } from '@/settings/MarketSections';
@@ -102,8 +103,17 @@ export function TablesSection({ onDone }: { onDone(message: string): void }): JS
                 variant="ghost"
                 aria-label={`Kaldır: ${table.name}`}
                 onClick={() =>
-                  void archiveDiningTable(db, table.id, new Date()).then(() =>
-                    onDone(`${table.name} kaldırıldı.`),
+                  void archiveDiningTable(db, table.id, new Date()).then(
+                    () => {
+                      setError(undefined);
+                      onDone(`${table.name} kaldırıldı.`);
+                    },
+                    (reason: unknown) =>
+                      setError(
+                        reason instanceof TableInUseError
+                          ? `${table.name} masasında açık adisyon var. Önce hesabı alın ya da masayı taşıyın.`
+                          : `${table.name} kaldırılamadı.`,
+                      ),
                   )
                 }
               >

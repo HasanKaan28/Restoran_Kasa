@@ -72,6 +72,14 @@ export class DuplicateSupplierError extends Error {
   }
 }
 
+/** A table whose open tab still has lines to pay cannot be taken out of use. */
+export class TableInUseError extends Error {
+  constructor(readonly tableId: string) {
+    super(`Table ${tableId} has an open tab with lines to pay`);
+    this.name = 'TableInUseError';
+  }
+}
+
 /** The market's last active owner cannot be archived or given another role. */
 export class LastOwnerError extends Error {
   constructor() {

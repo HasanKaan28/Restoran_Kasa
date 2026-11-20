@@ -2,7 +2,13 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createProduct } from '@/data/products';
-import { createDiningTable, kitchenTickets, listDiningTables } from '@/data/restaurant';
+import {
+  addTabItem,
+  createDiningTable,
+  kitchenTickets,
+  listDiningTables,
+  openTab,
+} from '@/data/restaurant';
 import { recentSales } from '@/data/sales';
 import { createTestData, disposeTestData, renderWithData } from '@/test/renderWithData';
 import { KitchenScreen } from './KitchenScreen';
@@ -110,5 +116,22 @@ describe('the tables in settings', () => {
       'B2',
       'B3',
     ]);
+  });
+
+  it('does not remove a table while its tab has lines to pay', async () => {
+    const data = await restaurant();
+    const [table] = await listDiningTables(data.db);
+    const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
+    const [kebab] = await data.db.products.toArray();
+    await addTabItem(data.db, tab.id, kebab!, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
+    const onDone = vi.fn();
+    await renderWithData(<TablesSection onDone={onDone} />, data);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Kaldır: S1' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'S1 masasında açık adisyon var. Önce hesabı alın ya da masayı taşıyın.',
+    );
+    expect(onDone).not.toHaveBeenCalled();
+    expect((await listDiningTables(data.db)).map((one) => one.name)).toEqual(['S1']);
   });
 });

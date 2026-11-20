@@ -1,7 +1,7 @@
 import { assertSafeInteger, type Kurus } from '@/domain/money';
 import { computeCart, lineTotal } from '@/domain/pricing';
 import type { MarketDb } from './db';
-import { RecordNotFoundError } from './errors';
+import { RecordNotFoundError, TableInUseError } from './errors';
 import { newId } from './ids';
 import { appendOutbox } from './outbox';
 import { withoutUndefined } from './records';
@@ -67,9 +67,18 @@ export async function renameDiningTable(
   await patch(db, 'diningTables', id, { name, area }, at);
 }
 
-/** A table taken out of use keeps its past tabs; it no longer shows on the floor. */
+/**
+ * A table taken out of use keeps its past tabs; it no longer shows on the floor. One whose open
+ * tab still has lines to pay stays: the tab would leave the floor with it, out of the bill's reach.
+ */
 export async function archiveDiningTable(db: MarketDb, id: string, at: Date): Promise<void> {
-  await patch(db, 'diningTables', id, { archivedAt: at.toISOString() }, at);
+  return db.transaction('rw', db.diningTables, db.tabs, db.tabItems, db.outbox, async () => {
+    const open = await openTabAt(db, id);
+    if (open && (await db.tabItems.where('tabId').equals(open.id).filter(payable).count()) > 0) {
+      throw new TableInUseError(id);
+    }
+    await patch(db, 'diningTables', id, { archivedAt: at.toISOString() }, at);
+  });
 }
 
 /** The tables in use, area by area in the order the areas were first added, then by addition. */

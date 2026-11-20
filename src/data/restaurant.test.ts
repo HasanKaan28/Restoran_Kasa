@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { makeTestDb } from '@/test/db';
 import type { MarketDb } from './db';
+import { TableInUseError } from './errors';
 import { pendingOps } from './outbox';
 import { createProduct, updateProduct } from './products';
 import {
@@ -68,6 +69,22 @@ describe('dining tables', () => {
     await expect(createDiningTable(db, { name: ' ', area: 'Salon' }, at)).rejects.toThrow(
       RangeError,
     );
+  });
+
+  it('keeps a table whose tab still has lines to pay, and lets an empty one go', async () => {
+    const { kebab } = await menu();
+    const table = await createDiningTable(db, { name: '1', area: 'Salon' }, at);
+    const tab = await openTab(db, { tableId: table.id, ...waiter }, at);
+    await addTabItem(db, tab.id, kebab, { qtyMilli: 1000 }, waiter, at);
+
+    // Its unpaid tab would vanish from the floor with it, out of reach of the bill.
+    await expect(archiveDiningTable(db, table.id, later(1))).rejects.toThrow(TableInUseError);
+    expect((await listDiningTables(db)).map((one) => one.name)).toEqual(['1']);
+
+    const [line] = await db.tabItems.where('tabId').equals(tab.id).toArray();
+    await removeNewItem(db, line!.id, later(2));
+    await archiveDiningTable(db, table.id, later(3));
+    expect(await listDiningTables(db)).toEqual([]);
   });
 });
 
