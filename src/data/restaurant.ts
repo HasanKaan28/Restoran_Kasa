@@ -593,13 +593,27 @@ export async function cancelBillRequest(db: MarketDb, tabId: string, at: Date): 
   });
 }
 
-/** The kitchen or the bar has prepared these lines. */
-export async function markReady(db: MarketDb, itemIds: readonly string[], at: Date): Promise<void> {
+/**
+ * The kitchen or the bar has prepared these lines. `deviceCode` is the screen that marked them,
+ * kept on the line so that screen never announces its own "ready" to itself.
+ */
+export async function markReady(
+  db: MarketDb,
+  itemIds: readonly string[],
+  at: Date,
+  deviceCode?: string,
+): Promise<void> {
   await db.transaction('rw', db.tabItems, db.outbox, async () => {
     for (const id of itemIds) {
       const item = await requireItem(db, id);
       if (item.status === 'sent') {
-        await patch(db, 'tabItems', id, { status: 'ready', readyAt: at.toISOString() }, at);
+        await patch(
+          db,
+          'tabItems',
+          id,
+          { status: 'ready', readyAt: at.toISOString(), readyDeviceCode: deviceCode },
+          at,
+        );
       }
     }
   });
@@ -735,7 +749,13 @@ export async function recallLast(db: MarketDb, station: Station, at: Date): Prom
     }
     const back = ready.filter((item) => item.readyAt === last);
     for (const item of back) {
-      await patch(db, 'tabItems', item.id, { status: 'sent', readyAt: null }, at);
+      await patch(
+        db,
+        'tabItems',
+        item.id,
+        { status: 'sent', readyAt: null, readyDeviceCode: null },
+        at,
+      );
     }
     return back.length;
   });

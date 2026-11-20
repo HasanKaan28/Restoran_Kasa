@@ -488,6 +488,8 @@ export type TabItemRecord = {
   orderedAt: string;
   sentAt?: string;
   readyAt?: string;
+  /** The kitchen or bar screen that marked it ready; absent on lines marked before it was kept. */
+  readyDeviceCode?: string;
   /** Taken to the table: a ready line the floor no longer counts as waiting to be served. */
   servedAt?: string;
   createdAt: string;

@@ -193,6 +193,27 @@ describe('a table’s tab', () => {
     expect(ops.some((op) => op.kind === 'patch' && 'servedAt' in (op.patch ?? {}))).toBe(true);
   });
 
+  it('keeps which device marked a line ready, and forgets it when the line is recalled', async () => {
+    const { kebab } = await menu();
+    const tab = await openTab(db, { label: 'Paket 1', ...waiter }, at);
+    const plate = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000 }, waiter, at);
+    await sendTab(db, tab.id, later(1));
+    await markReady(db, [plate.id], later(10), 'M1');
+    expect(await db.tabItems.get(plate.id)).toMatchObject({
+      status: 'ready',
+      readyDeviceCode: 'M1',
+    });
+    const ops = await pendingOps(db);
+    expect(ops.some((op) => op.kind === 'patch' && 'readyDeviceCode' in (op.patch ?? {}))).toBe(
+      true,
+    );
+
+    expect(await recallLast(db, 'kitchen', later(11))).toBe(1);
+    const back = await db.tabItems.get(plate.id);
+    expect(back?.status).toBe('sent');
+    expect(back?.readyDeviceCode).toBeUndefined();
+  });
+
   it('drops a line not yet sent, and voids a sent one only with a reason', async () => {
     const { kebab } = await menu();
     const tab = await openTab(db, { label: 'Paket 1', ...waiter }, at);

@@ -55,7 +55,7 @@ export function KitchenScreen(): JSX.Element {
 
   /** Marks lines ready and offers the undo right away: a mistaken tap costs one more tap. */
   async function ready(ids: string[], what: string) {
-    await markReady(db, ids, new Date());
+    await markReady(db, ids, new Date(), settings.deviceCode);
     toast.show(`${what} hazır`, { label: 'Geri al', onAction: () => void recall() });
     void runner.run();
   }
