@@ -23,34 +23,48 @@ export function formatPeriod(from: string, to: string): string {
 /**
  * The headline figures of a report, net sales first, then in rows of three: the sales, how they
  * were paid, and what came off them. Without `cost`, gross profit is left out (DESIGN §8.5).
+ * Credit sales and returns are the market's: the restaurant has neither, so their figures show
+ * only when there is something in them. With no buy price entered, a gross profit would be the
+ * whole of the sales, so it says so instead.
  */
 export function reportFigures(
   summary: Summary,
   { cost = true }: { cost?: boolean } = {},
 ): Figure[] {
-  const margin = summary.net > 0 ? percentFormat.format(summary.grossProfit / summary.net) : null;
+  const costKnown = summary.cost !== 0 || summary.net === 0;
+  const margin =
+    costKnown && summary.net > 0 ? percentFormat.format(summary.grossProfit / summary.net) : null;
+  const returned = summary.returnCount > 0 || summary.returnTotal !== 0;
   const figures: Figure[] = [
     {
       label: 'Net satış',
       value: formatAmount(summary.net),
-      note: `İade öncesi satış ${formatAmount(summary.gross)}`,
+      ...(returned ? { note: `İade öncesi satış ${formatAmount(summary.gross)}` } : {}),
     },
     { label: 'İşlem', value: String(summary.salesCount) },
-    { label: 'Ortalama sepet', value: formatAmount(summary.averageBasket) },
-    {
-      label: 'Brüt kâr',
-      value: formatAmount(summary.grossProfit),
-      ...(margin ? { note: `Kâr oranı ${margin}` } : {}),
-    },
+    { label: 'Ortalama hesap', value: formatAmount(summary.averageBasket) },
+    costKnown
+      ? {
+          label: 'Brüt kâr',
+          value: formatAmount(summary.grossProfit),
+          ...(margin ? { note: `Kâr oranı ${margin}` } : {}),
+        }
+      : { label: 'Brüt kâr', value: '—', note: 'Alış fiyatı girilmemiş' },
     { label: 'Nakit', value: formatAmount(summary.byMethod.cash) },
     { label: 'Kart', value: formatAmount(summary.byMethod.card) },
-    { label: 'Veresiye', value: formatAmount(summary.byMethod.credit) },
+    ...(summary.byMethod.credit !== 0
+      ? [{ label: 'Veresiye', value: formatAmount(summary.byMethod.credit) }]
+      : []),
     { label: 'İndirim', value: formatAmount(summary.discounts) },
-    {
-      label: 'İade',
-      value: formatAmount(summary.returnTotal),
-      note: `${summary.returnCount} iade`,
-    },
+    ...(returned
+      ? [
+          {
+            label: 'İade',
+            value: formatAmount(summary.returnTotal),
+            note: `${summary.returnCount} iade`,
+          },
+        ]
+      : []),
     { label: 'İptal', value: formatAmount(summary.voidTotal), note: `${summary.voidCount} fiş` },
   ];
   return cost ? figures : figures.filter((figure) => figure.label !== 'Brüt kâr');

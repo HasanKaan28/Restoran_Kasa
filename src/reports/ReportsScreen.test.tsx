@@ -80,6 +80,37 @@ describe('ReportsScreen', () => {
     print.mockRestore();
   });
 
+  it('speaks of the restaurant’s bills, and leaves out credit and returns it never has', async () => {
+    const { data, sell } = await salesData();
+    await sell(new Date(), 2);
+    await renderWithData(<ReportsScreen />, data);
+    expect(await netSales('₺180,00')).toBeInTheDocument();
+    expect(within(tile('Ortalama hesap')).getByText('₺180,00')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Ortalama sepet' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Veresiye' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'İade' })).toBeNull();
+    expect(screen.queryByText(/İade öncesi satış/)).toBeNull();
+  });
+
+  it('does not count a dish as pure profit when its buy price was never entered', async () => {
+    const data = createTestData();
+    const kebab = await createProduct(
+      data.db,
+      { name: 'Adana kebap', sellPrice: 45000, vatRate: 10 },
+      new Date(Date.now() - DAY_MS),
+    );
+    await recordSale(data.db, {
+      deviceCode: 'K1',
+      at: new Date(),
+      lines: [{ productId: kebab.id, qtyMilli: 1000 }],
+      payments: [{ method: 'card', amount: 45000 }],
+    });
+    await renderWithData(<ReportsScreen />, data);
+    expect(await netSales('₺450,00')).toBeInTheDocument();
+    expect(within(tile('Brüt kâr')).getByText('—')).toBeInTheDocument();
+    expect(within(tile('Brüt kâr')).getByText('Alış fiyatı girilmemiş')).toBeInTheDocument();
+  });
+
   it('changes the range and the register', async () => {
     const { data, sell } = await salesData();
     await sell(new Date(), 1, 'K1');
