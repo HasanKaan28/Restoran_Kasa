@@ -6,7 +6,8 @@ export type UpdateStatus =
   /** `installNow`: found while the app was starting, so it goes in once downloaded. */
   | { kind: 'available'; version: string; installNow?: boolean }
   | { kind: 'current' }
-  | { kind: 'downloading'; percent: number; installNow?: boolean }
+  /** `version` is the release coming down, when the updater knows it. */
+  | { kind: 'downloading'; percent: number; installNow?: boolean; version?: string }
   /** Downloaded while the register was at work; it goes in when the app closes. */
   | { kind: 'ready'; version: string }
   | { kind: 'installing'; version: string }

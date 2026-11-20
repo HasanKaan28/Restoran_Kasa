@@ -34,6 +34,7 @@ function setup() {
   };
   const clock = { now: 0 };
   const timers: { ms: number; run: () => void }[] = [];
+  const later: { ms: number; run: () => void }[] = [];
   wireUpdates({
     autoUpdater: updater,
     ipcMain: ipc,
@@ -41,8 +42,15 @@ function setup() {
     isPackaged: true,
     now: () => clock.now,
     every: (run: () => void, ms: number) => timers.push({ ms, run }),
+    wait: (run: () => void, ms: number) => later.push({ ms, run }),
   });
-  return { updater, ipc, sent, clock, timers };
+  /** Lets the "Kuruluyor" screen show its tick, then the app closes into the installer. */
+  const closeIntoInstaller = () => {
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+    expect(later.at(-1)?.ms).toBe(1600);
+    later.at(-1)?.run();
+  };
+  return { updater, ipc, sent, clock, timers, closeIntoInstaller };
 }
 
 const MINUTE = 60_000;
@@ -60,16 +68,22 @@ describe('desktop updates', () => {
   });
 
   it('installs at once an update found while the app is just starting, however long it takes', () => {
-    const { updater, sent, clock } = setup();
+    const { updater, sent, clock, closeIntoInstaller } = setup();
     clock.now = 30_000;
     updater.emit('update-available', { version: '2.0.5' });
     expect(sent.at(-1)).toEqual({ kind: 'available', version: '2.0.5', installNow: true });
     // A slow line: the download ends well after the start, and still goes in.
     clock.now = 9 * MINUTE;
     updater.emit('download-progress', { percent: 63.2 });
-    expect(sent.at(-1)).toEqual({ kind: 'downloading', percent: 63, installNow: true });
+    expect(sent.at(-1)).toEqual({
+      kind: 'downloading',
+      percent: 63,
+      installNow: true,
+      version: '2.0.5',
+    });
     updater.emit('update-downloaded', { version: '2.0.5' });
     expect(sent.at(-1)).toEqual({ kind: 'installing', version: '2.0.5' });
+    closeIntoInstaller();
     expect(updater.quitAndInstall).toHaveBeenCalledWith(false, true);
   });
 
@@ -79,7 +93,7 @@ describe('desktop updates', () => {
   });
 
   it('leaves a register at work alone: the update waits for the app to close or for a press', async () => {
-    const { updater, ipc, sent, clock } = setup();
+    const { updater, ipc, sent, clock, closeIntoInstaller } = setup();
     clock.now = 10 * MINUTE;
     updater.emit('update-available', { version: '2.0.5' });
     expect(sent.at(-1)).toEqual({ kind: 'available', version: '2.0.5', installNow: false });
@@ -89,8 +103,20 @@ describe('desktop updates', () => {
 
     await ipc.handlers.get('updates:install')?.();
     expect(sent.at(-1)).toEqual({ kind: 'installing', version: '2.0.5' });
+    closeIntoInstaller();
     expect(updater.quitAndInstall).toHaveBeenCalledWith(false, true);
     expect(updater.downloadUpdate).not.toHaveBeenCalled();
+  });
+
+  it('closes into the installer once, however often "Güncelle" is pressed', async () => {
+    const { updater, ipc, clock, closeIntoInstaller } = setup();
+    clock.now = 10 * MINUTE;
+    updater.emit('update-available', { version: '2.0.5' });
+    updater.emit('update-downloaded', { version: '2.0.5' });
+    await ipc.handlers.get('updates:install')?.();
+    await ipc.handlers.get('updates:install')?.();
+    closeIntoInstaller();
+    expect(updater.quitAndInstall).toHaveBeenCalledTimes(1);
   });
 
   it('tells the window what it found', async () => {
@@ -111,16 +137,22 @@ describe('desktop updates', () => {
   });
 
   it('downloads, shows progress and installs when asked', async () => {
-    const { updater, ipc, sent, clock } = setup();
+    const { updater, ipc, sent, clock, closeIntoInstaller } = setup();
     clock.now = 10 * MINUTE;
     updater.emit('update-available', { version: '2.0.1' });
     await ipc.handlers.get('updates:install')?.();
     expect(updater.downloadUpdate).toHaveBeenCalled();
 
     updater.emit('download-progress', { percent: 41.6 });
-    expect(sent.at(-1)).toEqual({ kind: 'downloading', percent: 42, installNow: true });
+    expect(sent.at(-1)).toEqual({
+      kind: 'downloading',
+      percent: 42,
+      installNow: true,
+      version: '2.0.1',
+    });
     updater.emit('update-downloaded', { version: '2.0.1' });
     expect(sent.at(-1)).toEqual({ kind: 'installing', version: '2.0.1' });
+    closeIntoInstaller();
     expect(updater.quitAndInstall).toHaveBeenCalledWith(false, true);
   });
 

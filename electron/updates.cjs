@@ -8,6 +8,8 @@
 const CHECK_EVERY_MS = 4 * 60 * 60 * 1000;
 /** An update found this soon after the app opens is installed at once: nobody is selling yet. */
 const STARTING_MS = 2 * 60 * 1000;
+/** The page's "Kuruluyor" screen shows its tick for this long before the app closes. */
+const INSTALL_AFTER_MS = 1600;
 
 /**
  * Connects electron-updater to the window. Status reaches the page on `updates:status`; the page
@@ -20,6 +22,7 @@ function wireUpdates({
   isPackaged,
   now = Date.now,
   every = setInterval,
+  wait = setTimeout,
 }) {
   autoUpdater.autoDownload = true;
   // A downloaded update nobody installed goes in when the app closes.
@@ -31,6 +34,8 @@ function wireUpdates({
   // otherwise never get it.
   let installOnArrival = false;
   let downloaded;
+  // The release on its way, so the page can name it while it downloads.
+  let coming;
   const installNow = () => installRequested || installOnArrival;
 
   const send = (status) => {
@@ -45,17 +50,29 @@ function wireUpdates({
     if (now() - startedAt < STARTING_MS) {
       installOnArrival = true;
     }
+    coming = info.version;
     send({ kind: 'available', version: info.version, installNow: installNow() });
   });
   autoUpdater.on('update-not-available', () => send({ kind: 'current' }));
   // `installNow` tells the page to cover the screen: the app will close when the download ends.
   autoUpdater.on('download-progress', (progress) =>
-    send({ kind: 'downloading', percent: Math.round(progress.percent), installNow: installNow() }),
+    send({
+      kind: 'downloading',
+      percent: Math.round(progress.percent),
+      installNow: installNow(),
+      ...(coming ? { version: coming } : {}),
+    }),
   );
+  let installing = false;
   const install = (version) => {
+    if (installing) {
+      return;
+    }
+    installing = true;
     send({ kind: 'installing', version });
-    // Not silent, so the installer's progress shows; the app opens again when it is done.
-    autoUpdater.quitAndInstall(false, true);
+    // Not silent, so the installer's progress shows; the app opens again when it is done. A
+    // moment first, so the page can show the download is in before the window goes.
+    wait(() => autoUpdater.quitAndInstall(false, true), INSTALL_AFTER_MS);
   };
   autoUpdater.on('update-downloaded', (info) => {
     downloaded = info.version;
