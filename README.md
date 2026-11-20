@@ -70,11 +70,57 @@ PGlite with `npm test`.
 
 1. In the Supabase dashboard, turn on anonymous sign-ins. Turn "Confirm email" off unless the
    project sends email through its own SMTP: the built-in sender only reaches the team.
-2. On the first device, the first screen's **Restoran kur** signs the restaurant up with its own
-   email and opens it; the device becomes register K1.
+2. On the first device, the first screen's **Restoran kur** takes the seller's activation code,
+   signs the restaurant up with its own email and opens it; the device becomes register K1.
 3. On every other device, **Restorana giriş yap** with the same email and password: it becomes the
    next register (K2, K3…). The password is never kept on a device. Registers bound to the same
    restaurant see each other's sales, tabs and credit.
+
+### Activation codes and licences
+
+Nobody opens a restaurant without a one-time **activation code** from the seller. The seller
+issues codes on the yönetim page and sends them over WhatsApp; the shop types or pastes the code
+on **Restoran kur**. The schema is `supabase/migrations/20261121120000_activation.sql`.
+
+- **Codes** look like `RK-ABCD-EFGH-JKMN`: twelve characters from an alphabet without 0/O or 1/I,
+  drawn on the server from `gen_random_uuid()`. A code carries a plan and a number of days. Opening
+  a restaurant uses it up in one statement, so two shops sending one code at once cannot both
+  succeed. An unknown, used or revoked code is refused alike (`activation_invalid`). Registers
+  built before codes call the old `create_own_market(name)`, which now answers
+  `activation_required`.
+- **Plans** (`app.plans`): `qr` (QR Menü, 1 register), `restoran` (Restoran, 5 registers), `pro`
+  (Restoran Pro, any number). A new register past the limit is refused with `device_limit N`;
+  taking over a register code, or a revoked register, does not count. Nothing else is gated by
+  plan yet.
+- **Licence:** opening sets `license_expires_at` to now plus the code's days. The register sees
+  the plan and the end with every pull, warns in the last 7 days, and keeps selling and syncing
+  for **7 days of grace** after the end. After that the server refuses `sync_push` and
+  `sync_pull` (`license_expired`) and the register says so; nothing done on it is lost, and it
+  syncs again as soon as the licence is extended. A market with no end (`license_expires_at`
+  null, as every market opened before codes) is never limited, and the yönetim page will not put
+  an end on it.
+
+**The yönetim page** is `/app/yonetim` (`yonetim.html`, its own small Vite entry; Vercel rewrites
+the address, GitHub Pages gets a redirect page). The seller signs in with his own email and
+password (**Hesap oluştur** the first time). An account sees nothing until it is an operator: run
+this once in the Supabase SQL editor, with his email:
+
+```sql
+insert into app.operators (user_id)
+select id from auth.users where lower(email) = lower('seller@example.com') and not is_anonymous;
+```
+
+He then issues codes (plan, 14 days trial / 1 month / 3 months / 6-month season / 1 year or any
+number of days, a note), copies them or sends them on WhatsApp, revokes unused ones, and sees every
+restaurant with its plan, days left, registers and when one was last seen; he can extend a
+licence (from its end, or from today once it has ended) and change the plan.
+
+**Environment:** `VITE_SUPPORT_WHATSAPP` is the seller's number, digits only with the country code
+(`905xxxxxxxxx`). The first screen's "Kodunuz yok mu?" link, the device-limit message and the
+licence banner open a WhatsApp chat with it; without it they say to contact the seller. Set it in
+Vercel's environment variables and as a GitHub repository variable (the release workflow passes
+it to every build), next to `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. The site's
+WhatsApp button reads the same number from `site/config.js`.
 
 ### Desktop (Windows)
 
@@ -129,6 +175,7 @@ Sales history, v1 users and supplier records are not brought over.
 | `src/data` | The Dexie database, every write as one transaction with its sync queue entry |
 | `src/sync` | Push and pull of the queue, applying pulled rows |
 | `src/app`, `src/design` | App shell, session, routing, shared components and tokens |
+| `src/admin` | The seller's yönetim page (`yonetim.html`): activation codes and restaurants |
 | `src/pos`, `src/products`, `src/stock`, `src/customers`, `src/suppliers`, `src/reports`, `src/invoices`, `src/settings` | The screens |
 | `src/import`, `src/pwa` | v1 backup import, service worker registration |
 | `electron/` | The desktop main process and its tested security helpers |
@@ -162,9 +209,9 @@ installed web apps pick up the new files.
 
 Planned as milestones M0b-2 and M0b-3 (see `docs/v2/ertelenenler.md`):
 
-- the web back office and the operator panel,
+- the web back office (the operator's yönetim page for codes and licences is built),
 - the e-Arşiv provider adapter that issues, fails or cancels invoices (requests stay pending),
-- server-side rules: licence, the last owner, permissions, invoice status changes,
+- server-side rules: the last owner, permissions, invoice status changes,
 - a signed desktop installer and auto-update (Windows warns before installing).
 
 ## Licence

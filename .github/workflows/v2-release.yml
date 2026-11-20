@@ -22,6 +22,8 @@ jobs:
     env:
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      # The seller's WhatsApp number for "Kodunuz yok mu?"; empty builds say to contact the seller.
+      VITE_SUPPORT_WHATSAPP: ${{ vars.VITE_SUPPORT_WHATSAPP }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -57,6 +59,8 @@ jobs:
     env:
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      # The seller's WhatsApp number for "Kodunuz yok mu?"; empty builds say to contact the seller.
+      VITE_SUPPORT_WHATSAPP: ${{ vars.VITE_SUPPORT_WHATSAPP }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -106,6 +110,8 @@ jobs:
     env:
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      # The seller's WhatsApp number for "Kodunuz yok mu?"; empty builds say to contact the seller.
+      VITE_SUPPORT_WHATSAPP: ${{ vars.VITE_SUPPORT_WHATSAPP }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -143,7 +149,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Restoran Kasa ${{ github.ref_name }}
           body: |
-            - İlk açılışta "Restoran kur" ile kendi e-postanızla işletmenizi açın, Ayarlar → Masalar'dan masaları ekleyin.
+            - İlk açılışta "Restoran kur" ile size verilen kurulum kodunu ve kendi e-postanızı girip işletmenizi açın, Ayarlar → Masalar'dan masaları ekleyin.
             - Diğer cihazlarda (garson telefonu, mutfak tableti) aynı e-posta ve şifreyle "Restorana giriş yap": her cihaz sıradaki kasa olur (K2, K3…).
             - Masaüstü sürümü yeni sürümleri kendisi indirip kurar.
           generate_release_notes: true
