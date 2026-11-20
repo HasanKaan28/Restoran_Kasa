@@ -5,6 +5,7 @@ import { TableInUseError } from './errors';
 import { pendingOps } from './outbox';
 import { createProduct, updateProduct } from './products';
 import {
+  addOneMore,
   addTabItem,
   archiveDiningTable,
   createDiningTable,
@@ -113,6 +114,20 @@ describe('a table’s tab', () => {
     expect(tab).toMatchObject({ tableId: table.id, status: 'open', staffId: 'ayse' });
     expect((await openTab(db, { tableId: table.id, ...waiter }, later(1))).id).toBe(tab.id);
     expect((await openTabs(db)).map((open) => open.id)).toEqual([tab.id]);
+  });
+
+  it('counts every quick tap on a dish into one line being taken', async () => {
+    const { kebab } = await menu();
+    const tab = await openTab(db, { label: 'Paket 1', ...waiter }, at);
+    // Three taps before the first is written: none is lost and no second line appears.
+    await Promise.all([1, 2, 3].map(() => addOneMore(db, tab.id, kebab, waiter, at)));
+    const lines = await db.tabItems.where('tabId').equals(tab.id).toArray();
+    expect(lines.map((line) => line.qtyMilli)).toEqual([3000]);
+
+    // A line with a note, kept back or sent is left as it is: the tap starts a new line.
+    await sendTab(db, tab.id, at);
+    expect((await addOneMore(db, tab.id, kebab, waiter, later(1))).qtyMilli).toBe(1000);
+    expect(await db.tabItems.where('tabId').equals(tab.id).count()).toBe(2);
   });
 
   it('takes an order, sends it to the kitchen and the bar, and marks it ready', async () => {

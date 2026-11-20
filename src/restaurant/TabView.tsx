@@ -8,6 +8,7 @@ import { useSession } from '@/app/session';
 import { useApproval } from '@/app/useApproval';
 import { listCategories } from '@/data/categories';
 import {
+  addOneMore,
   addTabItem,
   cancelBillRequest,
   changeNewItem,
@@ -132,24 +133,10 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
       return;
     }
     try {
-      // A second tap on the same dish adds one more to the line being taken.
-      // Read from the database, not the screen: two quick taps must not make two lines.
-      const lines = await db.tabItems.where('tabId').equals(tabId).toArray();
-      const same = lines.find(
-        (item) =>
-          item.status === 'new' &&
-          item.productId === product.id &&
-          !item.note &&
-          !item.portion &&
-          !item.options &&
-          !item.hold,
-      );
-      if (same) {
-        await changeNewItem(db, same.id, { qtyMilli: same.qtyMilli + 1000 }, new Date());
-      } else {
-        await addTabItem(db, tabId, product, { qtyMilli: 1000 }, waiter, new Date());
-      }
-      confirmAdded(product.name, same ? same.qtyMilli / 1000 + 1 : 1);
+      // A second tap on the same dish adds one more to the line being taken, read and written
+      // in one go: quick taps must neither make two lines nor lose one.
+      const line = await addOneMore(db, tabId, product, waiter, new Date());
+      confirmAdded(product.name, line.qtyMilli / 1000);
     } catch {
       toast.show('Ürün eklenemedi.');
     }

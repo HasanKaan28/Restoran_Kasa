@@ -286,6 +286,42 @@ export async function addTabItem(
   });
 }
 
+/**
+ * One more of a dish tapped on the menu: the line of it being taken grows by one, or a new line
+ * starts (a line with a note, choices or kept back stays as it is). Read and written in one go,
+ * so quick taps neither make a second line nor lose one. Returns the line as it now is.
+ */
+export async function addOneMore(
+  db: MarketDb,
+  tabId: string,
+  product: ProductRecord,
+  waiter: Waiter,
+  at: Date,
+): Promise<TabItemRecord> {
+  return db.transaction('rw', db.tabs, db.tabItems, db.outbox, async () => {
+    const lines = await db.tabItems.where('tabId').equals(tabId).toArray();
+    const same = lines.find(
+      (item) =>
+        item.status === 'new' &&
+        item.productId === product.id &&
+        !item.note &&
+        !item.portion &&
+        !item.options &&
+        !item.hold,
+    );
+    if (!same) {
+      return addTabItem(db, tabId, product, { qtyMilli: 1000 }, waiter, at);
+    }
+    const tab = await requireOpenTab(db, tabId);
+    if (tab.billRequestedAt) {
+      throw new RangeError('The bill was asked for: unlock the tab to add to it');
+    }
+    const qtyMilli = same.qtyMilli + 1000;
+    await changeNewItem(db, same.id, { qtyMilli }, at);
+    return { ...same, qtyMilli };
+  });
+}
+
 /** Changes how many, or the note, of a line not yet sent. */
 export async function changeNewItem(
   db: MarketDb,
