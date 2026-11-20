@@ -117,7 +117,7 @@ export function KitchenScreen(): JSX.Element {
         {tickets && tickets.length === 0 ? (
           <EmptyState icon={<ChefHat size={26} strokeWidth={1.75} />} title="Bekleyen sipariş yok.">
             Garsonun gönderdikleri burada fiş olarak belirir. Satıra dokunun: hazır olur; yanlışsa
-            “Geri al”.
+            “Son hazırı geri al”.
           </EmptyState>
         ) : null}
         <ul

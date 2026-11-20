@@ -76,7 +76,7 @@ function AppContent(): JSX.Element {
   }
 
   return (
-    <ErrorBoundary {...(route === 'tables' ? { onReset: resetRegister } : LEAVE_SCREEN)}>
+    <ErrorBoundary {...(route === 'tables' ? RESTART : LEAVE_SCREEN)}>
       <DataProvider value={data}>
         <SessionProvider>
           <Screens route={route} />
@@ -91,6 +91,14 @@ function resetRegister(): void {
   clearStoredCarts();
   window.location.reload();
 }
+
+// On the floor itself: start again, the market's held carts (which the restaurant never fills)
+// cleared on the way, said as the restaurant says it.
+const RESTART = {
+  message: 'Kaydedilen siparişler ve satışlar güvende. Uygulamayı yeniden başlatın.',
+  resetLabel: 'Yeniden başlat',
+  onReset: resetRegister,
+};
 
 // A crash on another screen has nothing to do with the carts: keep them and go back to the
 // floor, which a reload of the crashed screen would never reach.

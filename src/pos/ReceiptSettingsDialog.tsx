@@ -86,7 +86,7 @@ export function ReceiptSettingsDialog({
           </div>
         </fieldset>
         <TextField
-          label="Dükkân adı"
+          label="Restoran adı"
           hint="Fişin en üstüne yazılır."
           placeholder={marketName}
           value={draft.shopName}
