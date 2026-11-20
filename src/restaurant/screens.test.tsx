@@ -8,6 +8,7 @@ import {
   kitchenTickets,
   listDiningTables,
   openTab,
+  openTabs,
   sendTab,
 } from '@/data/restaurant';
 import { saveServerLicense } from '@/data/license';
@@ -102,6 +103,41 @@ describe('the waiter’s floor', () => {
 
     await waitFor(async () => expect(await recentSales(data.db)).toMatchObject([{ total: 4000 }]));
     expect(within(bill).queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('moving and merging tabs', () => {
+  it('merges into a table with its own tab only once the waiter confirms', async () => {
+    const data = await restaurant();
+    const s2 = await createDiningTable(data.db, { name: 'S2', area: 'Salon' }, new Date());
+    const [s1] = await listDiningTables(data.db);
+    const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
+    for (const table of [s1!, s2]) {
+      const tab = await openTab(data.db, { tableId: table.id, deviceCode: 'K1' }, new Date());
+      await addTabItem(
+        data.db,
+        tab.id,
+        kebab!,
+        { qtyMilli: 1000 },
+        { deviceCode: 'K1' },
+        new Date(),
+      );
+    }
+    await renderWithData(<TablesScreen />, data);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, dolu, ₺450,00' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Taşı / birleştir' }));
+    const move = await screen.findByRole('dialog', { name: 'Taşı / birleştir' });
+    await userEvent.click(await within(move).findByRole('button', { name: 'S2 (dolu)' }));
+
+    // A merge cannot be undone: one stray tap must not join two tables' bills.
+    expect(await within(move).findByText(/Bu adisyon S2 ile birleşsin mi\?/)).toBeInTheDocument();
+    expect(await openTabs(data.db)).toHaveLength(2);
+    await userEvent.click(within(move).getByRole('button', { name: 'Vazgeç' }));
+    await userEvent.click(await within(move).findByRole('button', { name: 'S2 (dolu)' }));
+    await userEvent.click(within(move).getByRole('button', { name: 'Birleştir' }));
+
+    await waitFor(async () => expect(await openTabs(data.db)).toHaveLength(1));
   });
 });
 
