@@ -51,7 +51,16 @@ function startWorker(network: (url: string) => Promise<Response>) {
     }
     return answer;
   }
-  return { kept, navigate };
+  /** A file the page asks for (an icon, the manifest), not a page opened in the tab. */
+  async function load(path: string): Promise<Response | undefined> {
+    let answer: Promise<Response> | undefined;
+    onFetch?.({
+      request: { url: `https://restorankasa.vercel.app${path}`, method: 'GET', mode: 'no-cors' },
+      respondWith: (response) => (answer = response),
+    });
+    return answer;
+  }
+  return { kept, navigate, load };
 }
 
 /** A page as the host serves it: HTML. */
@@ -126,6 +135,84 @@ describe('the service worker and a page that is not the app', () => {
     online = false;
     expect(await (await worker.navigate('/app/')).text()).toBe('app');
     expect(await (await worker.navigate('/app/menu.html')).text()).toBe('menu');
+  });
+});
+
+describe('the service worker and the app’s icon and manifest', () => {
+  const ORIGIN = 'https://restorankasa.vercel.app';
+  const SHELL_FILES = [
+    '/app/logo.svg',
+    '/app/manifest.json',
+    '/app/icon-192.png',
+    '/app/icon-512.png',
+    '/app/icon-maskable-512.png',
+    '/app/apple-touch-icon.png',
+  ];
+
+  it('keeps the icons and the manifest when it installs', async () => {
+    const added: string[] = [];
+    let install: Promise<unknown> = Promise.resolve();
+    const listeners: Record<string, (event: { waitUntil(work: Promise<unknown>): void }) => void> =
+      {};
+    runInNewContext(serviceWorker, {
+      URL,
+      Response,
+      fetch: (url: string) =>
+        Promise.resolve(
+          url.endsWith('precache.json')
+            ? new Response('[]')
+            : new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+        ),
+      self: {
+        location: { href: `${ORIGIN}/app/sw.js?v=1.0.1`, origin: ORIGIN },
+        addEventListener: (type: string, listener: (typeof listeners)[string]) => {
+          listeners[type] = listener;
+        },
+        skipWaiting: () => Promise.resolve(),
+      },
+      caches: {
+        open: () =>
+          Promise.resolve({
+            addAll: (paths: string[]) => {
+              added.push(...paths.map((path) => new URL(path, `${ORIGIN}/app/sw.js`).pathname));
+              return Promise.resolve();
+            },
+            put: () => Promise.resolve(),
+          }),
+      },
+    });
+    listeners.install?.({ waitUntil: (promise) => (install = promise) });
+    await install;
+    for (const path of SHELL_FILES) {
+      expect(added, path).toContain(path);
+    }
+  });
+
+  it('serves them from the kept copy, so the tab and the home screen show them offline', async () => {
+    const worker = startWorker(() => Promise.reject(new TypeError('offline')));
+    for (const path of SHELL_FILES) {
+      worker.kept.set(`${ORIGIN}${path}`, new Response(`kept ${path}`));
+    }
+    for (const path of SHELL_FILES) {
+      const answer = await worker.load(path);
+      expect(answer, `${path} was left to the network`).toBeDefined();
+      expect(await answer?.text()).toBe(`kept ${path}`);
+    }
+  });
+
+  it('asks the network for one not kept yet, and keeps it', async () => {
+    const worker = startWorker((url) =>
+      Promise.resolve(new Response(`net ${new URL(url).pathname}`)),
+    );
+    expect(await (await worker.load('/app/icon-192.png'))?.text()).toBe('net /app/icon-192.png');
+    await Promise.resolve();
+    expect(worker.kept.has(`${ORIGIN}/app/icon-192.png`)).toBe(true);
+  });
+
+  it('leaves other files, and the server’s answers, to the browser', async () => {
+    const worker = startWorker(() => Promise.resolve(new Response('net')));
+    expect(await worker.load('/app/precache.json')).toBeUndefined();
+    expect(await worker.load('/app/logo.svg?x=1')).toBeDefined();
   });
 });
 

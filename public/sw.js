@@ -6,7 +6,23 @@
 const PARAMS = new URL(self.location.href).searchParams;
 const VERSION = [PARAMS.get('v') || 'dev', PARAMS.get('b')].filter(Boolean).join('+');
 const CACHE = `rk-${VERSION}`;
-const SHELL = ['./', './index.html', './manifest.json', './logo.svg'];
+// The page and what it names outside the build: its icon, the manifest and the manifest's icons.
+const STATIC_FILES = [
+  './manifest.json',
+  './logo.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable-512.png',
+  './apple-touch-icon.png',
+];
+const SHELL = ['./', './index.html', ...STATIC_FILES];
+/** Where each of those files lives, by path, for the fetch handler. */
+const STATIC_URLS = new Map(
+  STATIC_FILES.map((path) => {
+    const url = new URL(path, self.location.href);
+    return [url.pathname, url.href];
+  }),
+);
 // The built files the page names: the first visit loads them before this worker is in charge.
 const ASSET_REFERENCE = /(?:src|href)="(\.?\/?assets\/[^"]+)"/g;
 
@@ -90,6 +106,26 @@ self.addEventListener('fetch', (event) => {
             .then((cache) => cache.match(page))
             .then((cached) => cached || Response.error()),
         ),
+    );
+    return;
+  }
+  const kept = STATIC_URLS.get(url.pathname);
+  if (kept) {
+    // The icon, the manifest and its icons: each deploy keeps its own copy, so the kept one is
+    // right, and the tab, the header and the home screen show them offline too.
+    event.respondWith(
+      caches.open(CACHE).then((cache) =>
+        cache.match(kept).then(
+          (cached) =>
+            cached ||
+            fetch(request).then((response) => {
+              if (response.ok) {
+                void cache.put(kept, response.clone());
+              }
+              return response;
+            }),
+        ),
+      ),
     );
     return;
   }
