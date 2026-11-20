@@ -5,6 +5,7 @@ import './design/fonts.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import { Capacitor } from '@capacitor/core';
 import { App } from './app/App';
+import { BUILD_ID } from './app/version';
 import { loadDeviceSettings } from './app/device';
 import { applyTheme, followStoredTheme, loadTheme } from './app/theme';
 import { CustomerDisplay } from './display/CustomerDisplay';
@@ -46,4 +47,5 @@ void registerServiceWorker(
     hostname: window.location.hostname,
   },
   __APP_VERSION__,
+  BUILD_ID,
 );

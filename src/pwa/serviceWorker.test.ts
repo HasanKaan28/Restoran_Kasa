@@ -76,3 +76,29 @@ describe('the service worker and the QR menu', () => {
     expect(await (await worker.navigate('/app/')).text()).toBe('app');
   });
 });
+
+describe('the service worker and a new deploy', () => {
+  it('keeps each build in a cache of its own and drops the last build’s on activation', async () => {
+    const kept = new Set(['mk2-2.0.0', 'rk-1.0.0', 'rk-1.0.0+old', 'rk-1.0.0+new']);
+    const listeners: Record<string, (event: { waitUntil(work: Promise<unknown>): void }) => void> =
+      {};
+    let work: Promise<unknown> = Promise.resolve();
+    runInNewContext(serviceWorker, {
+      URL,
+      self: {
+        location: { href: 'https://restorankasa.vercel.app/app/sw.js?v=1.0.0&b=new' },
+        addEventListener: (type: string, listener: (typeof listeners)[string]) => {
+          listeners[type] = listener;
+        },
+        clients: { claim: () => Promise.resolve() },
+      },
+      caches: {
+        keys: () => Promise.resolve([...kept]),
+        delete: (key: string) => Promise.resolve(kept.delete(key)),
+      },
+    });
+    listeners.activate?.({ waitUntil: (promise) => (work = promise) });
+    await work;
+    expect([...kept]).toEqual(['mk2-2.0.0', 'rk-1.0.0+new']);
+  });
+});

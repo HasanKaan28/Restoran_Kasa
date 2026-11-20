@@ -1,8 +1,10 @@
 // Keeps Restoran Kasa opening without a network. The page registers this file with its version
-// (sw.js?v=1.0.0), so each release installs a new worker with its own cache and drops the last.
+// and build (sw.js?v=1.0.0&b=3f2a9c1d0b7e), so each deploy installs a new worker with its own
+// cache (rk-1.0.0+3f2a9c1d0b7e) and drops the last, even a deploy that kept the version.
 // Market Kasa lives on the same site and keeps its caches beside ours (mk2-…): this worker names,
 // reads and clears only its own rk-… caches, never theirs.
-const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
+const PARAMS = new URL(self.location.href).searchParams;
+const VERSION = [PARAMS.get('v') || 'dev', PARAMS.get('b')].filter(Boolean).join('+');
 const CACHE = `rk-${VERSION}`;
 const SHELL = ['./', './index.html', './manifest.json', './logo.svg'];
 // The built files the page names: the first visit loads them before this worker is in charge.

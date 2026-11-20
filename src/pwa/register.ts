@@ -16,15 +16,19 @@ export function shouldRegister({ prod, native, protocol, hostname }: Where): boo
 }
 
 /** Installs the worker that keeps the app opening offline; a refusal leaves the app as it was. */
-export async function registerServiceWorker(where: Where, version: string): Promise<void> {
+export async function registerServiceWorker(
+  where: Where,
+  version: string,
+  build: string,
+): Promise<void> {
   if (!shouldRegister(where) || !('serviceWorker' in navigator)) {
     return;
   }
   try {
-    // The version in the address makes each release a new worker with its own cache.
-    await navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(version)}`, {
-      scope: './',
-    });
+    // The version and build in the address make each deploy a new worker with its own cache,
+    // even one that kept the version number: the same address would leave the old worker on.
+    const address = `./sw.js?v=${encodeURIComponent(version)}&b=${encodeURIComponent(build)}`;
+    await navigator.serviceWorker.register(address, { scope: './' });
   } catch {
     // Private windows and some policies block workers; the app still runs online.
   }

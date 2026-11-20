@@ -20,18 +20,19 @@ describe('service worker registration', () => {
 
     const register = vi.fn(() => Promise.resolve({}));
     vi.stubGlobal('navigator', { serviceWorker: { register } });
-    await registerServiceWorker(web, '2.0.0');
-    expect(register).toHaveBeenCalledWith('./sw.js?v=2.0.0', { scope: './' });
+    await registerServiceWorker(web, '2.0.0', '3f2a9c1d0b7e');
+    // The build in the address: a deploy that keeps the version still installs a new worker.
+    expect(register).toHaveBeenCalledWith('./sw.js?v=2.0.0&b=3f2a9c1d0b7e', { scope: './' });
     register.mockClear();
-    await registerServiceWorker({ ...web, prod: false }, '2.0.0');
+    await registerServiceWorker({ ...web, prod: false }, '2.0.0', 'b1');
     expect(register).not.toHaveBeenCalled();
   });
 
   it('keeps going when the browser refuses the worker', async () => {
     const register = vi.fn(() => Promise.reject(new Error('blocked')));
     vi.stubGlobal('navigator', { serviceWorker: { register } });
-    await expect(registerServiceWorker(web, '2.0.0')).resolves.toBeUndefined();
+    await expect(registerServiceWorker(web, '2.0.0', 'b1')).resolves.toBeUndefined();
     vi.stubGlobal('navigator', {});
-    await expect(registerServiceWorker(web, '2.0.0')).resolves.toBeUndefined();
+    await expect(registerServiceWorker(web, '2.0.0', 'b1')).resolves.toBeUndefined();
   });
 });
