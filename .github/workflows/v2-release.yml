@@ -47,6 +47,10 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+        env:
+          # The web build (GitHub Pages) carries the seller's yönetim page; the desktop and
+          # Android builds below never do (vite.config.ts).
+          RK_YONETIM: '1'
       - uses: actions/upload-artifact@v4
         with:
           name: market-kasa-web

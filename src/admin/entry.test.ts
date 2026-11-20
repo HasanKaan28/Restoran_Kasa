@@ -32,6 +32,26 @@ describe('the yönetim page entry', () => {
     expect(pages).toContain('noindex');
   });
 
+  it('goes only into the web deploys, never into the desktop or Android app', () => {
+    // vite.config builds the page only when asked, and drops its redirect page otherwise.
+    const config = read('vite.config.ts');
+    expect(config).toContain("const withYonetim = process.env.RK_YONETIM === '1';");
+    expect(config).toMatch(/\.\.\.\(withYonetim\s*\?\s*\{ yonetim: fileURLToPath/);
+    expect(config).toContain('...(withYonetim ? [] : [dropYonetimRedirect()])');
+    // Vercel and the release's GitHub Pages build ask for it.
+    const vercel = JSON.parse(read('vercel.json')) as { buildCommand: string };
+    expect(vercel.buildCommand).toMatch(/^RK_YONETIM=1 npm run build && /);
+    expect(read('.github/workflows/v2-release.yml')).toMatch(
+      /- run: npm run build\r?\n\s+env:(\r?\n\s+#.*)*\r?\n\s+RK_YONETIM: '1'/,
+    );
+    // The desktop installer and the Android sync build without it.
+    const scripts = (JSON.parse(read('package.json')) as { scripts: Record<string, string> })
+      .scripts;
+    for (const name of ['electron:installer', 'cap:sync']) {
+      expect(scripts[name], name).toMatch(/^vite build && /);
+    }
+  });
+
   it('loads nothing of the register: no database, pairing, sync or service worker', () => {
     const files = [
       'src/admin/main.tsx',
