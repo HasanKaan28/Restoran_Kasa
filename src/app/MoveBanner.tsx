@@ -33,16 +33,16 @@ export function MoveBanner({
   }
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-warning-bg px-4 py-1.5 text-sm text-warning md:px-6">
-        <p role="status" className="py-1 font-medium">
+      <div className="flex items-center gap-3 bg-warning-bg px-4 py-1.5 text-sm text-warning md:px-6">
+        <p role="status" className="min-w-0 flex-1 py-1 font-medium md:flex-none">
           {`Uygulamanın yeni adresi: ${SHOWN_ADDRESS}`}
         </p>
         {fresh ? (
-          <Button className="min-h-11" onClick={() => go(NEW_ADDRESS)}>
+          <Button className="min-h-11 shrink-0" onClick={() => go(NEW_ADDRESS)}>
             Yeni adresi aç
           </Button>
         ) : (
-          <Button className="min-h-11" onClick={() => setMoving(true)}>
+          <Button className="min-h-11 shrink-0" onClick={() => setMoving(true)}>
             Taşı
           </Button>
         )}
