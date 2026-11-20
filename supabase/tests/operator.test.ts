@@ -278,20 +278,18 @@ describe('a restaurant’s detail', () => {
   it('lists the last 30 days of use per restaurant, as counts', async () => {
     const { owner, market: opened } = await openOn('restoran');
     const { device } = await join(owner, opened.id);
-    await server
-      .as(device)
-      .rpc('sync_push', [
-        [
-          {
-            opId: 'a',
-            seq: 1,
-            table: 'sales',
-            recordId: 's1',
-            kind: 'insert',
-            record: { total: 5 },
-          },
-        ],
-      ]);
+    await server.as(device).rpc('sync_push', [
+      [
+        {
+          opId: 'a',
+          seq: 1,
+          table: 'sales',
+          recordId: 's1',
+          kind: 'insert',
+          record: { total: 5 },
+        },
+      ],
+    ]);
     await server.addMarket('quiet', 'Quiet');
     const activity = await op<
       { id: string; name: string; sales: number; tabs: number; activeDevices: number }[]
@@ -444,7 +442,9 @@ describe('the operator’s actions on a restaurant', () => {
     expect((await op<Detail>('operator_market', ['m'])).note).toBe('Ödeme her ayın 5’inde.');
     await op('operator_set_note', ['m', '']);
     expect((await op<Detail>('operator_market', ['m'])).note).toBeNull();
-    expect(await errorOf(op('operator_set_note', ['m', 'x'.repeat(2001)]))).toContain('bad_note');
+    expect(await errorOf(op('operator_set_note', ['m', 'x'.repeat(2001)]))).toContain(
+      'note_too_long',
+    );
     expect((await log()).map((entry) => entry.action)).toEqual(['note.set', 'note.set']);
   });
 

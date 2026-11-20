@@ -869,7 +869,7 @@ declare
 begin
   perform app.require_operator();
   if length(v_note) > 2000 then
-    raise exception 'bad_note';
+    raise exception 'note_too_long';
   end if;
   if not exists (select 1 from app.markets m where m.id = operator_set_note.market_id) then
     raise exception 'market_not_found';
