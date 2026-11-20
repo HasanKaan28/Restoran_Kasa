@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronUp, Ellipsis } from 'lucide-react';
 import { useEffect, useState, type JSX } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
+import { useLicense } from '@/app/license';
 import { useSession } from '@/app/session';
 import { listCategories } from '@/data/categories';
 import {
@@ -43,6 +44,7 @@ import { OrderLines, type OrderLineActions } from './OrderLines';
 import { PayDialog } from './PayDialog';
 
 const PHONE = '(max-width: 767px)';
+const NO_SALE = 'Lisans süresi doldu; yeni sipariş alınamaz.';
 
 /**
  * One tab: the menu, and the order as the adisyon lists it. Lines are taken (a dish with portions
@@ -65,6 +67,9 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   const [dialog, setDialog] = useState<'pay' | 'move' | null>(null);
   const [ordering, setOrdering] = useState<ProductRecord | null>(null);
   const waiter = { deviceCode: settings.deviceCode, staffId: session.staff?.id };
+  // Once the licence's grace is over nothing more is sold (DESIGN §8.6): no new order is taken,
+  // and what the table has had can still be paid.
+  const closedForSale = useLicense().kind === 'readOnly';
 
   const tab = useLiveQuery(async () => {
     const record = await db.tabs.get(tabId);
@@ -110,6 +115,10 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   }
 
   async function order(product: ProductRecord) {
+    if (closedForSale) {
+      toast.show(NO_SALE);
+      return;
+    }
     if (billRequested) {
       toast.show('Hesap istendi. Sipariş eklemek için önce “Siparişe aç”a basın.');
       return;
@@ -391,6 +400,10 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           }}
           onRepeat={() => {
             setLineFor(null);
+            if (closedForSale) {
+              toast.show(NO_SALE);
+              return;
+            }
             void repeatItem(db, lineFor.id, waiter, new Date()).catch(() =>
               toast.show('Tekrarlanamadı.'),
             );

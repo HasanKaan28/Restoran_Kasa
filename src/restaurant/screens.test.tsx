@@ -9,6 +9,7 @@ import {
   listDiningTables,
   openTab,
 } from '@/data/restaurant';
+import { saveServerLicense } from '@/data/license';
 import { recentSales } from '@/data/sales';
 import { createTestData, disposeTestData, renderWithData } from '@/test/renderWithData';
 import { KitchenScreen } from './KitchenScreen';
@@ -98,6 +99,39 @@ describe('the waiter’s floor', () => {
 
     await waitFor(async () => expect(await recentSales(data.db)).toMatchObject([{ total: 4000 }]));
     expect(within(bill).queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('a licence past its grace', () => {
+  it('takes no new order, and still lets the table pay what it has had', async () => {
+    const data = await restaurant();
+    const [table] = await listDiningTables(data.db);
+    const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
+    const [kebab] = await data.db.products.toArray();
+    await addTabItem(data.db, tab.id, kebab!, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
+    // Ended a month ago: the seven days of grace are long over (DESIGN §8.6).
+    const ended = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    await saveServerLicense(data.db, {
+      plan: 'restoran',
+      planName: 'Restoran',
+      maxDevices: 5,
+      licenseExpiresAt: ended,
+    });
+    await renderWithData(<TablesScreen />, data);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'S1, dolu, ₺450,00' }));
+    const menu = await screen.findByRole('region', { name: 'Menü' });
+    await userEvent.click(await within(menu).findByRole('button', { name: /Ayran/ }));
+    expect(
+      await screen.findByText('Lisans süresi doldu; yeni sipariş alınamaz.'),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Kalan tutar')).toHaveTextContent('₺450,00'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
+    const bill = await screen.findByRole('dialog', { name: 'Hesap' });
+    await within(bill).findByRole('checkbox', { name: /Adana kebap/ });
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    await waitFor(async () => expect(await recentSales(data.db)).toMatchObject([{ total: 45000 }]));
   });
 });
 
