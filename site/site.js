@@ -1576,19 +1576,66 @@
     });
   }
 
-  // The setup code comes from the seller: a WhatsApp chat with the message written in, once the
-  // number is set in config.js. Without one, the line under it says to get in touch instead.
+  // The setup code, the price and the trial code come from the seller: a WhatsApp chat with the
+  // message written in, once the number is set in config.js. data-whatsapp names the message
+  // (empty: the setup code). Without a number the hidden buttons stay hidden, the visible links
+  // keep their jump to the price block, and the lines under the buttons say to get in touch.
+  var WHATSAPP_TEXT = {
+    kod: 'Merhaba, Restoran Kasa için kurulum kodu almak istiyorum.',
+    fiyat: 'Merhaba, Restoran Kasa hakkında bilgi ve fiyat almak istiyorum.',
+    deneme: 'Merhaba, Restoran Kasa için 14 günlük deneme kodu almak istiyorum.',
+  };
+  /** 905524754711 as "+90 552 475 47 11"; any other length as "+" and the digits. */
+  function phoneLabel(number) {
+    var m = /^90(\d{3})(\d{3})(\d{2})(\d{2})$/.exec(number);
+    return m ? '+90 ' + m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] : '+' + number;
+  }
   function initContact() {
     var config = window.RK_SITE || {};
     var number = String(config.whatsapp || '').replace(/\D/g, '');
     if (number.length < 10) return;
-    var text = 'Merhaba, Restoran Kasa için kurulum kodu almak istiyorum.';
     $$('[data-whatsapp]').forEach(function (link) {
+      var text = WHATSAPP_TEXT[link.getAttribute('data-whatsapp')] || WHATSAPP_TEXT.kod;
       link.href = 'https://wa.me/' + number + '?text=' + encodeURIComponent(text);
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       link.hidden = false;
+    });
+    $$('[data-whatsapp-number]').forEach(function (line) {
+      line.textContent = 'WhatsApp: ' + phoneLabel(number);
+      line.hidden = false;
     });
     $$('[data-contact-fallback]').forEach(function (line) {
       line.hidden = true;
+    });
+    initFloatingContact();
+  }
+
+  // The phone's round WhatsApp button steps aside while a part of the page that has its own
+  // way to write (or the live demo, where it would cover the buttons) is on screen.
+  function initFloatingContact() {
+    var link = $('[data-wa-float]');
+    if (!link) return;
+    if (!('IntersectionObserver' in window)) {
+      link.classList.remove('is-away');
+      return;
+    }
+    var watched = ['.hero', '#fiyat', '#indir', '.foot']
+      .map(function (sel) {
+        return $(sel);
+      })
+      .filter(Boolean);
+    var onScreen = watched.map(function () {
+      return false;
+    });
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        onScreen[watched.indexOf(entry.target)] = entry.isIntersecting;
+      });
+      link.classList.toggle('is-away', onScreen.indexOf(true) !== -1);
+    });
+    watched.forEach(function (node) {
+      observer.observe(node);
     });
   }
 

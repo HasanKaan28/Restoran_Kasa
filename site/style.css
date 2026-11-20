@@ -56,6 +56,9 @@
   --accent-hover: #963a24;
   --accent-text: #a9432b;
   --accent-ink: #f6ecdc;
+  /* Type on a cream surface that sits on the accent (the price block's button): charcoal in
+     both themes, since the accent and the cream do not change with the theme. */
+  --on-cream: #2a2420;
   --olive: #6e7a3a;
   --olive-soft: rgb(110 122 58 / 14%);
   --glow: rgb(169 67 43 / 30%);
@@ -308,6 +311,32 @@ p {
 }
 .top nav a:not(.btn):hover {
   color: var(--text);
+}
+/* The WhatsApp link: an icon beside "İletişim", in the accent so it reads as the way to write. */
+.top nav a.nav__wa {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.top nav a.nav__wa:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.nav__wa svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+@media (max-width: 1100px) {
+  .top nav {
+    gap: 20px;
+  }
+  .top nav .nav__more {
+    display: none;
+  }
 }
 @media (max-width: 760px) {
   .top nav {
@@ -2766,6 +2795,142 @@ h3.gm__title {
   }
 }
 
+/* Services: ten short rows in two columns, each with a ringed icon; one column on phones. */
+.services {
+  list-style: none;
+  padding: 0;
+  margin: 48px 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(32px, 5vw, 72px);
+}
+.service {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+.service:nth-child(-n + 2) {
+  border-top: 1px solid var(--line);
+}
+.service__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-text);
+  background: var(--surface);
+  color: var(--accent-text);
+}
+.service__icon svg {
+  width: 22px;
+  height: 22px;
+}
+.service h3 {
+  font-size: 1.4rem;
+  padding-top: 2px;
+}
+.service p {
+  margin-top: 6px;
+  color: var(--text-2);
+}
+@media (max-width: 760px) {
+  .services {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .service:nth-child(2) {
+    border-top: 0;
+  }
+}
+
+/* Price: no figures, a flat terracotta block (like the kitchen tile) with one cream WhatsApp
+   button. Flat on purpose: the cream type keeps its 5:1 on every part of it. */
+.section--price {
+  contain-intrinsic-size: auto 520px;
+}
+.price {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 28px clamp(32px, 5vw, 72px);
+  align-items: center;
+  padding: clamp(28px, 5vw, 64px);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.price h2 {
+  color: var(--accent-ink);
+}
+.price__lead {
+  margin-top: 16px;
+  max-width: 34em;
+  font-size: 1.2rem;
+}
+.price__trial {
+  margin-top: 16px;
+  max-width: 34em;
+}
+.price__trial b {
+  font-weight: 700;
+}
+.price__act {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+.btn--cream {
+  background: var(--accent-ink);
+  color: var(--on-cream);
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 28px;
+  font-size: 1.1rem;
+}
+.btn--cream:hover {
+  background: #fffaf3;
+}
+.btn--cream:focus-visible,
+.price :focus-visible {
+  outline-color: var(--accent-ink);
+}
+.btn--wa svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.price__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.price__link:hover {
+  text-decoration-thickness: 2px;
+}
+.price__number {
+  font-size: 0.95rem;
+  color: var(--accent-ink);
+}
+@media (max-width: 900px) {
+  .price {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 400px) {
+  .btn--cream {
+    width: 100%;
+    padding: 0 18px;
+    white-space: normal;
+  }
+}
+
 /* FAQ: heading on the left, answers on the right. */
 .faq {
   display: grid;
@@ -2821,6 +2986,11 @@ h3.gm__title {
   max-width: 44em;
   color: var(--text-2);
 }
+.faq details a {
+  color: var(--accent-text);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
 @media (max-width: 900px) {
   .faq {
     grid-template-columns: 1fr;
@@ -2847,6 +3017,60 @@ h3.gm__title {
 }
 .foot a:hover {
   color: var(--accent-text);
+}
+.foot__links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+/* Phones only: the round WhatsApp button, bottom right, above the safe area. It steps aside
+   (fades, and leaves the tab order) while a part with its own contact way is on screen. */
+.wa-float {
+  display: none;
+}
+@media (max-width: 760px) {
+  .wa-float:not([hidden]) {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: 0 10px 24px -10px rgb(42 36 32 / 55%), 0 0 0 1px rgb(246 236 220 / 25%);
+  }
+  .wa-float.is-away {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+  }
+}
+.wa-float svg {
+  width: 26px;
+  height: 26px;
+}
+.wa-float:focus-visible {
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+@media (max-width: 760px) and (prefers-reduced-motion: no-preference) {
+  .wa-float:not([hidden]) {
+    transition:
+      opacity 0.2s ease,
+      transform 0.25s var(--ease-out),
+      visibility 0s linear 0s;
+  }
+  .wa-float.is-away {
+    transition:
+      opacity 0.2s ease,
+      transform 0.25s var(--ease-out),
+      visibility 0s linear 0.25s;
+  }
 }
 
 /* Motion: one entrance in the hero (copy, then the register, then the phone and the kitchen
