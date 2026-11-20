@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { KitchenScreen } from '@/restaurant/KitchenScreen';
 import { TablesScreen } from '@/restaurant/TablesScreen';
+import { TillOpenPrompt } from '@/restaurant/TillOpenPrompt';
 import { ProductsScreen } from '@/products/ProductsScreen';
 import { ReportsScreen } from '@/reports/ReportsScreen';
 import { SettingsScreen } from '@/settings/SettingsScreen';
@@ -18,7 +19,13 @@ export function Screens({ route }: { route: Route }): JSX.Element {
   }
   switch (route) {
     case 'tables':
-      return <TablesScreen />;
+      // The floor is where the day starts: a till not yet open is asked for there.
+      return (
+        <>
+          <TablesScreen />
+          <TillOpenPrompt />
+        </>
+      );
     case 'kitchen':
       return <KitchenScreen />;
     case 'products':

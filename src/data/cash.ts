@@ -78,6 +78,25 @@ export async function openCashSession(
   });
 }
 
+/**
+ * Whether the register starts a business day with its drawer still to open: none is open, and
+ * the register has not closed this day already (work after a Z is the next Z's).
+ */
+export async function tillToOpen(
+  db: MarketDb,
+  deviceCode: string,
+  at: Date,
+  cutoffMinutes = 0,
+): Promise<boolean> {
+  return db.transaction('r', db.meta, db.cashSessions, async () => {
+    if (await currentCashSession(db, deviceCode)) {
+      return false;
+    }
+    const last = await lastClose(db, deviceCode);
+    return last?.businessDate !== businessDate(at, { cutoffMinutes });
+  });
+}
+
 /** Puts cash into the drawer or takes it out, with the reason, in one transaction. */
 export async function recordCashMovement(
   db: MarketDb,

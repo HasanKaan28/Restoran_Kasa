@@ -6,6 +6,7 @@ import {
   expectedCash,
   openCashSession,
   recordCashMovement,
+  tillToOpen,
 } from './cash';
 import { createCustomer } from './customers';
 import type { MarketDb } from './db';
@@ -380,5 +381,32 @@ describe('cash from outside the drawer', () => {
       later(1),
     );
     expect(await db.cashMovements.count()).toBe(0);
+  });
+});
+
+describe('the till to open in the morning', () => {
+  const morning = new Date('2026-11-21T07:00:00Z');
+  const evening = new Date('2026-11-21T20:00:00Z');
+  const nextMorning = new Date('2026-11-22T07:00:00Z');
+
+  it('is to open when the register starts a day with no drawer open', async () => {
+    expect(await tillToOpen(db, 'K1', morning)).toBe(true);
+    await openCashSession(db, { deviceCode: 'K1', openingCash: 50000 }, morning);
+    expect(await tillToOpen(db, 'K1', morning)).toBe(false);
+    // Another register's drawer is its own.
+    expect(await tillToOpen(db, 'K2', morning)).toBe(true);
+  });
+
+  it('is not asked for again on a day already closed, and is the next day', async () => {
+    await closeCashSession(db, { deviceCode: 'K1', countedCash: 0 }, evening);
+    expect(await tillToOpen(db, 'K1', evening)).toBe(false);
+    expect(await tillToOpen(db, 'K1', nextMorning)).toBe(true);
+  });
+
+  it('puts the opening cash in the Z', async () => {
+    await openCashSession(db, { deviceCode: 'K1', openingCash: 50000 }, morning);
+    const z = await closeCashSession(db, { deviceCode: 'K1', countedCash: 50000 }, evening);
+    expect(z).toMatchObject({ openingCash: 50000, expectedCash: 50000, difference: 0 });
+    expect(z.openedAt).toBe(morning.toISOString());
   });
 });
