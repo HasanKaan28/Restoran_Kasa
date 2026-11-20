@@ -11,6 +11,7 @@ import { ROLE_LABELS } from '@/domain/permissions';
 import { AppearanceSection } from './AppearanceSection';
 import { AuditLog } from './AuditLog';
 import { BackupSection } from './BackupSection';
+import { NotificationsSection } from '@/notify/NotificationsSection';
 import { QrMenuSection } from '@/restaurant/QrMenuSection';
 import { TablesSection } from '@/restaurant/TablesSection';
 import { LicenseSection, MarketSection, ReceiptSection, RegisterSection } from './MarketSections';
@@ -52,6 +53,7 @@ export function SettingsScreen(): JSX.Element {
         <TablesSection onDone={(message) => done(message)} />
         <QrMenuSection onDone={(message) => toast.show(message)} />
         <RegisterSection />
+        <NotificationsSection />
         <AppearanceSection />
         <ReceiptSection onDone={(message) => done(message)} />
         <UpdateSection version={APP_VERSION} {...updateTarget()} />
@@ -134,6 +136,33 @@ export function SettingsScreen(): JSX.Element {
   );
 }
 
+/**
+ * Settings for someone who may not change the restaurant's (a waiter): only what belongs to this
+ * device, its notices and its screen.
+ */
+export function DeviceSettingsScreen(): JSX.Element {
+  const { settings, runner } = useData();
+  const status = useSyncStatus(runner);
+  useSectionFromAddress();
+  return (
+    <AppShell
+      marketName={settings.marketName}
+      deviceName={settings.deviceName}
+      syncState={status.state}
+      pendingCount={status.pendingCount}
+      syncError={status.error}
+      activeNav="settings"
+    >
+      <h1 className="text-xl font-semibold">Ayarlar</h1>
+      <p className="text-text-2">
+        Bu cihazın bildirimleri ve görünümü. Restoranın diğer ayarlarını yönetici değiştirir.
+      </p>
+      <NotificationsSection />
+      <AppearanceSection />
+    </AppShell>
+  );
+}
+
 /** `#/settings/<section>` opens Settings at that section, as the setup list's steps do. */
 const SECTIONS: Record<string, string> = {
   masalar: 'tables-heading',
@@ -141,6 +170,7 @@ const SECTIONS: Record<string, string> = {
   personel: 'staff-heading',
   fis: 'receipt-heading',
   cihaz: 'register-heading',
+  bildirimler: 'notify-heading',
 };
 
 function useSectionFromAddress(): void {

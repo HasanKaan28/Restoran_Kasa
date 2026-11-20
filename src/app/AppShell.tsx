@@ -98,7 +98,8 @@ export function AppShell({
         >
           {NAV_ITEMS.filter((item) => {
             const needed = ROUTE_PERMISSIONS[item.key];
-            return needed === undefined || session.can(needed);
+            // Settings opens for everyone: a waiter sees this device's own (DeviceSettingsScreen).
+            return needed === undefined || item.key === 'settings' || session.can(needed);
           }).map((item) => (
             <NavLink key={item.key} item={item} active={item.key === activeNav} />
           ))}

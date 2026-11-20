@@ -34,12 +34,22 @@ async function settingsAs(data: ReturnType<typeof createTestData>, staffId?: str
 }
 
 describe('SettingsScreen', () => {
-  it('lets only the owner manage staff', async () => {
+  it('lets only the owner manage staff; a waiter sets only this device’s notices and screen', async () => {
     const { data, ayse } = await team();
     await settingsAs(data, ayse.id);
-    expect(await screen.findByText('Bu ekran için yetkiniz yok.')).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Bildirimler' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Görünüm' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Personel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Yedek' })).not.toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Ana menü' });
-    expect(within(nav).queryByRole('link', { name: 'Ayarlar' })).not.toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Ayarlar' })).toBeInTheDocument();
+  });
+
+  it('shows the owner this device’s notices among the settings', async () => {
+    const { data, kaan } = await team();
+    await settingsAs(data, kaan.id);
+    expect(await screen.findByRole('region', { name: 'Bildirimler' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Personel' })).toBeInTheDocument();
   });
 
   it('offers the owner a backup of the whole market', async () => {

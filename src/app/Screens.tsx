@@ -4,7 +4,7 @@ import { TablesScreen } from '@/restaurant/TablesScreen';
 import { TillOpenPrompt } from '@/restaurant/TillOpenPrompt';
 import { ProductsScreen } from '@/products/ProductsScreen';
 import { ReportsScreen } from '@/reports/ReportsScreen';
-import { SettingsScreen } from '@/settings/SettingsScreen';
+import { DeviceSettingsScreen, SettingsScreen } from '@/settings/SettingsScreen';
 import { useData, useSyncStatus } from './appData';
 import { AppShell } from './AppShell';
 import { ROUTE_PERMISSIONS, type Route } from './route';
@@ -15,7 +15,8 @@ export function Screens({ route }: { route: Route }): JSX.Element {
   const session = useSession();
   const needed = ROUTE_PERMISSIONS[route];
   if (needed !== undefined && !session.can(needed)) {
-    return <NoAccess route={route} />;
+    // Everyone may set this device's own notices and screen.
+    return route === 'settings' ? <DeviceSettingsScreen /> : <NoAccess route={route} />;
   }
   switch (route) {
     case 'tables':
