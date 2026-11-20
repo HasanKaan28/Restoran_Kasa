@@ -4,9 +4,11 @@ import { useActor } from '@/app/actor';
 import { useData } from '@/app/appData';
 import { saveDeviceSettings } from '@/app/device';
 import { finishPairing } from '@/app/finishPairing';
-import { loadLicense } from '@/app/license';
 import { useMarketSettings } from '@/app/marketSettings';
+import { SUPPORT } from '@/app/support';
+import { SupportLink } from '@/app/SupportLink';
 import { currentCashSession } from '@/data/cash';
+import { loadStoredLicense, type LicensePlan } from '@/data/license';
 import { pendingCount } from '@/data/outbox';
 import { saveMarketSettings } from '@/data/settings';
 import { Button, SelectField, TextField } from '@/design';
@@ -266,28 +268,42 @@ export function ReceiptSection({ onDone }: { onDone(message: string): void }): J
   );
 }
 
-/** The licence's last day as last heard from the server, and where it stands. */
+/** How many registers a plan allows, in words. */
+function planText(plan: LicensePlan): string {
+  return `Paket: ${plan.name} · ${
+    plan.maxDevices === null ? 'sınırsız cihaz' : `en çok ${plan.maxDevices} cihaz`
+  }`;
+}
+
+/** The licence's last day and plan as last heard from the server, and where it stands. */
 export function LicenseSection(): JSX.Element {
-  const { db } = useData();
-  const expiresAt = useLiveQuery(() => loadLicense(db), [db]);
+  const { db, settings } = useData();
+  // undefined while loading; null when the server has never said.
+  const stored = useLiveQuery(() => loadStoredLicense(db), [db]);
   const { cutoffMinutes } = useMarketSettings();
-  const state =
-    expiresAt === undefined ? null : licenseState(expiresAt, new Date(), { cutoffMinutes });
+  const expiresAt = stored?.expiresAt ?? null;
+  const state = expiresAt === null ? null : licenseState(expiresAt, new Date(), { cutoffMinutes });
   const text =
-    expiresAt === undefined
+    stored === undefined
       ? null
-      : expiresAt === null || state?.kind === 'unknown'
+      : stored === null
         ? 'Bilinmiyor: lisans tarihi sunucu bağlantısıyla gelir.'
-        : `Son gün ${formatPeriod(expiresAt, expiresAt)}${
-            state?.kind === 'readOnly' ? ' · süresi doldu, satış kapalı' : ''
-          }`;
+        : expiresAt === null
+          ? 'Süresiz.'
+          : state?.kind === 'unknown'
+            ? 'Bilinmiyor: lisans tarihi sunucu bağlantısıyla gelir.'
+            : `Son gün ${formatPeriod(expiresAt, expiresAt)}${
+                state?.kind === 'readOnly' ? ' · süresi doldu, satış kapalı' : ''
+              }`;
   return (
     <SettingsSection
       id="license-heading"
       title="Lisans"
-      description="Bitişe 7 gün kala uyarı çıkar; bitişten sonra 3 gün daha satış yapılır, sonra satış kapanır."
+      description="Bitişe 7 gün kala uyarı çıkar; bitişten sonra 7 gün daha satış ve eşitleme sürer, sonra satış kapanır ve sunucu eşitlemeyi durdurur."
     >
       {text ? <p>{text}</p> : null}
+      {stored?.plan ? <p className="text-text-2">{planText(stored.plan)}</p> : null}
+      {expiresAt !== null ? <SupportLink topic={SUPPORT.license(settings.marketName)} /> : null}
     </SettingsSection>
   );
 }

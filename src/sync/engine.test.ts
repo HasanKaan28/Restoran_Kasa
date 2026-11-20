@@ -7,6 +7,7 @@ import { recordReturn, returnedQuantities, saleStatus } from '@/data/returns';
 import { recentSales, recordSale } from '@/data/sales';
 import { stockOf } from '@/data/stock';
 import { isVoided, voidSale } from '@/data/voids';
+import { loadStoredLicense } from '@/data/license';
 import { makeTestDb } from '@/test/db';
 import { syncOnce } from './engine';
 import { FakeServer } from './fakeServer';
@@ -248,6 +249,33 @@ describe('syncOnce', () => {
       },
     };
     await expect(syncOnce(b, stuck, { batchSize: 2 })).resolves.toMatchObject({ pulled: 2 });
+  });
+
+  it('keeps the plan and licence end the server sends with a pull', async () => {
+    const licensed = (licenseExpiresAt: string | null): SyncTransport => ({
+      push: (request) => server.push(request),
+      async pull(request) {
+        const page = await server.pull(request);
+        return {
+          ...page,
+          license: { plan: 'qr', planName: 'QR Menü', maxDevices: 1, licenseExpiresAt },
+        };
+      },
+    });
+    expect(await loadStoredLicense(a)).toBeNull();
+
+    // 22:30 in Istanbul on the 20th: the 20th is the licence's last day.
+    await syncOnce(a, licensed('2026-12-20T19:30:00.000+00:00'));
+    expect(await loadStoredLicense(a)).toEqual({
+      expiresAt: '2026-12-20',
+      plan: { id: 'qr', name: 'QR Menü', maxDevices: 1 },
+    });
+
+    await syncOnce(a, licensed(null));
+    expect(await loadStoredLicense(a)).toEqual({
+      expiresAt: null,
+      plan: { id: 'qr', name: 'QR Menü', maxDevices: 1 },
+    });
   });
 
   it('refuses a batch size below one', async () => {

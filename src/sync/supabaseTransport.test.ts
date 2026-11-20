@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ServerClient } from '@/server/client';
-import { DeviceRevokedError, DeviceUnpairedError, supabaseTransport } from './supabaseTransport';
+import {
+  DeviceRevokedError,
+  DeviceUnpairedError,
+  LicenseExpiredError,
+  supabaseTransport,
+} from './supabaseTransport';
 
 type Reply = { data?: unknown; error?: { message: string; code?: string } };
 
@@ -68,6 +73,14 @@ describe('supabase transport session renewal', () => {
   it('reports a revoked register without renewing', async () => {
     const t = scripted([{ error: { message: 'device_revoked' } }]);
     await expect(supabaseTransport(t.client).push({ ops: [] })).rejects.toThrow(DeviceRevokedError);
+    expect(t.refreshSession).not.toHaveBeenCalled();
+  });
+
+  it('reports a licence past its grace without renewing', async () => {
+    const t = scripted([{ error: { message: 'license_expired', code: 'P0001' } }]);
+    await expect(supabaseTransport(t.client).pull({ since: 0, limit: 1 })).rejects.toThrow(
+      LicenseExpiredError,
+    );
     expect(t.refreshSession).not.toHaveBeenCalled();
   });
 

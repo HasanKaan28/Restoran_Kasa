@@ -1,25 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useContext } from 'react';
-import type { MarketDb } from '@/data/db';
+import { loadLicense } from '@/data/license';
 import { loadMarketSettings } from '@/data/settings';
 import { licenseState, type LicenseState } from '@/domain/license';
 import { DataContext } from './appData';
 
-const KEY = 'license';
-
-/** The last day the market's licence covers, as last heard from the server (M0b); null if never. */
-export async function loadLicense(db: MarketDb): Promise<string | null> {
-  const value = (await db.meta.get(KEY))?.value;
-  if (typeof value !== 'object' || value === null) {
-    return null;
-  }
-  const { expiresAt } = value as Record<string, unknown>;
-  return typeof expiresAt === 'string' ? expiresAt : null;
-}
-
-export async function saveLicense(db: MarketDb, expiresAt: string): Promise<void> {
-  await db.meta.put({ key: KEY, value: { expiresAt } });
-}
+// The licence is kept with the market's data, where the sync engine writes what the server says.
+export { loadLicense, saveLicense } from '@/data/license';
 
 const UNKNOWN: LicenseState = { kind: 'unknown' };
 

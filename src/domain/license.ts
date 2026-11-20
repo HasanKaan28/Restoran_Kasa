@@ -9,12 +9,13 @@ export type LicenseState =
   | { kind: 'readOnly' };
 
 const WARNING_DAYS = 7;
-const GRACE_DAYS = 3;
+// As long as the server keeps syncing (app.require_license): seven days after the last one.
+const GRACE_DAYS = 7;
 const DAY_MS = 86_400_000;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * The licence on the business day of `now`: a warning in its last 7 days, 3 days of grace after
+ * The licence on the business day of `now`: a warning in its last 7 days, 7 days of grace after
  * its last day, then read-only. `expiresAt` is the last day it covers (YYYY-MM-DD); without one,
  * nothing is known and nothing is restricted.
  */

@@ -45,13 +45,13 @@ describe('PosScreen', () => {
 
   it("keeps selling on the last grace day by the market's day", async () => {
     // 01:30 on 9 November in Istanbul is still the 8th with the day turning at 02:00: the
-    // licence through the 5th is on its last grace day, not read-only.
+    // licence through the 1st is on its last (seventh) grace day, not read-only.
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-08T22:30:00Z'));
     try {
       const data = createTestData();
       await saveMarketSettings(data.db, { cutoffMinutes: 120 }, new Date());
-      await saveLicense(data.db, '2026-11-05');
+      await saveLicense(data.db, '2026-11-01');
       await renderWithData(<PosScreen />, data);
       expect(
         await screen.findByText('Lisans süresi doldu. Satış için bugün son gün.'),

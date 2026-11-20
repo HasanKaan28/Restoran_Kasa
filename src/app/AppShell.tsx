@@ -86,7 +86,7 @@ export function AppShell({
           ) : null}
         </div>
       </header>
-      <LicenseBanner />
+      <LicenseBanner marketName={marketName} {...(syncError ? { syncError } : {})} />
 
       <div className="flex flex-1 md:flex-row">
         <nav

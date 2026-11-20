@@ -1,4 +1,4 @@
-import { DeviceRevokedError, DeviceUnpairedError } from './supabaseTransport';
+import { DeviceRevokedError, DeviceUnpairedError, LicenseExpiredError } from './supabaseTransport';
 
 const SAFE = 'Kayıtlar cihazda güvende.';
 const NETWORK = /failed to fetch|networkerror|load failed|fetch failed|network request failed/i;
@@ -9,7 +9,11 @@ const TIMEOUT = /yanıt vermedi/;
  * lost. The raw text ("TypeError: Failed to fetch") goes to the console for whoever supports it.
  */
 export function plainSyncError(error: unknown): string {
-  if (error instanceof DeviceUnpairedError || error instanceof DeviceRevokedError) {
+  if (
+    error instanceof DeviceUnpairedError ||
+    error instanceof DeviceRevokedError ||
+    error instanceof LicenseExpiredError
+  ) {
     return error.message;
   }
   const raw = error instanceof Error ? error.message : String(error);

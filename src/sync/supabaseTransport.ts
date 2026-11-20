@@ -23,9 +23,23 @@ export class DeviceUnpairedError extends Error {
   }
 }
 
+/**
+ * The market's licence ended more than its seven days of grace ago, so the server takes and gives
+ * nothing until the seller extends it. Everything done here stays queued on the device.
+ */
+export class LicenseExpiredError extends Error {
+  constructor() {
+    super('Lisans süresi doldu; eşitleme durdu. Kayıtlar cihazda güvende.');
+    this.name = 'LicenseExpiredError';
+  }
+}
+
 function failure(error: { message: string; code?: string }): Error {
   if (error.message.includes('device_revoked')) {
     return new DeviceRevokedError();
+  }
+  if (error.message.includes('license_expired')) {
+    return new LicenseExpiredError();
   }
   // No register on the server, or a session that could not be renewed, which leaves the call
   // to the anonymous role that may not run the sync functions at all.

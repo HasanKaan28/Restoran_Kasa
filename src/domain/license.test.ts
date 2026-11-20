@@ -5,15 +5,15 @@ import { licenseState } from './license';
 const on = (day: string) => new Date(`${day}T09:00:00Z`);
 
 describe('licenseState', () => {
-  it('follows the licence through warning, grace and read-only', () => {
-    // The licence runs through 5 November.
+  it('follows the licence through warning, seven days of grace and read-only', () => {
+    // The licence runs through 5 November; the server syncs for seven days more.
     const expires = '2026-11-05';
     expect(licenseState(expires, on('2026-10-28'))).toEqual({ kind: 'active', daysLeft: 8 });
     expect(licenseState(expires, on('2026-10-29'))).toEqual({ kind: 'warning', daysLeft: 7 });
     expect(licenseState(expires, on('2026-11-05'))).toEqual({ kind: 'warning', daysLeft: 0 });
-    expect(licenseState(expires, on('2026-11-06'))).toEqual({ kind: 'grace', graceDaysLeft: 2 });
-    expect(licenseState(expires, on('2026-11-08'))).toEqual({ kind: 'grace', graceDaysLeft: 0 });
-    expect(licenseState(expires, on('2026-11-09'))).toEqual({ kind: 'readOnly' });
+    expect(licenseState(expires, on('2026-11-06'))).toEqual({ kind: 'grace', graceDaysLeft: 6 });
+    expect(licenseState(expires, on('2026-11-12'))).toEqual({ kind: 'grace', graceDaysLeft: 0 });
+    expect(licenseState(expires, on('2026-11-13'))).toEqual({ kind: 'readOnly' });
   });
 
   it('knows nothing without licence information', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DeviceRevokedError, DeviceUnpairedError } from './supabaseTransport';
+import { DeviceRevokedError, DeviceUnpairedError, LicenseExpiredError } from './supabaseTransport';
 import { plainSyncError } from './syncError';
 
 describe('plainSyncError', () => {
@@ -23,6 +23,9 @@ describe('plainSyncError', () => {
   it('keeps what the app itself explains, such as a register to pair again', () => {
     expect(plainSyncError(new DeviceUnpairedError())).toBe(new DeviceUnpairedError().message);
     expect(plainSyncError(new DeviceRevokedError())).toBe(new DeviceRevokedError().message);
+    expect(plainSyncError(new LicenseExpiredError())).toBe(
+      'Lisans süresi doldu; eşitleme durdu. Kayıtlar cihazda güvende.',
+    );
   });
 
   it('turns anything else into one calm sentence', () => {

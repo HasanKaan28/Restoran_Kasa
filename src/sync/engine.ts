@@ -1,4 +1,5 @@
 import type { MarketDb } from '@/data/db';
+import { saveServerLicense } from '@/data/license';
 import { acknowledgeOps, pendingOps } from '@/data/outbox';
 import type { OutboxItem } from '@/data/types';
 import { applyServerRows } from './apply';
@@ -102,8 +103,12 @@ async function pullChanges(
   let cursor = await getPullCursor(db);
   let since = Math.max(0, cursor - overlap);
   let pulled = 0;
-  for (;;) {
-    const { rows, latest } = await transport.pull({ since, limit: batchSize });
+  for (let page = 0; ; page++) {
+    const { rows, latest, license } = await transport.pull({ since, limit: batchSize });
+    // Once a round is enough: the licence is the market's, not the page's.
+    if (page === 0 && license !== undefined) {
+      await saveServerLicense(db, license);
+    }
     await applyServerRows(db, rows);
     pulled += rows.length;
     if (latest > cursor) {

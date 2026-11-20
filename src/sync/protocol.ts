@@ -1,3 +1,4 @@
+import type { ServerLicense } from '@/data/license';
 import type { OutboxItem, OutboxTable } from '@/data/types';
 
 export type SyncTable = OutboxTable;
@@ -24,8 +25,11 @@ export type ServerRow = {
 
 export type PullRequest = { since: number; limit: number };
 
-/** `latest` is the last returned `serverSeq`, or `since` when nothing changed. */
-export type PullResponse = { rows: ServerRow[]; latest: number };
+/**
+ * `latest` is the last returned `serverSeq`, or `since` when nothing changed. `license` is the
+ * market's plan and licence end, which the real server sends with every page.
+ */
+export type PullResponse = { rows: ServerRow[]; latest: number; license?: ServerLicense };
 
 export interface SyncTransport {
   push(request: PushRequest): Promise<PushResponse>;
