@@ -217,7 +217,7 @@ describe('pairing', () => {
     }).catch((error: unknown) => error);
     expect(refused).toBeInstanceOf(Error);
     expect((refused as Error).message).toBe(
-      'Paketinizdeki cihaz sınırına ulaşıldı (5). Ek cihaz için bize yazın.',
+      'Paketinizin cihaz sınırı dolu (5 cihaz). Ek cihaz için bize yazın.',
     );
     expect(refused).toMatchObject({ deviceLimit: 5 });
   });

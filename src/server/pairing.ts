@@ -59,7 +59,7 @@ function explain(message: string, deviceCode?: string): string {
   }
   const limit = deviceLimitIn(message);
   if (limit !== null) {
-    return `Paketinizdeki cihaz sınırına ulaşıldı (${limit}). Ek cihaz için bize yazın.`;
+    return `Paketinizin cihaz sınırı dolu (${limit} cihaz). Ek cihaz için bize yazın.`;
   }
   const known = Object.keys(MESSAGES).find((key) => message.includes(key));
   return known ? (MESSAGES[known] as string) : OFFLINE;

@@ -148,7 +148,7 @@ describe('WelcomeScreen', () => {
 
   it('offers to write for another device when the plan is full', async () => {
     const full = Object.assign(
-      new Error('Paketinizdeki cihaz sınırına ulaşıldı (5). Ek cihaz için bize yazın.'),
+      new Error('Paketinizin cihaz sınırı dolu (5 cihaz). Ek cihaz için bize yazın.'),
       { deviceLimit: 5 },
     );
     setup({
@@ -161,7 +161,7 @@ describe('WelcomeScreen', () => {
     await userEvent.type(screen.getByLabelText('Şifre'), 'gizli-sifre');
     await userEvent.click(screen.getByRole('button', { name: 'Giriş yap' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Paketinizdeki cihaz sınırına ulaşıldı (5). Ek cihaz için bize yazın.',
+      'Paketinizin cihaz sınırı dolu (5 cihaz). Ek cihaz için bize yazın.',
     );
     expect(screen.getByRole('link', { name: 'Ek cihaz için WhatsApp’tan yazın' })).toHaveAttribute(
       'href',

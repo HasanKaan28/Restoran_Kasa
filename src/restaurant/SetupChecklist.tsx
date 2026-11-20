@@ -100,22 +100,30 @@ export function SetupChecklist(): JSX.Element | null {
   return (
     <section aria-labelledby="setup-heading" className="slip edge-open flex flex-col gap-3 p-4">
       <div className="flex items-start gap-3">
-        <div className="mr-auto">
+        <div className="mr-auto min-w-0">
           <h2 id="setup-heading" className="text-lg font-bold tracking-[-0.01em]">
             {finished === steps.length ? 'Restoranınız hazır' : 'Restoranı kuralım'}
           </h2>
           <p className="text-sm text-text-2">{`${finished} / ${steps.length} adım tamam`}</p>
         </div>
-        <Button variant="ghost" aria-expanded={expanded} onClick={() => setShown(!expanded)}>
-          {expanded ? 'Daralt' : 'Adımlar'}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Kurulum listesini gizle"
-          icon={<X aria-hidden="true" size={18} />}
-          onClick={hide}
-        />
+        {/* Tight beside each other, so the title keeps one line on a 375 px phone. */}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            variant="ghost"
+            className="px-3"
+            aria-expanded={expanded}
+            onClick={() => setShown(!expanded)}
+          >
+            {expanded ? 'Daralt' : 'Adımlar'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Kurulum listesini gizle"
+            icon={<X aria-hidden="true" size={18} />}
+            onClick={hide}
+          />
+        </div>
       </div>
       <div
         aria-hidden="true"

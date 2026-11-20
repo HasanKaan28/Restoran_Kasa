@@ -46,6 +46,10 @@ describe('zReportModel', () => {
     const model = zReportModel(record, { marketName: 'Bakkal', deviceName: 'Kasa 1' });
     expect(model.header).toEqual(['Bakkal', 'Z RAPORU']);
     expect(model.device).toBe('Kasa 1 (K1)');
+    // A name that already holds the code does not say it twice (a paired register is "Kasa K1").
+    expect(zReportModel(record, { marketName: 'Bakkal', deviceName: 'Kasa K1' }).device).toBe(
+      'Kasa K1',
+    );
     expect(model.dateTime).toBe('29.10.2026 21:30');
     expect(model.opened).toBe('Açılış 09:00 · İş günü 29.10.2026');
     const rows = Object.fromEntries(

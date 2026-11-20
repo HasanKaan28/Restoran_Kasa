@@ -202,7 +202,8 @@ function UpdateLayout({
           href={releaseNotesUrl(found ?? undefined)}
           target="_blank"
           rel="noreferrer"
-          className="font-medium text-accent underline-offset-4 hover:underline"
+          // A whole touch target on a phone, not just the line of text (N8).
+          className="inline-flex min-h-11 items-center font-medium text-accent underline-offset-4 hover:underline"
         >
           Neler yeni
         </a>

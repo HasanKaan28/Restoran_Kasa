@@ -102,11 +102,17 @@ export function zReportModel(
   ];
   return {
     header: [marketName, 'Z RAPORU'],
-    device: `${deviceName} (${record.deviceCode})`,
+    device: deviceLabel(deviceName, record.deviceCode),
     dateTime: CLOSED_FORMAT.format(new Date(record.closedAt)),
     opened: `${opened} · İş günü ${formatPeriod(record.businessDate, record.businessDate)}`,
     sections: sections.filter((section) => section.rows.length > 0),
   };
+}
+
+/** "Kasa 1 (K1)"; a name that already holds the code ("Kasa K1") is not followed by it again. */
+function deviceLabel(name: string, code: string): string {
+  const words = name.toLocaleUpperCase('tr').split(/\s+/);
+  return words.includes(code.toLocaleUpperCase('tr')) ? name : `${name} (${code})`;
 }
 
 /** An amount that came off, shown with its minus; nothing is plain zero. */

@@ -197,6 +197,8 @@ export function ProductsScreen(): JSX.Element {
         </div>
         <ChoiceGroup
           legend="Göster"
+          // Chips as wide as their labels: four in a track left "Kritik stok (0)" on three lines.
+          wrap
           name="filter"
           options={filterOptions}
           value={filter}

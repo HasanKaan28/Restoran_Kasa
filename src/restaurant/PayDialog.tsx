@@ -37,7 +37,8 @@ const MODES: readonly { value: Mode; label: string }[] = [
 const METHODS: readonly { value: Tender; label: string }[] = [
   { value: 'cash', label: 'Nakit' },
   { value: 'card', label: 'Kart' },
-  { value: 'mixed', label: 'Nakit + Kart' },
+  // Without spaces it fits one line of the three-part track on a 375 px phone.
+  { value: 'mixed', label: 'Nakit+Kart' },
 ];
 
 /**

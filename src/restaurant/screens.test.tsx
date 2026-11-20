@@ -221,7 +221,7 @@ async function billOf490() {
 describe('paying part in cash and the rest by card', () => {
   it('takes the cash part, the card the rest, as one receipt the till counts right', async () => {
     const { data, bill } = await billOf490();
-    await userEvent.click(within(bill).getByRole('radio', { name: 'Nakit + Kart' }));
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Nakit+Kart' }));
     await userEvent.type(within(bill).getByLabelText('Nakit kısmı'), '200');
     expect(within(bill).getByText('Kartla ₺290,00')).toBeInTheDocument();
     await userEvent.type(within(bill).getByLabelText('Alınan'), '250');
@@ -246,7 +246,7 @@ describe('paying part in cash and the rest by card', () => {
 
   it('asks for a cash part below the bill, and for a readable amount given', async () => {
     const { data, bill } = await billOf490();
-    await userEvent.click(within(bill).getByRole('radio', { name: 'Nakit + Kart' }));
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Nakit+Kart' }));
     await userEvent.type(within(bill).getByLabelText('Nakit kısmı'), '490');
     await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
     expect(await within(bill).findByRole('alert')).toHaveTextContent(
