@@ -43,9 +43,10 @@ describe('AppShell', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Kasayı yeniden bağlayın.');
   });
 
-  it('shows the Market Kasa logo beside the market name', () => {
+  it('shows the Restoran Kasa mark beside the restaurant name, from the build', () => {
     const { container } = render(<AppShell {...base} syncState="online" />);
-    expect(container.querySelector('header img[src$="logo.svg"]')).not.toBeNull();
+    // Inlined by the build (branding/mark.svg): public/logo.svg is not answered offline.
+    expect(container.querySelector('header img[src^="data:image/svg+xml"]')).not.toBeNull();
   });
 
   it('shows the cart panel it is given and the app version', () => {

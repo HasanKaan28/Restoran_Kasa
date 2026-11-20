@@ -222,9 +222,9 @@ describe('WelcomeScreen', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
-  it('greets with the Market Kasa logo', () => {
+  it('greets with the Restoran Kasa mark, from the build', () => {
     setup();
-    expect(document.querySelector('main img[src$="logo.svg"]')).not.toBeNull();
+    expect(document.querySelector('main img[src^="data:image/svg+xml"]')).not.toBeNull();
   });
 
   it('clears the flag an earlier offline try left behind', () => {
