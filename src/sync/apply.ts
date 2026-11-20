@@ -86,6 +86,7 @@ export async function applyServerRows(db: MarketDb, rows: readonly ServerRow[]):
 }
 
 async function applyEvent(db: MarketDb, { table, id, row }: ServerRow): Promise<void> {
+  assertOwnId(row, id);
   const target = db.table(table);
   if (await target.get(id)) {
     return;
@@ -109,6 +110,7 @@ function assertMovement(row: Record<string, unknown>): void {
 }
 
 async function applyEntity(db: MarketDb, { table, id, row }: ServerRow): Promise<void> {
+  assertOwnId(row, id);
   let merged = withoutNulls(row);
   const pending = await db.outbox
     .filter((op) => op.table === table && op.recordId === id)
@@ -116,11 +118,24 @@ async function applyEntity(db: MarketDb, { table, id, row }: ServerRow): Promise
   for (const op of pending) {
     merged = op.kind === 'insert' ? { ...merged, ...op.record } : applyPatch(merged, op.patch);
   }
+  // Stored under the id the server keeps it by, whatever a replayed edit carried.
+  merged = { ...merged, id };
   if (table === 'products') {
     merged = withStoredBarcode(merged);
     await releaseBarcode(db, merged.barcode, id);
   }
   await db.table(table).put(merged);
+}
+
+/**
+ * A pulled row is stored under its own `id`, so it must be the id the server keeps it by. One that
+ * names another record would overwrite that record here (or, for an event, be looked up under one
+ * id and stored under the other); it is refused, and so parked.
+ */
+function assertOwnId(row: Record<string, unknown>, id: string): void {
+  if (row.id !== id) {
+    throw new RangeError(`Row ${id} carries the id ${JSON.stringify(row.id)}`);
+  }
 }
 
 /** A pulled product with its barcode in the stored form; an invalid barcode refuses the row. */

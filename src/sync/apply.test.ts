@@ -290,6 +290,30 @@ describe('applyServerRows', () => {
     expect(await db.sales.count()).toBe(2);
   });
 
+  it('sets aside a pulled row that names a record other than the one the server keeps', async () => {
+    const p = await createProduct(db, { name: 'Süt', sellPrice: 4250, vatRate: 1 }, at);
+    await clearOutbox();
+    await applyServerRows(db, [
+      // Written as it says, this row would overwrite another product under its id.
+      {
+        table: 'products',
+        id: 'decoy',
+        serverSeq: 1,
+        row: { ...productRow, id: p.id, name: 'Sahte' },
+      },
+      // An event kept under one id but naming another: looked up by one, stored under the other.
+      { table: 'stockMovements', id: 'm9', serverSeq: 2, row: movement },
+      // A row without its id cannot be stored at all.
+      { table: 'customers', id: 'c1', serverSeq: 3, row: { name: 'Emin' } },
+    ]);
+    expect(await db.products.get(p.id)).toMatchObject({ name: 'Süt' });
+    expect(await db.products.get('decoy')).toBeUndefined();
+    expect(await db.stockMovements.count()).toBe(0);
+    expect(await stockOf(db, 'p1')).toBe(0);
+    expect(await db.customers.count()).toBe(0);
+    expect((await parkedRows(db)).map((parked) => parked.row.serverSeq)).toEqual([1, 2, 3]);
+  });
+
   it('sets aside rows it cannot apply and applies the rest', async () => {
     const rows: ServerRow[] = [
       { table: 'notATable' as SyncTable, id: 'c1', serverSeq: 1, row: { id: 'c1' } },
