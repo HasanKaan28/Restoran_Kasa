@@ -45,7 +45,7 @@ export function UpdateNotice({
             compact ? 'max-w-[30rem] py-2 pr-2 pl-2.5' : 'max-w-[26rem] p-3'
           }`}
         >
-          <div className={`flex gap-3 ${compact ? 'items-center' : 'items-start'}`}>
+          <div className={`flex ${compact ? 'items-center gap-2.5' : 'items-start gap-3'}`}>
             <UpdateMark play className={compact ? 'size-9' : 'size-11'} />
             <div className={`min-w-0 flex-1 ${compact ? '' : 'pt-0.5'}`}>
               <p className="font-display text-label leading-tight font-semibold tracking-[-0.01em]">

@@ -41,13 +41,12 @@ export function DesktopReadyNotice({
 
   return (
     <UpdateNotice
-      compact
       open={ready !== null && ready !== closed && !dialog}
       title={`Yeni sürüm ${ready ?? ''} hazır`}
       detail="Program kapanınca kendiliğinden kurulacak."
       onClose={() => setClosed(ready)}
       actions={
-        <Button variant="primary" className="max-sm:px-3" onClick={() => void desktop.install()}>
+        <Button variant="primary" onClick={() => void desktop.install()}>
           Şimdi yeniden başlat
         </Button>
       }

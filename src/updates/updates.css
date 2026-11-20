@@ -37,6 +37,8 @@
   clip-path: inset(9.4% 0 0 0);
 }
 .update-mark__paper {
+  position: absolute;
+  inset: 0;
   transform: translateY(calc((1 - var(--feed, 0)) * var(--slip-hidden))) rotate(0deg);
   transition: transform 900ms var(--ease-plate);
   will-change: transform;
@@ -128,7 +130,7 @@
 }
 
 /* A notice's print: the slip runs out of the slot, the lines print, the tines settle. */
-.update-mark[data-state='play'] .update-mark__tile {
+.update-mark[data-state='play'] {
   animation: update-mark-arrive 220ms var(--ease-plate) both;
 }
 .update-mark[data-state='play'] .update-mark__paper {
@@ -261,6 +263,7 @@
 
 /* Reduced motion: every mark shows the finished logo and every notice simply appears. */
 @media (prefers-reduced-motion: reduce) {
+  .update-mark,
   .update-mark *,
   .update-notice,
   .update-switch,

@@ -51,7 +51,10 @@ export function WebUpdateNotice({
         waiting ? null : (
           <Button
             variant="primary"
-            icon={<RotateCw aria-hidden="true" size={16} strokeWidth={2} />}
+            className="px-3.5"
+            icon={
+              <RotateCw aria-hidden="true" size={16} strokeWidth={2} className="max-sm:hidden" />
+            }
             onClick={() => (isBusy() ? setWaiting(true) : reload())}
           >
             Yenile

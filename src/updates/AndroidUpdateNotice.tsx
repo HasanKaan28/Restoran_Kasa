@@ -100,8 +100,8 @@ function InstallHint(): JSX.Element {
       </div>
       <ol className="flex list-decimal flex-col gap-1 pl-5 text-meta text-text-2 marker:font-semibold marker:text-text">
         <li>
-          Bildirimden ya da İndirilenler’den <b className="text-text">Restoran-Kasa.apk</b>{' '}
-          dosyasına dokunun.
+          Bildirimden ya da İndirilenler’den{' '}
+          <b className="whitespace-nowrap text-text">Restoran-Kasa.apk</b> dosyasına dokunun.
         </li>
         <li>
           Android ilk seferde sorarsa <b className="text-text">Bu kaynaktan izin ver</b> anahtarını

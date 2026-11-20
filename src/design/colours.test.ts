@@ -15,6 +15,9 @@ const ALLOWED: Record<string, string> = {
   'src/reports/ReportView.tsx': 'a sales report, printed',
   'src/labels/LabelSheet.tsx': 'shelf labels and barcodes, printed',
   'src/restaurant/TableCards.tsx': 'table cards with the QR menu code, printed',
+  // The brand mark keeps its own colours in both themes, as public/logo.svg does.
+  'src/updates/UpdateMark.tsx': 'the mark printing itself, in branding/mark.svg’s colours',
+  'src/updates/updates.css': 'the mark’s tile, its printer slot and light',
 };
 
 const TAILWIND_PALETTE =

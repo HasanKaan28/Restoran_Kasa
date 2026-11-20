@@ -79,7 +79,10 @@ export function UpdateOverlay({ desktop }: { desktop?: DesktopUpdates }): JSX.El
               : 'Yeni sürüm indiriliyor'}
         </p>
         {shown.kind === 'downloading' ? <Progress percent={shown.percent} bar={still} /> : null}
-        <p id="update-overlay-note" className="mt-7 max-w-[19rem] text-meta text-muted">
+        <p
+          id="update-overlay-note"
+          className="mt-7 max-w-[19rem] text-meta text-balance text-muted"
+        >
           {installing
             ? 'Program kapanıp yeni sürümle kendiliğinden açılacak. Bilgisayarı kapatmayın.'
             : 'Verileriniz cihazda güvende; birazdan kendiliğinden açılacak.'}
