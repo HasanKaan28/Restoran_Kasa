@@ -26,6 +26,11 @@ export type CashDialogProps = {
   onClose(): void;
   /** The drawer was opened or cash moved: the message to show. */
   onDone(message: string): void;
+  /**
+   * 'close' when the day is being closed: the window opens on the count, whether or not the
+   * drawer was opened that day, and calling the count off closes it.
+   */
+  start?: 'status' | 'close';
 };
 
 type View =
@@ -38,11 +43,17 @@ type View =
  * The register's cash drawer: opening it with the cash counted in, money put in or taken out,
  * and the end of the day, where the counted cash is set against the expected and a Z report kept.
  */
-export function CashDialog({ open, paperWidth, onClose, onDone }: CashDialogProps): JSX.Element {
+export function CashDialog({
+  open,
+  paperWidth,
+  onClose,
+  onDone,
+  start = 'status',
+}: CashDialogProps): JSX.Element {
   const { db, settings } = useData();
   const { staff } = useSession();
   const { cutoffMinutes } = useMarketSettings();
-  const [view, setView] = useState<View>({ kind: 'status' });
+  const [view, setView] = useState<View>({ kind: start });
   const cash = useLiveQuery(
     () => expectedCash(db, settings.deviceCode, undefined, { cutoffMinutes }),
     [db, settings.deviceCode, cutoffMinutes],
@@ -94,7 +105,7 @@ export function CashDialog({ open, paperWidth, onClose, onDone }: CashDialogProp
             );
             setView({ kind: 'closed', record });
           }}
-          onCancel={() => setView({ kind: 'status' })}
+          onCancel={() => (start === 'close' ? onClose() : setView({ kind: 'status' }))}
         />
       ) : (
         <StatusView

@@ -31,6 +31,38 @@ describe('the restaurant’s day close', () => {
 
     await userEvent.click(within(close).getByRole('button', { name: 'Yine de kasayı say' }));
     const till = await screen.findByRole('dialog', { name: 'Kasa' });
-    expect(await within(till).findByRole('button', { name: 'Gün sonu (Z)' })).toBeInTheDocument();
+    expect(await within(till).findByLabelText('Sayılan nakit')).toBeInTheDocument();
+  });
+
+  it('counts the till at once, even when it was never opened that day', async () => {
+    const data = createTestData();
+    await renderWithData(<ReportsScreen />, data);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Gün sonu' }));
+    const close = await screen.findByRole('dialog', { name: 'Gün sonu' });
+    await userEvent.click(
+      await within(close).findByRole('button', { name: 'Kasayı say ve günü kapat' }),
+    );
+    const till = await screen.findByRole('dialog', { name: 'Kasa' });
+    // Straight to counting: no "Kasayı aç" at the end of the day, only a word on why it is 0.
+    expect(await within(till).findByText(/Kasa açılmadı\./)).toBeInTheDocument();
+    expect(within(till).queryByRole('button', { name: 'Kasayı aç' })).toBeNull();
+    await userEvent.type(within(till).getByLabelText('Sayılan nakit'), '0');
+    await userEvent.click(within(till).getByRole('button', { name: 'Z raporunu kaydet' }));
+    expect(await within(till).findByText('Z raporu kaydedildi.')).toBeInTheDocument();
+    expect(await data.db.cashSessions.count()).toBe(1);
+  });
+
+  it('closes the window when the count is called off, not back to opening the till', async () => {
+    const data = createTestData();
+    await renderWithData(<ReportsScreen />, data);
+    await userEvent.click(await screen.findByRole('button', { name: 'Gün sonu' }));
+    const close = await screen.findByRole('dialog', { name: 'Gün sonu' });
+    await userEvent.click(
+      await within(close).findByRole('button', { name: 'Kasayı say ve günü kapat' }),
+    );
+    const till = await screen.findByRole('dialog', { name: 'Kasa' });
+    await userEvent.click(await within(till).findByRole('button', { name: 'Vazgeç' }));
+    expect(screen.queryByRole('dialog', { name: 'Kasa' })).toBeNull();
   });
 });

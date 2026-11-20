@@ -35,6 +35,7 @@ export function DayCloseDialog({
     return (
       <CashDialog
         open
+        start="close"
         paperWidth={loadReceiptSettings().paperWidth}
         onClose={onClose}
         onDone={onDone}
