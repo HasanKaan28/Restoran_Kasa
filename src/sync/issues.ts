@@ -21,6 +21,11 @@ export async function parkRows(db: MarketDb, rows: readonly ParkedRow[]): Promis
   await appendList(db, PARKED_KEY, rows);
 }
 
+/** Puts back the parked list as given (rows applied after all are left out). Call inside a transaction on `meta`. */
+export async function replaceParkedRows(db: MarketDb, rows: readonly ParkedRow[]): Promise<void> {
+  await db.meta.put({ key: PARKED_KEY, value: [...rows] });
+}
+
 export async function rejectedOps(db: MarketDb): Promise<RejectedOp[]> {
   return readList<RejectedOp>(db, REJECTED_KEY);
 }

@@ -2,7 +2,7 @@ import type { MarketDb } from '@/data/db';
 import { saveServerLicense } from '@/data/license';
 import { acknowledgeOps, pendingOps } from '@/data/outbox';
 import type { OutboxItem } from '@/data/types';
-import { applyServerRows } from './apply';
+import { applyServerRows, reapplyParked } from './apply';
 import { getPullCursor, setPullCursor } from './cursor';
 import { recordRejections } from './issues';
 import type { Rejection, SyncTransport } from './protocol';
@@ -37,6 +37,8 @@ export async function syncOnce(
   } catch (error) {
     pushFailure = { error };
   }
+  // Rows an older build of this register parked for want of their table come first.
+  await reapplyParked(db);
   const pulled = await pullChanges(db, transport, batchSize, overlap);
   if (pushFailure) {
     throw pushFailure.error;

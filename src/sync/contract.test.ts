@@ -15,9 +15,11 @@ import {
   kitchenTickets,
   markReady,
   openTab,
+  payTabAmount,
   payTabItems,
   removeNewItem,
   sendTab,
+  tabDue,
 } from '@/data/restaurant';
 import { recordReturn, returnedQuantities } from '@/data/returns';
 import { recordSale } from '@/data/sales';
@@ -182,6 +184,37 @@ describe.each(SERVERS)('the $name server', ({ make }) => {
     await syncOnce(b, toB);
     expect((await b.tabs.get(tab.id))?.status).toBe('cancelled');
     expect(await pendingCount(b)).toBe(0);
+  });
+
+  it('carries a share paid by amount to the register that settles the bill', async () => {
+    const kebab = await createProduct(a, { name: 'Adana', sellPrice: 45000, vatRate: 10 }, at);
+    const table = await createDiningTable(a, { name: '7', area: 'Salon' }, at);
+    const tab = await openTab(a, { tableId: table.id, deviceCode: 'K1' }, at);
+    await addTabItem(a, tab.id, kebab, { qtyMilli: 2000 }, { deviceCode: 'K1' }, at);
+    await sendTab(a, tab.id, at);
+    await payTabAmount(
+      a,
+      { tabId: tab.id, method: 'cash', amount: 30000, deviceCode: 'K1' },
+      later(1),
+    );
+    await syncOnce(a, toA);
+    expect(await backend.rows('tabPayments')).toHaveLength(1);
+
+    await syncOnce(b, toB);
+    expect(await tabDue(b, tab.id)).toMatchObject({ paid: 30000, due: 60000 });
+    const settled = await payTabAmount(
+      b,
+      { tabId: tab.id, method: 'card', amount: 60000, deviceCode: 'K2' },
+      later(2),
+    );
+    expect('sale' in settled && settled.sale.payments).toEqual([
+      { method: 'cash', amount: 30000, tabPaymentId: expect.any(String) },
+      { method: 'card', amount: 60000 },
+    ]);
+    await syncOnce(b, toB);
+    await syncOnce(a, toA);
+    expect((await a.tabs.get(tab.id))?.status).toBe('paid');
+    expect(await a.sales.count()).toBe(1);
   });
 
   it('merges a second insert of a record', async () => {

@@ -42,6 +42,7 @@ describe('openMarketDb', () => {
       'supplierLedger',
       'suppliers',
       'tabItems',
+      'tabPayments',
       'tabs',
     ]);
   });

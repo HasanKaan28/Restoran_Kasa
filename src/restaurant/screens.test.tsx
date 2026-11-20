@@ -81,7 +81,9 @@ describe('the waiter’s floor', () => {
 
     const takeaway = await screen.findByRole('region', { name: 'Paket siparişler' });
     const tables = screen.getByRole('list', { name: 'Masalar' });
-    expect(takeaway.compareDocumentPosition(tables) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      takeaway.compareDocumentPosition(tables) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(within(takeaway).getByRole('button', { name: 'Paket 1 · ₺40,00' })).toBeInTheDocument();
   });
 
@@ -200,23 +202,23 @@ describe('the waiter’s floor', () => {
   });
 });
 
+/** A table with Adana kebap and Ayran sent, its bill of ₺490 open. */
+async function billOf490() {
+  const data = await restaurant();
+  await renderWithData(<TablesScreen />, data);
+  await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
+  const menu = await screen.findByRole('region', { name: 'Menü' });
+  await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
+  await userEvent.click(within(menu).getByRole('button', { name: /Ayran/ }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
+  const bill = await screen.findByRole('dialog', { name: 'Hesap' });
+  await waitFor(() =>
+    expect(within(bill).getByLabelText('Ödenecek tutar')).toHaveTextContent('₺490,00'),
+  );
+  return { data, bill };
+}
 describe('paying part in cash and the rest by card', () => {
-  async function billOf490() {
-    const data = await restaurant();
-    await renderWithData(<TablesScreen />, data);
-    await userEvent.click(await screen.findByRole('button', { name: 'S1, boş' }));
-    const menu = await screen.findByRole('region', { name: 'Menü' });
-    await userEvent.click(await within(menu).findByRole('button', { name: /Adana kebap/ }));
-    await userEvent.click(within(menu).getByRole('button', { name: /Ayran/ }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Mutfağa gönder (2)' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Hesap' }));
-    const bill = await screen.findByRole('dialog', { name: 'Hesap' });
-    await waitFor(() =>
-      expect(within(bill).getByLabelText('Ödenecek tutar')).toHaveTextContent('₺490,00'),
-    );
-    return { data, bill };
-  }
-
   it('takes the cash part, the card the rest, as one receipt the till counts right', async () => {
     const { data, bill } = await billOf490();
     await userEvent.click(within(bill).getByRole('radio', { name: 'Nakit + Kart' }));
@@ -258,6 +260,53 @@ describe('paying part in cash and the rest by card', () => {
       'Alınan tutarı rakamla girin.',
     );
     expect(await recentSales(data.db)).toEqual([]);
+  });
+});
+
+describe('paying one guest’s share by amount', () => {
+  it('takes shares, shows what is left, and closes the table on the last one', async () => {
+    const { data, bill } = await billOf490();
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Tutar ile öde' }));
+    expect(within(bill).getByLabelText('Kalan')).toHaveTextContent('₺490,00');
+
+    await userEvent.type(within(bill).getByLabelText('Tutar'), '200');
+    await userEvent.type(within(bill).getByLabelText('Alınan'), '250');
+    expect(within(bill).getByText('Para üstü ₺50,00')).toBeInTheDocument();
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    expect(await within(bill).findByText('₺200,00 alındı. Kalan ₺290,00.')).toBeInTheDocument();
+    await waitFor(() => expect(within(bill).getByLabelText('Kalan')).toHaveTextContent('₺290,00'));
+    expect(within(bill).getByLabelText('Tutar')).toHaveValue('');
+    expect((await expectedCash(data.db, 'K1')).sales).toBe(20000);
+
+    await userEvent.type(within(bill).getByLabelText('Tutar'), '300');
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    expect(await within(bill).findByRole('alert')).toHaveTextContent('Kalan ₺290,00');
+
+    await userEvent.click(within(bill).getByRole('button', { name: 'Kalanı yaz' }));
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Kart' }));
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    expect(await screen.findByRole('button', { name: 'S1, boş' })).toBeInTheDocument();
+    expect(await recentSales(data.db)).toMatchObject([
+      {
+        total: 49000,
+        payments: [
+          { method: 'cash', amount: 20000, tabPaymentId: expect.any(String) },
+          { method: 'card', amount: 29000 },
+        ],
+      },
+    ]);
+    expect((await expectedCash(data.db, 'K1')).sales).toBe(20000);
+  });
+
+  it('gives a share back', async () => {
+    const { bill } = await billOf490();
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Tutar ile öde' }));
+    await userEvent.type(within(bill).getByLabelText('Tutar'), '100');
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    const taken = await within(bill).findByRole('list', { name: 'Alınan ödemeler' });
+    await userEvent.click(within(taken).getByRole('button', { name: 'Geri ver: Nakit ₺100,00' }));
+    await waitFor(() => expect(within(bill).getByLabelText('Kalan')).toHaveTextContent('₺490,00'));
+    expect(within(bill).queryByRole('list', { name: 'Alınan ödemeler' })).toBeNull();
   });
 });
 

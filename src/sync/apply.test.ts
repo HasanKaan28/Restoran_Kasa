@@ -4,8 +4,8 @@ import { acknowledgeOps, pendingOps } from '@/data/outbox';
 import { createProduct, updateProduct } from '@/data/products';
 import { stockOf } from '@/data/stock';
 import { makeTestDb } from '@/test/db';
-import { applyServerRows } from './apply';
-import { parkedRows } from './issues';
+import { applyServerRows, reapplyParked } from './apply';
+import { parkedRows, parkRows } from './issues';
 import type { ServerRow, SyncTable } from './protocol';
 
 let db: MarketDb;
@@ -335,5 +335,35 @@ describe('applyServerRows', () => {
     expect(await stockOf(db, 'p1')).toBe(-2000);
     expect(await db.stockMovements.count()).toBe(1);
     expect((await parkedRows(db)).map((parked) => parked.row.serverSeq)).toEqual([1, 2, 3]);
+  });
+});
+
+describe('rows parked by an older build', () => {
+  it('applies those of a table this build knows now, once, and keeps the rest parked', async () => {
+    const share = {
+      id: 's1',
+      tabId: 't1',
+      method: 'cash',
+      amount: 5000,
+      deviceCode: 'K1',
+      occurredAt: at.toISOString(),
+      businessDate: '2026-10-29',
+    };
+    await db.transaction('rw', db.meta, () =>
+      parkRows(db, [
+        {
+          row: { table: 'tabPayments', id: 's1', serverSeq: 7, row: share },
+          error: 'Unknown table: tabPayments',
+        },
+        {
+          row: { table: 'notATable' as SyncTable, id: 'x', serverSeq: 8, row: { id: 'x' } },
+          error: 'Unknown table: notATable',
+        },
+      ]),
+    );
+    expect(await reapplyParked(db)).toBe(1);
+    expect(await db.tabPayments.get('s1')).toMatchObject({ amount: 5000 });
+    expect((await parkedRows(db)).map((parked) => parked.row.id)).toEqual(['x']);
+    expect(await reapplyParked(db)).toBe(0);
   });
 });

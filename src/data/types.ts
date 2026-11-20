@@ -68,7 +68,15 @@ export type CustomerRecord = {
 
 export type PaymentMethod = 'cash' | 'card' | 'credit';
 
-export type Payment = { method: PaymentMethod; amount: Kurus };
+export type Payment = {
+  method: PaymentMethod;
+  amount: Kurus;
+  /**
+   * A share of a tab paid by amount before the sale (TabPaymentRecord): the drawer of the
+   * register that took it counted it then, so the sale's own cash leaves it out.
+   */
+  tabPaymentId?: string;
+};
 
 export type SaleLine = {
   productId: string;
@@ -292,7 +300,10 @@ export type ReturnRecord = {
 
 /** Where a drawer's cash came from and went over a session. */
 export type CashBreakdown = {
-  /** The cash part of the register's sales. */
+  /**
+   * The cash part of the register's sales, with the cash shares of tabs it took by amount when it
+   * took them (and less those it gave back); a share is not counted again in its tab's sale.
+   */
   sales: Kurus;
   /** The cash part of the sales voided on the register, those of earlier days included. */
   voids: Kurus;
@@ -483,10 +494,33 @@ export type TabItemRecord = {
   updatedAt: string;
 };
 
+/**
+ * A share of a tab's bill paid by amount (one guest's part), in cash or by card, before the bill
+ * is settled. It stays apart until the tab's last payment records the sale, whose payments then
+ * carry it (`Payment.tabPaymentId`). A share given back is a record of its own (`refundOf`).
+ * An event: written once, never changed.
+ */
+export type TabPaymentRecord = {
+  id: string;
+  tabId: string;
+  method: 'cash' | 'card';
+  amount: Kurus;
+  /** Cash handed over for it, and the change given. */
+  cashGiven?: Kurus;
+  change?: Kurus;
+  /** The share this record gives back. */
+  refundOf?: string;
+  deviceCode: string;
+  staffId?: string;
+  occurredAt: string;
+  businessDate: string;
+};
+
 export type OutboxTable =
   | 'diningTables'
   | 'tabs'
   | 'tabItems'
+  | 'tabPayments'
   | 'products'
   | 'customers'
   | 'categories'

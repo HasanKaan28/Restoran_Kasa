@@ -1,7 +1,8 @@
+import { businessDate } from '@/domain/businessDate';
 import { assertSafeInteger, type Kurus } from '@/domain/money';
 import { computeCart, lineTotal } from '@/domain/pricing';
 import type { MarketDb } from './db';
-import { RecordNotFoundError, TableInUseError } from './errors';
+import { PaymentMismatchError, RecordNotFoundError, TableInUseError } from './errors';
 import { newId } from './ids';
 import { appendOutbox } from './outbox';
 import { withoutUndefined } from './records';
@@ -13,6 +14,7 @@ import type {
   SaleRecord,
   Station,
   TabItemRecord,
+  TabPaymentRecord,
   TabRecord,
 } from './types';
 
@@ -202,9 +204,13 @@ export async function mergeTabs(
   if (fromTabId === intoTabId) {
     throw new RangeError('A tab cannot be merged into itself');
   }
-  await db.transaction('rw', db.tabs, db.tabItems, db.outbox, async () => {
+  await db.transaction('rw', db.tabs, db.tabItems, db.tabPayments, db.outbox, async () => {
     await requireOpenTab(db, fromTabId);
     await requireOpenTab(db, intoTabId);
+    // Its shares paid by amount belong to its bill: the other tab is merged into this one instead.
+    if ((await tabParts(db, fromTabId)).length > 0) {
+      throw new RangeError('A tab with shares paid toward it takes the other tab in instead');
+    }
     for (const item of await db.tabItems.where('tabId').equals(fromTabId).toArray()) {
       if (!item.paidSaleId) {
         await patch(db, 'tabItems', item.id, { tabId: intoTabId }, at);
@@ -419,12 +425,13 @@ export async function voidItem(
   if (why === '') {
     throw new RangeError('A void needs a reason');
   }
-  await db.transaction('rw', db.tabItems, db.outbox, async () => {
+  await db.transaction('rw', db.tabItems, db.products, db.tabPayments, db.outbox, async () => {
     const item = await requireItem(db, itemId);
     if (item.paidSaleId) {
       throw new RangeError('A paid line is returned from its receipt, not voided');
     }
     await patch(db, 'tabItems', itemId, { status: 'void', voidReason: why }, at);
+    await assertSharesCovered(db, item.tabId);
   });
 }
 
@@ -435,12 +442,13 @@ export async function setComplimentary(
   complimentary: boolean,
   at: Date,
 ): Promise<void> {
-  await db.transaction('rw', db.tabItems, db.outbox, async () => {
+  await db.transaction('rw', db.tabItems, db.products, db.tabPayments, db.outbox, async () => {
     const item = await requireItem(db, itemId);
     if (item.paidSaleId || item.status === 'void') {
       throw new RangeError('Only an unpaid line can be made complimentary');
     }
     await patch(db, 'tabItems', itemId, { complimentary: complimentary ? true : null }, at);
+    await assertSharesCovered(db, item.tabId);
   });
 }
 
@@ -797,24 +805,18 @@ export async function payTabItems(
   },
   at: Date,
 ): Promise<SaleRecord | { total: 0; cancelled: true }> {
-  const tables = [
-    db.tabs,
-    db.tabItems,
-    db.sales,
-    db.products,
-    db.customers,
-    db.stockMovements,
-    db.stockLevels,
-    db.ledger,
-    db.outbox,
-  ];
-  return db.transaction('rw', tables, async () => {
+  return db.transaction('rw', payTables(db), async () => {
     await requireOpenTab(db, input.tabId);
     const all = await db.tabItems.where('tabId').equals(input.tabId).toArray();
     const open = all.filter(payable);
+    const shares = await tabParts(db, input.tabId);
+    const sharesPaid = sumOf(shares);
     if (input.itemIds.length === 0) {
       if (open.length > 0) {
         throw new RangeError('Choose the lines to pay');
+      }
+      if (sharesPaid > 0) {
+        throw new RangeError('Shares were paid toward this tab: give them back first');
       }
       const paidBefore = all.some((item) => item.paidSaleId);
       await patch(
@@ -834,6 +836,27 @@ export async function payTabItems(
     if (chosen.some((item) => isUnsent(item!))) {
       throw new RangeError('A line not yet sent is sent or dropped before it is paid');
     }
+    // Shares paid by amount go into the sale of the last lines the kitchen has had; until then
+    // the lines left must still cover them.
+    const sent = open.filter((item) => !isUnsent(item));
+    const last = sharesPaid > 0 && chosen.length === sent.length;
+    if (sharesPaid > 0) {
+      const rest = sent.filter((item) => !input.itemIds.includes(item.id)).map((item) => item.id);
+      const covering = (await tabBill(db, input.tabId, last ? input.itemIds : rest)).total;
+      if (covering < sharesPaid) {
+        throw new RangeError('The shares paid toward this tab come to more than its lines');
+      }
+    }
+    const payments: Payment[] = last
+      ? [
+          ...shares.map((share) => ({
+            method: share.method,
+            amount: share.amount,
+            tabPaymentId: share.id,
+          })),
+          ...input.payments,
+        ]
+      : input.payments;
     const products = await db.products.bulkGet(chosen.map((item) => item!.productId));
     const sale = await recordSale(db, {
       deviceCode: input.deviceCode,
@@ -849,7 +872,7 @@ export async function payTabItems(
           ...(item!.portion ? { unitPrice: price, label: itemLabel(item!) } : {}),
         };
       }),
-      payments: input.payments,
+      payments,
       ...(input.cashGiven !== undefined ? { cashGiven: input.cashGiven } : {}),
     });
     for (const item of chosen) {
@@ -860,6 +883,180 @@ export async function payTabItems(
     }
     return sale;
   });
+}
+
+// --- Paying by amount ---------------------------------------------------------------------------
+
+/** What a bill of a tab is paid with, and everything a sale writes. */
+function payTables(db: MarketDb) {
+  return [
+    db.tabs,
+    db.tabItems,
+    db.tabPayments,
+    db.sales,
+    db.products,
+    db.customers,
+    db.stockMovements,
+    db.stockLevels,
+    db.ledger,
+    db.outbox,
+  ];
+}
+
+/** The shares paid toward a tab by amount and not given back, the oldest first. */
+export async function tabParts(db: MarketDb, tabId: string): Promise<TabPaymentRecord[]> {
+  const records = await db.tabPayments.where('tabId').equals(tabId).toArray();
+  const givenBack = new Set(
+    records.flatMap((record) => (record.refundOf ? [record.refundOf] : [])),
+  );
+  return records
+    .filter((record) => !record.refundOf && !givenBack.has(record.id))
+    .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id));
+}
+
+export type TabDue = {
+  /** What the lines the kitchen has had and nobody paid for come to. */
+  bill: Kurus;
+  /** Paid toward them by amount. */
+  paid: Kurus;
+  due: Kurus;
+  parts: TabPaymentRecord[];
+  /** Those lines, which the last share pays. */
+  lineIds: string[];
+};
+
+/** A tab's bill, what was paid toward it by amount, and what is left to pay. */
+export async function tabDue(db: MarketDb, tabId: string): Promise<TabDue> {
+  const lines = await db.tabItems
+    .where('tabId')
+    .equals(tabId)
+    .filter((item) => payable(item) && !isUnsent(item))
+    .toArray();
+  const lineIds = lines.map((item) => item.id);
+  const bill = lineIds.length > 0 ? (await tabBill(db, tabId, lineIds)).total : 0;
+  const parts = await tabParts(db, tabId);
+  const paid = sumOf(parts);
+  return { bill, paid, due: bill - paid, parts, lineIds };
+}
+
+/**
+ * One guest's share of a tab, paid by amount in cash or by card. A share short of what is left
+ * is kept as a share (synced, counted in the drawer now); the one that pays what is left records
+ * the sale of the lines, with every share as one of its payments, and the tab closes once
+ * nothing else is on it.
+ */
+export async function payTabAmount(
+  db: MarketDb,
+  input: Waiter & {
+    tabId: string;
+    method: 'cash' | 'card';
+    amount: Kurus;
+    cashGiven?: Kurus;
+    cutoffMinutes?: number;
+  },
+  at: Date,
+): Promise<{ part: TabPaymentRecord } | { sale: SaleRecord }> {
+  assertSafeInteger(input.amount, 'Share');
+  if (input.amount <= 0) {
+    throw new RangeError(`A share must be above zero, got ${input.amount}`);
+  }
+  return db.transaction('rw', payTables(db), async () => {
+    await requireOpenTab(db, input.tabId);
+    const { due, lineIds } = await tabDue(db, input.tabId);
+    if (input.amount > due) {
+      throw new RangeError(`Only ${due} is left to pay on this tab`);
+    }
+    const cashGiven = input.method === 'cash' ? input.cashGiven : undefined;
+    if (input.amount === due) {
+      const sale = await payTabItems(
+        db,
+        {
+          tabId: input.tabId,
+          itemIds: lineIds,
+          payments: [{ method: input.method, amount: input.amount }],
+          ...(cashGiven !== undefined ? { cashGiven } : {}),
+          deviceCode: input.deviceCode,
+          staffId: input.staffId,
+          cutoffMinutes: input.cutoffMinutes,
+        },
+        at,
+      );
+      return { sale: sale as SaleRecord };
+    }
+    if (cashGiven !== undefined && cashGiven < input.amount) {
+      throw new PaymentMismatchError(`Cash given (${cashGiven}) is less than the share`);
+    }
+    const record: TabPaymentRecord = withoutUndefined({
+      id: newId(at.getTime()),
+      tabId: input.tabId,
+      method: input.method,
+      amount: input.amount,
+      cashGiven,
+      change: cashGiven !== undefined ? cashGiven - input.amount : undefined,
+      deviceCode: input.deviceCode,
+      staffId: input.staffId,
+      occurredAt: at.toISOString(),
+      businessDate: businessDate(at, { cutoffMinutes: input.cutoffMinutes }),
+    });
+    await db.tabPayments.add(record);
+    await appendOutbox(
+      db,
+      { kind: 'insert', table: 'tabPayments', recordId: record.id, record },
+      at,
+    );
+    return { part: record };
+  });
+}
+
+/** Gives a share back (taken by mistake): the tab owes it again, and a cash one leaves the drawer. */
+export async function refundTabPart(
+  db: MarketDb,
+  partId: string,
+  who: Waiter & { cutoffMinutes?: number },
+  at: Date,
+): Promise<TabPaymentRecord> {
+  return db.transaction('rw', db.tabs, db.tabPayments, db.outbox, async () => {
+    const part = await db.tabPayments.get(partId);
+    if (!part || part.refundOf) {
+      throw new RecordNotFoundError('TabPayment', partId);
+    }
+    await requireOpenTab(db, part.tabId);
+    if (!(await tabParts(db, part.tabId)).some((live) => live.id === partId)) {
+      throw new RangeError('This share was already given back');
+    }
+    const record: TabPaymentRecord = withoutUndefined({
+      id: newId(at.getTime()),
+      tabId: part.tabId,
+      method: part.method,
+      amount: part.amount,
+      refundOf: part.id,
+      deviceCode: who.deviceCode,
+      staffId: who.staffId,
+      occurredAt: at.toISOString(),
+      businessDate: businessDate(at, { cutoffMinutes: who.cutoffMinutes }),
+    });
+    await db.tabPayments.add(record);
+    await appendOutbox(
+      db,
+      { kind: 'insert', table: 'tabPayments', recordId: record.id, record },
+      at,
+    );
+    return record;
+  });
+}
+
+/**
+ * A line voided or put on the house may not leave the bill below what was paid toward it by
+ * amount: the change is refused (its transaction rolls back) until a share is given back.
+ */
+async function assertSharesCovered(db: MarketDb, tabId: string): Promise<void> {
+  if ((await tabDue(db, tabId)).due < 0) {
+    throw new RangeError('The bill would come to less than the shares paid toward it');
+  }
+}
+
+function sumOf(records: readonly { amount: Kurus }[]): Kurus {
+  return records.reduce((sum, record) => sum + record.amount, 0);
 }
 
 // --- Helpers ------------------------------------------------------------------------------------

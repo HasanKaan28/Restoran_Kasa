@@ -1,7 +1,7 @@
 import type { MarketDb } from '@/data/db';
 import { canonicalBarcode } from '@/data/products';
 import { reopenCancelledWithLines } from '@/data/restaurant';
-import { parkRows, type ParkedRow } from './issues';
+import { parkedRows, parkRows, replaceParkedRows, type ParkedRow } from './issues';
 import type { ServerRow, SyncTable } from './protocol';
 
 export const EVENT_TABLES: ReadonlySet<SyncTable> = new Set([
@@ -16,6 +16,7 @@ export const EVENT_TABLES: ReadonlySet<SyncTable> = new Set([
   'cashMovements',
   'cashSessions',
   'auditLog',
+  'tabPayments',
 ]);
 const ENTITY_TABLES: ReadonlySet<SyncTable> = new Set([
   'diningTables',
@@ -41,7 +42,60 @@ export async function applyServerRows(db: MarketDb, rows: readonly ServerRow[]):
   if (rows.length === 0) {
     return;
   }
-  const tables = [
+  await db.transaction('rw', applyTables(db), async () => {
+    const parked: ParkedRow[] = [];
+    for (const row of rows) {
+      try {
+        if (EVENT_TABLES.has(row.table)) {
+          await applyEvent(db, row);
+        } else if (ENTITY_TABLES.has(row.table)) {
+          await applyEntity(db, row);
+        } else {
+          throw new RangeError(`${UNKNOWN_TABLE}${row.table}`);
+        }
+      } catch (error) {
+        parked.push({ row, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    await parkRows(db, parked);
+    // Lines ordered on a tab that another register closed as empty meanwhile: it opens again.
+    await reopenCancelledWithLines(db, touchedTabs(rows), new Date());
+  });
+}
+
+const UNKNOWN_TABLE = 'Unknown table: ';
+
+/**
+ * Applies the parked rows of tables this build knows but the one that pulled them did not (a
+ * register updated while another wrote shares of a tab), and takes them off the parked list in
+ * the same transaction. Returns how many were applied.
+ */
+export async function reapplyParked(db: MarketDb): Promise<number> {
+  return db.transaction('rw', applyTables(db), async () => {
+    const parked = await parkedRows(db);
+    const ready = parked.filter(
+      ({ row, error }) =>
+        error.startsWith(UNKNOWN_TABLE) &&
+        (EVENT_TABLES.has(row.table) || ENTITY_TABLES.has(row.table)),
+    );
+    if (ready.length === 0) {
+      return 0;
+    }
+    await replaceParkedRows(
+      db,
+      parked.filter((entry) => !ready.includes(entry)),
+    );
+    await applyServerRows(
+      db,
+      ready.map((entry) => entry.row),
+    );
+    return ready.length;
+  });
+}
+
+/** Every table a pulled row can touch. */
+function applyTables(db: MarketDb) {
+  return [
     db.sales,
     db.stockMovements,
     db.stockLevels,
@@ -64,28 +118,10 @@ export async function applyServerRows(db: MarketDb, rows: readonly ServerRow[]):
     db.diningTables,
     db.tabs,
     db.tabItems,
+    db.tabPayments,
     db.outbox,
     db.meta,
   ];
-  await db.transaction('rw', tables, async () => {
-    const parked: ParkedRow[] = [];
-    for (const row of rows) {
-      try {
-        if (EVENT_TABLES.has(row.table)) {
-          await applyEvent(db, row);
-        } else if (ENTITY_TABLES.has(row.table)) {
-          await applyEntity(db, row);
-        } else {
-          throw new RangeError(`Unknown table: ${row.table}`);
-        }
-      } catch (error) {
-        parked.push({ row, error: error instanceof Error ? error.message : String(error) });
-      }
-    }
-    await parkRows(db, parked);
-    // Lines ordered on a tab that another register closed as empty meanwhile: it opens again.
-    await reopenCancelledWithLines(db, touchedTabs(rows), new Date());
-  });
 }
 
 /** The tabs pulled rows are about: the tabs themselves and those of their lines. */

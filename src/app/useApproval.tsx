@@ -1,3 +1,4 @@
+import Dexie from 'dexie';
 import { useState, type JSX } from 'react';
 import { recordApproval } from '@/data/audit';
 import type { Permission } from '@/domain/permissions';
@@ -33,14 +34,18 @@ export function useApproval(): {
       permission={pending.permission}
       onClose={() => setPending(null)}
       onApproved={(approver) => {
-        void recordApproval(
-          db,
-          { permission: pending.permission, approverId: approver.id },
-          new Date(),
-          actor,
-        );
-        setPending(null);
-        pending.next();
+        // Called right after the PIN check's transaction: the log entry and the approved action
+        // are work of their own, never a part of that finished transaction.
+        Dexie.ignoreTransaction(() => {
+          void recordApproval(
+            db,
+            { permission: pending.permission, approverId: approver.id },
+            new Date(),
+            actor,
+          );
+          setPending(null);
+          pending.next();
+        });
       }}
     />
   ) : null;

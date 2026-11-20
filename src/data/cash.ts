@@ -170,6 +170,7 @@ export async function closeCashSession(
     db.products,
     db.categories,
     db.staff,
+    db.tabPayments,
     db.outbox,
   ];
   return db.transaction('rw', tables, async () => {
@@ -222,7 +223,15 @@ async function countDrawer(
   cash: ExpectedCash;
   records: Pick<SummaryInput, 'sales' | 'voids' | 'returns' | 'salesById'>;
 }> {
-  const tables = [db.meta, db.cashSessions, db.cashMovements, db.sales, db.saleVoids, db.returns];
+  const tables = [
+    db.meta,
+    db.cashSessions,
+    db.cashMovements,
+    db.sales,
+    db.saleVoids,
+    db.returns,
+    db.tabPayments,
+  ];
   return db.transaction('r', tables, async () => {
     const session = await currentCashSession(db, deviceCode);
     const last = await lastClose(db, deviceCode);
@@ -249,10 +258,18 @@ async function countDrawer(
       .where('[deviceCode+occurredAt]')
       .between([deviceCode, from], [deviceCode, until], includeFrom, true)
       .toArray();
+    // Shares of tabs paid by amount: counted when taken, so a tab's sale leaves them out.
+    const shares = await db.tabPayments
+      .where('[deviceCode+occurredAt]')
+      .between([deviceCode, from], [deviceCode, until], includeFrom, true)
+      .filter((share) => share.method === 'cash')
+      .toArray();
     const sum = (amounts: readonly number[]) =>
       amounts.reduce((total, amount) => total + amount, 0);
     const breakdown: CashBreakdown = {
-      sales: sum(records.sales.map((sale) => cashOf(sale.payments))),
+      sales:
+        sum(records.sales.map((sale) => cashOf(sale.payments.filter((p) => !p.tabPaymentId)))) +
+        sum(shares.map((share) => (share.refundOf ? -share.amount : share.amount))),
       voids: sum(
         records.voids.map((saleVoid) =>
           cashOf(records.salesById.get(saleVoid.saleId)?.payments ?? []),

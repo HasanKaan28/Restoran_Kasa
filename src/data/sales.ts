@@ -73,9 +73,13 @@ export async function recordSale(db: MarketDb, input: RecordSaleInput): Promise<
       input.cartDiscount ?? 0,
     );
     const split = splitPayments(input.payments, cart.total);
-    // Cash handed over means something only when part of the sale is paid in cash.
-    const cashGiven = split.cash > 0 ? input.cashGiven : undefined;
-    const change = cashChange(cashGiven, split.cash);
+    // Cash handed over means something only when part of the sale is paid in cash now: a tab's
+    // share paid before had its own change.
+    const cashNow = input.payments
+      .filter((payment) => payment.method === 'cash' && !payment.tabPaymentId)
+      .reduce((sum, payment) => sum + payment.amount, 0);
+    const cashGiven = cashNow > 0 ? input.cashGiven : undefined;
+    const change = cashChange(cashGiven, cashNow);
     if (split.credit > 0) {
       await assertCreditAllowed(db, input.customerId, split.credit, input.allowOverLimit === true);
     }

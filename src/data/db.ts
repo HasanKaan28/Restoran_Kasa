@@ -14,6 +14,7 @@ import type {
   DiningTableRecord,
   ProductRecord,
   TabItemRecord,
+  TabPaymentRecord,
   TabRecord,
   ReturnRecord,
   SaleRecord,
@@ -53,6 +54,7 @@ export class MarketDb extends Dexie {
   declare diningTables: Table<DiningTableRecord, string>;
   declare tabs: Table<TabRecord, string>;
   declare tabItems: Table<TabItemRecord, string>;
+  declare tabPayments: Table<TabPaymentRecord, string>;
 
   constructor(name: string) {
     super(name);
@@ -123,6 +125,8 @@ export class MarketDb extends Dexie {
       tabs: 'id, tableId, status, openedAt',
       tabItems: 'id, tabId, status, station, sentAt',
     });
+    // v17: shares of a tab paid by amount, read per tab and per register by time (the drawer).
+    this.version(17).stores({ tabPayments: 'id, tabId, [deviceCode+occurredAt]' });
   }
 }
 

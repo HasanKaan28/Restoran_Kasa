@@ -47,6 +47,9 @@ import { PayDialog } from './PayDialog';
 
 const PHONE = '(max-width: 767px)';
 const NO_SALE = 'Lisans süresi doldu; yeni sipariş alınamaz.';
+// Refused chiefly when the bill would fall below what guests already paid toward it by amount.
+const TREAT_REFUSED = 'İkram değiştirilemedi. Hesap, tutar ile ödenenin altına inemez.';
+const VOID_REFUSED = 'İptal edilemedi. Hesap, tutar ile ödenenin altına inemez.';
 
 /**
  * One tab: the menu, and the order as the adisyon lists it. Lines are taken (a dish with portions
@@ -403,7 +406,10 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
             const item = lineFor;
             setLineFor(null);
             approval.ask('discount', () => {
-              void setComplimentary(db, item.id, !item.complimentary, new Date());
+              setComplimentary(db, item.id, !item.complimentary, new Date()).then(
+                () => void runner.run(),
+                () => toast.show(TREAT_REFUSED),
+              );
             });
           }}
           onVoid={() => {
@@ -426,6 +432,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           onClose={() => setVoiding(null)}
           onVoid={async (reason) => {
             await voidItem(db, voiding.id, reason, new Date());
+            void runner.run();
             setVoiding(null);
             toast.show(`${voiding.name} iptal edildi.`);
           }}
@@ -671,7 +678,7 @@ function VoidDialog({
             setError('İptalin nedenini yazın.');
             return;
           }
-          void onVoid(reason);
+          onVoid(reason).catch(() => setError(VOID_REFUSED));
         }}
       >
         <TextField

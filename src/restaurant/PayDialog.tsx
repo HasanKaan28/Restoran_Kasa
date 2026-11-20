@@ -7,19 +7,31 @@ import {
   dropUnsent,
   isUnsent,
   itemLabel,
+  payTabAmount,
   payTabItems,
+  refundTabPart,
   sendUnsent,
   tabBill,
+  tabDue,
   tabTitle,
   type BillLine,
 } from '@/data/restaurant';
+import type { SaleRecord } from '@/data/types';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
 import { formatTRY } from '@/domain/money';
 import { formatLineQty } from '@/pos/format';
 import { printReceipt } from '@/pos/printReceipt';
 import { buildReceipt } from '@/pos/receipt';
 import { loadReceiptSettings, receiptContext } from '@/pos/receiptSettings';
+import { SharePanel, type ShareMethod } from './SharePanel';
 import { tenderFor, typedAmount, type Tender } from './tender';
+
+type Mode = 'lines' | 'amount';
+
+const MODES: readonly { value: Mode; label: string }[] = [
+  { value: 'lines', label: 'Kalemlerle' },
+  { value: 'amount', label: 'Tutar ile öde' },
+];
 
 const METHODS: readonly { value: Tender; label: string }[] = [
   { value: 'cash', label: 'Nakit' },
@@ -30,7 +42,8 @@ const METHODS: readonly { value: Tender; label: string }[] = [
 /**
  * The bill: every line left to pay is ticked; untick some to split the bill by what each person
  * had, or share the total by heads; pay it in cash, by card, or part each. One payment is one
- * receipt. A line the kitchen has not had
+ * receipt. "Tutar ile öde" takes one guest's share by amount instead: the shares are kept until
+ * the last one, which records the bill's one sale and receipt. A line the kitchen has not had
  * (still being taken, or a course kept back) is never charged as it stands: the waiter sends it
  * with the bill or takes it off, so nobody pays for food that was never made and no ticket is
  * left on the kitchen's screen for a table already paid.
@@ -54,6 +67,10 @@ export function PayDialog({
   const [cashPart, setCashPart] = useState('');
   const [given, setGiven] = useState('');
   const [heads, setHeads] = useState('');
+  const [mode, setMode] = useState<Mode>('lines');
+  const [shareText, setShareText] = useState('');
+  const [shareMethod, setShareMethod] = useState<ShareMethod>('cash');
+  const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   // This device's receipt settings: with printing on, the bill offers the receipt, ticked when
@@ -61,6 +78,8 @@ export function PayDialog({
   const [receipt] = useState(loadReceiptSettings);
   const [printIt, setPrintIt] = useState(receipt.printing && receipt.autoPrint);
 
+  // What the kitchen has had, what was paid toward it by amount, and what is left.
+  const owed = useLiveQuery(() => tabDue(db, tabId), [db, tabId]);
   const lines = all?.lines ?? [];
   const unsent = lines.filter((line) => isUnsent(line.item));
   const payable = lines.filter((line) => !isUnsent(line.item));
@@ -70,8 +89,16 @@ export function PayDialog({
     () => tabBill(db, tabId, chosenIds),
     [db, tabId, chosenIds.join(',')],
   );
-  const total = selected?.total ?? 0;
+  // Shares paid by amount come off the sale of the last lines.
+  const allChosen = chosen.length === payable.length;
+  const sharesPaid = owed?.paid ?? 0;
+  const total = Math.max(0, (selected?.total ?? 0) - (allChosen ? sharesPaid : 0));
   const people = Number(heads);
+  const share = typedAmount(shareText);
+  const shareChange =
+    shareMethod === 'cash' && share && cashGivenOf(given) !== undefined
+      ? changeOn(cashGivenOf(given)!, share)
+      : undefined;
   const cashGiven = typedAmount(given) ?? undefined;
   // The part paid in cash when it is split with a card, while it leaves something for the card.
   const typedCash = typedAmount(cashPart) ?? undefined;
@@ -79,13 +106,103 @@ export function PayDialog({
     typedCash !== undefined && typedCash > 0 && typedCash < total ? typedCash : undefined;
   const cashDue = method === 'mixed' ? cashShare : total;
 
+  /** The receipt of a sale just made, when it is to be printed. */
+  function printSale(sale: SaleRecord, table: string | undefined) {
+    if (printIt) {
+      printReceipt(
+        buildReceipt(sale, { ...receiptContext(settings, receipt), ...(table ? { table } : {}) }),
+        receipt.paperWidth,
+      );
+    }
+  }
+
+  async function payShare() {
+    const amount = typedAmount(shareText);
+    if (amount === undefined || amount === null || amount <= 0) {
+      setError('Tutarı rakamla girin.');
+      return;
+    }
+    const cashGiven = shareMethod === 'cash' ? typedAmount(given) : undefined;
+    if (cashGiven === null) {
+      setError('Alınan tutarı rakamla girin.');
+      return;
+    }
+    if (cashGiven !== undefined && cashGiven < amount) {
+      setError('Alınan para tutardan az.');
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    setNotice(undefined);
+    try {
+      const { due } = await tabDue(db, tabId);
+      if (amount > due) {
+        setError(`Kalan ${formatTRY(due)}; bundan fazlası alınamaz.`);
+        return;
+      }
+      const tab = await db.tabs.get(tabId);
+      const table = tab ? await tabTitle(db, tab) : undefined;
+      const paid = await payTabAmount(
+        db,
+        {
+          tabId,
+          method: shareMethod,
+          amount,
+          ...(cashGiven !== undefined ? { cashGiven } : {}),
+          deviceCode: settings.deviceCode,
+          staffId: session.staff?.id,
+          cutoffMinutes,
+        },
+        new Date(),
+      );
+      void runner.run();
+      if ('sale' in paid) {
+        printSale(paid.sale, table);
+        onPaid(`Ödeme alındı: ${formatTRY(amount)}.`, unsent.length === 0);
+        return;
+      }
+      setNotice(`${formatTRY(amount)} alındı. Kalan ${formatTRY(due - amount)}.`);
+      setShareText('');
+      setGiven('');
+    } catch {
+      setError('Ödeme kaydedilemedi.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function giveBack(partId: string) {
+    setBusy(true);
+    setError(undefined);
+    setNotice(undefined);
+    try {
+      const back = await refundTabPart(
+        db,
+        partId,
+        { deviceCode: settings.deviceCode, staffId: session.staff?.id, cutoffMinutes },
+        new Date(),
+      );
+      void runner.run();
+      setNotice(`${formatTRY(back.amount)} geri verildi.`);
+    } catch {
+      setError('Geri verilemedi.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function pay() {
+    if (mode === 'amount') {
+      await payShare();
+      return;
+    }
     setBusy(true);
     setError(undefined);
     try {
       // The amount of the lines ticked now: the figure on screen is worked out after the window
       // opens and after every tick, so a quick tap can come before it, or while it is the last one.
-      const due = (await tabBill(db, tabId, chosenIds)).total;
+      const shares = chosenIds.length === payable.length ? (await tabDue(db, tabId)).paid : 0;
+      const due = (await tabBill(db, tabId, chosenIds)).total - shares;
       // Named before paying: the last payment closes the tab.
       const tab = await db.tabs.get(tabId);
       const table = tab ? await tabTitle(db, tab) : undefined;
@@ -107,11 +224,8 @@ export function PayDialog({
         },
         new Date(),
       );
-      if (printIt && 'id' in paid) {
-        printReceipt(
-          buildReceipt(paid, { ...receiptContext(settings, receipt), ...(table ? { table } : {}) }),
-          receipt.paperWidth,
-        );
+      if ('id' in paid) {
+        printSale(paid, table);
       }
       const closed = chosen.length === payable.length && unsent.length === 0;
       onPaid(
@@ -148,19 +262,26 @@ export function PayDialog({
       footer={
         <div className="flex items-center gap-4">
           <div className="flex min-w-0 flex-1 flex-col leading-tight">
-            <span className="text-sm font-semibold text-text-2">Ödenecek</span>
+            <span className="text-sm font-semibold text-text-2">
+              {mode === 'amount' ? 'Bu ödeme' : 'Ödenecek'}
+            </span>
             <span
               aria-label="Ödenecek tutar"
               className="truncate font-display text-figure font-bold tracking-[-0.02em]"
             >
-              {formatTRY(total)}
+              {formatTRY(mode === 'amount' ? (share ?? 0) : total)}
             </span>
           </div>
           <Button
             variant="primary"
             size="lg"
             // Not before the lines are in: with none yet, the button would close the table.
-            disabled={busy || all === undefined || (lines.length > 0 && chosenIds.length === 0)}
+            disabled={
+              busy ||
+              all === undefined ||
+              (mode === 'lines' && lines.length > 0 && chosenIds.length === 0) ||
+              (mode === 'amount' && (owed?.due ?? 0) <= 0)
+            }
             onClick={() => void pay()}
           >
             {lines.length === 0 ? 'Masayı kapat' : 'Ödemeyi al'}
@@ -177,7 +298,45 @@ export function PayDialog({
             onDrop={() => void settleUnsent('drop')}
           />
         ) : null}
-        {lines.length === 0 ? (
+        {payable.length > 0 ? (
+          <ChoiceGroup<Mode>
+            legend="Nasıl ödenecek"
+            hideLegend
+            name="payMode"
+            options={MODES}
+            value={mode}
+            onChange={(next) => {
+              setMode(next);
+              setError(undefined);
+              setNotice(undefined);
+            }}
+          />
+        ) : null}
+        {mode === 'amount' && owed && payable.length > 0 ? (
+          <SharePanel
+            due={owed}
+            amount={shareText}
+            method={shareMethod}
+            given={given}
+            change={shareChange}
+            canGiveBack={session.can('voidSale')}
+            busy={busy}
+            onAmount={(text) => {
+              setShareText(text);
+              setError(undefined);
+            }}
+            onMethod={(next) => {
+              setShareMethod(next);
+              setError(undefined);
+            }}
+            onGiven={(text) => {
+              setGiven(text);
+              setError(undefined);
+            }}
+            onGiveBack={(partId) => void giveBack(partId)}
+          />
+        ) : null}
+        {mode === 'amount' && payable.length > 0 ? null : lines.length === 0 ? (
           <p className="text-text-2">Ödenecek kalem yok. Masa kapatılabilir.</p>
         ) : payable.length === 0 ? null : (
           <ul aria-label="Kalemler" className="flex flex-col divide-y divide-line">
@@ -212,7 +371,12 @@ export function PayDialog({
             ))}
           </ul>
         )}
-        {payable.length > 0 ? (
+        {mode === 'lines' && sharesPaid > 0 && payable.length > 0 ? (
+          <p className="text-text-2">
+            {`Tutar ile ${formatTRY(sharesPaid)} ödendi; son kalemlerin ödemesinden düşülür.`}
+          </p>
+        ) : null}
+        {mode === 'lines' && payable.length > 0 ? (
           <>
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-32">
@@ -224,7 +388,7 @@ export function PayDialog({
                 />
               </div>
               {Number.isInteger(people) && people > 1 ? (
-                <p className="pb-3 text-text-2">{shareText(total, people)}</p>
+                <p className="pb-3 text-text-2">{headShares(total, people)}</p>
               ) : null}
             </div>
             <ChoiceGroup<Tender>
@@ -273,18 +437,23 @@ export function PayDialog({
                 ) : null}
               </div>
             ) : null}
-            {receipt.printing ? (
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start">
-                <input
-                  type="checkbox"
-                  checked={printIt}
-                  onChange={(event) => setPrintIt(event.target.checked)}
-                  className="size-5 accent-accent"
-                />
-                <span>Fiş yazdır</span>
-              </label>
-            ) : null}
           </>
+        ) : null}
+        {receipt.printing && payable.length > 0 ? (
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start">
+            <input
+              type="checkbox"
+              checked={printIt}
+              onChange={(event) => setPrintIt(event.target.checked)}
+              className="size-5 accent-accent"
+            />
+            <span>Fiş yazdır</span>
+          </label>
+        ) : null}
+        {notice ? (
+          <p role="status" className="font-medium text-success">
+            {notice}
+          </p>
         ) : null}
         {error ? (
           <p role="alert" className="font-medium text-danger">
@@ -348,11 +517,21 @@ function UnsentLines({
   );
 }
 
+/** Cash handed over as typed: undefined when nothing or nothing readable was typed. */
+function cashGivenOf(text: string): number | undefined {
+  return typedAmount(text) ?? undefined;
+}
+
+/** The change on cash handed over for an amount, once it covers it. */
+function changeOn(given: number, amount: number): number | undefined {
+  return given >= amount ? given - amount : undefined;
+}
+
 /**
  * Each person's share, to the kuruş: an amount that does not divide evenly leaves a kuruş or a few
  * for some, so the shares add up to the bill ("Kişi başı ₺163,33 · 1 kişi ₺163,34").
  */
-function shareText(total: number, people: number): string {
+function headShares(total: number, people: number): string {
   const base = Math.floor(total / people);
   const over = total - base * people;
   return over === 0
