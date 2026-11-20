@@ -7,6 +7,7 @@ import { loadDeviceSettings } from './device';
 import { finishPairing } from './finishPairing';
 import { Screens } from './Screens';
 import { SessionProvider } from './SessionProvider';
+import { keepSyncing } from './syncSchedule';
 import { useRoute } from './route';
 import { deviceClient, ownerClient } from '@/server/client';
 import { SERVER } from '@/server/config';
@@ -37,8 +38,7 @@ function AppContent(): JSX.Element {
 
   useEffect(() => {
     void data.runner.run();
-    data.runner.start();
-    return () => data.runner.stop();
+    return keepSyncing(data.runner);
   }, [data]);
 
   const server = SERVER;
