@@ -712,6 +712,10 @@ export async function markServed(
     let changed = 0;
     for (const id of itemIds) {
       const item = await requireItem(db, id);
+      // A line handed over when ordered (deliveredAt) is served for good: it never waits again.
+      if (!served && item.deliveredAt) {
+        continue;
+      }
       if (item.status === 'ready' && Boolean(item.servedAt) !== served) {
         await patch(db, 'tabItems', id, { servedAt: served ? at.toISOString() : null }, at);
         changed += 1;

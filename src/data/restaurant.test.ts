@@ -175,6 +175,22 @@ describe('a table’s tab', () => {
     expect(await sendTab(db, tab.id, later(11))).toBe(0);
   });
 
+  it('never takes back a line that was handed over when ordered', async () => {
+    const { water } = await menu();
+    const tab = await openTab(db, { label: 'Paket 1', ...waiter }, at);
+    const line = await addTabItem(db, tab.id, water, { qtyMilli: 1000 }, waiter, at);
+    const handedAt = later(1).toISOString();
+    await db.tabItems.update(line.id, {
+      status: 'ready',
+      sentAt: handedAt,
+      readyAt: handedAt,
+      servedAt: handedAt,
+      deliveredAt: handedAt,
+    });
+    expect(await markServed(db, [line.id], false, later(5))).toBe(0);
+    expect(await db.tabItems.get(line.id)).toMatchObject({ servedAt: handedAt });
+  });
+
   it('marks ready lines served, so the floor stops counting them, and takes it back', async () => {
     const { kebab, water } = await menu();
     const tab = await openTab(db, { label: 'Paket 1', ...waiter }, at);
