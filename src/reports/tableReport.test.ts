@@ -71,6 +71,35 @@ describe('loadTableReport', () => {
     expect(report.rows[0]).toMatchObject({ revenue: 4000, saleCount: 1 });
   });
 
+  it('averages the total over tables and takeaway only, not the market sales', async () => {
+    await db.diningTables.add(aTable({ id: 't5', name: 'Masa 5' }));
+    await db.tabs.add(aTab({ id: 'a', tableId: 't5' }));
+    await db.sales.bulkAdd([
+      aSale({ id: 's1', total: 10000 }),
+      aSale({ id: 's2', total: 50000 }), // a market sale, on no tab
+    ]);
+    await db.tabItems.add(anItem({ id: 'i1', tabId: 'a', paidSaleId: 's1' }));
+
+    const report = await loadTableReport(db, range);
+
+    expect(report.total).toMatchObject({ revenue: 60000, tabCount: 1, average: 10000 });
+  });
+
+  it('counts a tab paid in two sales as one tab and two receipts', async () => {
+    await db.diningTables.add(aTable({ id: 't5', name: 'Masa 5' }));
+    await db.tabs.add(aTab({ id: 'a', tableId: 't5' }));
+    await db.sales.bulkAdd([aSale({ id: 's1', total: 4000 }), aSale({ id: 's2', total: 6000 })]);
+    await db.tabItems.bulkAdd([
+      anItem({ id: 'i1', tabId: 'a', paidSaleId: 's1' }),
+      anItem({ id: 'i2', tabId: 'a', paidSaleId: 's2' }),
+    ]);
+
+    const report = await loadTableReport(db, range);
+
+    expect(report.rows[0]).toMatchObject({ tabCount: 1, saleCount: 2, revenue: 10000 });
+    expect(report.rows[0]?.average).toBe(10000);
+  });
+
   it('is empty with a zero total when nothing was sold', async () => {
     const report = await loadTableReport(db, range);
     expect(report.rows).toEqual([]);

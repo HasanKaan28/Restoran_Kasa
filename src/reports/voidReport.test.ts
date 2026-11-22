@@ -114,6 +114,18 @@ describe('loadVoidReport', () => {
     ]);
   });
 
+  it('falls back to the opener for an old cancelled tab with no closer', async () => {
+    await db.staff.add(aStaffer({ id: 'u1', name: 'Ayşe' }));
+    await db.diningTables.add(aTable({ id: 't5', name: 'Masa 5' }));
+    await db.tabs.add(
+      aTab({ id: 'a', tableId: 't5', status: 'cancelled', closedAt: day10, staffId: 'u1' }),
+    );
+
+    const report = await loadVoidReport(db, range);
+
+    expect(report.cancelledTabs.map((row) => row.staffName)).toEqual(['Ayşe']);
+  });
+
   it('lists remakes with the original product, reason, person and time', async () => {
     await db.staff.add(aStaffer({ id: 'u1', name: 'Ayşe' }));
     await db.tabs.add(aTab({ id: 'a', status: 'open' }));

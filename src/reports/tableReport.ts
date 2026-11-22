@@ -135,5 +135,8 @@ export async function loadTableReport(
     rows.reduce((sum, row) => sum + row.saleCount, 0),
     rows.reduce((sum, row) => sum + row.revenue, 0),
   );
+  // The average is per adisyon: market sales on no tab are in the revenue but not in it.
+  const tabRevenue = rows.reduce((sum, row) => sum + (row.kind === 'other' ? 0 : row.revenue), 0);
+  total.average = allTabs.size > 0 ? Math.round(tabRevenue / allTabs.size) : 0;
   return { rows, total };
 }

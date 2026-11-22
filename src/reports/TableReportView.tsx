@@ -10,7 +10,8 @@ const cells = (row: TableReportRow): string[] => [
   row.tabCount > 0 ? String(row.tabCount) : '—',
   String(row.saleCount),
   formatAmount(row.revenue),
-  formatAmount(row.average),
+  // "Diğer" (sales on no adisyon) has no per-adisyon average.
+  row.tabCount > 0 ? formatAmount(row.average) : '—',
 ];
 
 /** The tables of a range of business days: how often each was sat at and what it brought. */
