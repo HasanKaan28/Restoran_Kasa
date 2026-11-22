@@ -23,6 +23,7 @@ export const PERMISSIONS = [
   'editProducts',
   'seeCost',
   'stock',
+  'count',
   'suppliers',
   'reports',
   'closeDay',
@@ -34,17 +35,18 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
   sell: 'Hesap alma, ödeme',
-  creditSale: 'Veresiye satış (limit içinde)',
-  overLimit: 'Limit aşımı onayı',
+  creditSale: 'Veresiye satış',
+  overLimit: 'Veresiye limit aşımı onayı',
   discount: 'İkram, indirim',
   returnWithReceipt: 'Fişli iade',
   voidSale: 'Gönderilmiş ürünü iptal, satış iptali',
-  collect: 'Tahsilat',
+  collect: 'Tahsilat, veresiye müşterileri',
   addProduct: 'Kasada yeni ürün ekleme',
   editProducts: 'Menü düzenleme, fiyat değiştirme',
   seeCost: 'Alış fiyatı ve kârı görme',
-  stock: 'Mal kabul, sayım',
-  suppliers: 'Tedarikçi işlemleri',
+  stock: 'Stok, mal kabul, kritik stok',
+  count: 'Sayım',
+  suppliers: 'Tedarikçi, alış faturaları',
   reports: 'Raporlar',
   closeDay: 'Gün sonu',
   invoice: 'Fatura kesme',
@@ -52,39 +54,38 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
 };
 
 /**
- * What the restaurant's staff screen offers, in its order. The rest (credit sales, returns,
- * stock, suppliers, invoices) are the market's: kept on each person, not shown here.
+ * What the restaurant's staff screen offers, in its order. The rest (returns, adding a product
+ * at the register, invoices) are the market's: kept on each person, not shown here.
  */
 export const RESTAURANT_PERMISSIONS: readonly Permission[] = [
   'sell',
   'discount',
   'voidSale',
+  'creditSale',
+  'collect',
+  'overLimit',
   'editProducts',
   'seeCost',
+  'stock',
+  'count',
+  'suppliers',
   'reports',
   'closeDay',
   'admin',
 ];
 
-// No "Gün sonu" for a waiter: it lives in Raporlar, which a waiter does not see, and closing the
-// day (counting the till, the Z) is a manager's. An owner can still give it to a person.
-const CASHIER: readonly Permission[] = [
-  'sell',
-  'creditSale',
-  'returnWithReceipt',
-  'collect',
-  'addProduct',
-  'invoice',
-];
-const STOCK: readonly Permission[] = [
-  'addProduct',
-  'editProducts',
-  'seeCost',
-  'stock',
-  'suppliers',
-];
+// No "Gün sonu" for a waiter: it lives in Yönetim, which a waiter does not see, and closing the
+// day (counting the till, the Z) is a manager's. Credit and stock are the owner's to give too:
+// staff records are never rewritten, so what an owner turned on for a person stays on.
+const CASHIER: readonly Permission[] = ['sell', 'returnWithReceipt', 'addProduct', 'invoice'];
+// The kitchen and the bar prepare what is ordered; menu, cost, stock and suppliers are given
+// person by person.
+const STOCK: readonly Permission[] = [];
 
-/** Each role's permissions by default (DESIGN §8.5). */
+/**
+ * Each role's permissions by default: the market's DESIGN §8.5, narrowed for the restaurant's
+ * waiters and kitchen.
+ */
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   cashier: CASHIER,
   stock: STOCK,

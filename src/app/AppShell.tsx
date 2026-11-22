@@ -1,10 +1,10 @@
-import { BookOpen, ChartColumn, ChefHat, LayoutGrid, Lock, Settings } from 'lucide-react';
+import { BookOpen, BriefcaseBusiness, ChefHat, LayoutGrid, Lock, Settings } from 'lucide-react';
 import { useState, type JSX, type ReactNode } from 'react';
 import { Button, Logo, useBottomBar } from '@/design';
 import type { SyncState } from '@/sync/runner';
 import { AnnouncementBanner } from './AnnouncementBanner';
 import { LicenseBanner } from './LicenseBanner';
-import { ROUTE_PERMISSIONS, type Route } from './route';
+import { canOpenRoute, type Route } from './route';
 import { useSession } from './session';
 import { APP_VERSION } from './version';
 
@@ -37,7 +37,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { key: 'tables', label: 'Masalar', icon: LayoutGrid },
   { key: 'kitchen', label: 'Mutfak / Bar', icon: ChefHat },
   { key: 'products', label: 'Menü', icon: BookOpen },
-  { key: 'reports', label: 'Raporlar', icon: ChartColumn },
+  { key: 'manage', label: 'Yönetim', icon: BriefcaseBusiness },
   { key: 'settings', label: 'Ayarlar', icon: Settings },
 ];
 
@@ -96,11 +96,10 @@ export function AppShell({
           aria-label="Ana menü"
           className={`fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:sticky md:top-0 md:h-dvh md:w-24 md:shrink-0 md:flex-col md:gap-1 md:border-t-0 md:border-r md:px-2 md:py-3 xl:w-56 xl:px-3 ${immersive ? 'max-md:hidden' : ''}`}
         >
-          {NAV_ITEMS.filter((item) => {
-            const needed = ROUTE_PERMISSIONS[item.key];
+          {NAV_ITEMS.filter(
             // Settings opens for everyone: a waiter sees this device's own (DeviceSettingsScreen).
-            return needed === undefined || item.key === 'settings' || session.can(needed);
-          }).map((item) => (
+            (item) => item.key === 'settings' || canOpenRoute(item.key, session.can),
+          ).map((item) => (
             <NavLink key={item.key} item={item} active={item.key === activeNav} />
           ))}
         </nav>

@@ -235,6 +235,32 @@ describe('applyServerRows', () => {
     expect(await db.invoices.get('i1')).toEqual(row);
   });
 
+  it('applies pulled saved reports as entities, a pending archive kept on top', async () => {
+    const row = {
+      id: 'r1',
+      title: 'Kasım',
+      kind: 'period',
+      from: '2026-11-01',
+      to: '2026-11-22',
+      summary: { salesCount: 3 },
+      deviceCode: 'K1',
+      createdAt: at.toISOString(),
+      updatedAt: at.toISOString(),
+    };
+    const archivedAt = '2026-11-23T09:00:00.000Z';
+    await db.outbox.add({
+      kind: 'patch',
+      table: 'savedReports',
+      recordId: 'r1',
+      patch: { archivedAt, updatedAt: archivedAt },
+      opId: 'op-archive',
+      createdAt: archivedAt,
+    });
+    await applyServerRows(db, [{ table: 'savedReports', id: 'r1', serverSeq: 21, row }]);
+    expect(await db.savedReports.get('r1')).toEqual({ ...row, archivedAt, updatedAt: archivedAt });
+    expect(await parkedRows(db)).toEqual([]);
+  });
+
   it('applies pulled staff', async () => {
     const row = {
       id: 's1',

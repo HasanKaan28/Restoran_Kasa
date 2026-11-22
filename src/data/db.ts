@@ -19,6 +19,7 @@ import type {
   ReturnRecord,
   SaleRecord,
   SaleVoidRecord,
+  SavedReportRecord,
   StaffRecord,
   StockCountRecord,
   StockLevelRecord,
@@ -55,6 +56,7 @@ export class MarketDb extends Dexie {
   declare tabs: Table<TabRecord, string>;
   declare tabItems: Table<TabItemRecord, string>;
   declare tabPayments: Table<TabPaymentRecord, string>;
+  declare savedReports: Table<SavedReportRecord, string>;
 
   constructor(name: string) {
     super(name);
@@ -127,6 +129,12 @@ export class MarketDb extends Dexie {
     });
     // v17: shares of a tab paid by amount, read per tab and per register by time (the drawer).
     this.version(17).stores({ tabPayments: 'id, tabId, [deviceCode+occurredAt]' });
+    // v18: reports of a period saved for the archive, and order lines read by the sale that paid
+    // them (the tables report). No upgrade function: every row stays as it is.
+    this.version(18).stores({
+      savedReports: 'id, createdAt',
+      tabItems: 'id, tabId, status, station, sentAt, paidSaleId',
+    });
   }
 }
 

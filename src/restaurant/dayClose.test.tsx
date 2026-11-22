@@ -3,11 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createProduct } from '@/data/products';
 import { addTabItem, createDiningTable, openTab } from '@/data/restaurant';
-import { ReportsScreen } from '@/reports/ReportsScreen';
+import { ReportsSection } from '@/manage/ReportsSection';
 import { createTestData, renderWithData } from '@/test/renderWithData';
 
 describe('the restaurant’s day close', () => {
-  it('is reached from Raporlar, names the tabs still open, then counts the till', async () => {
+  it('is reached from Yönetim’s reports, names the tabs still open, then counts the till', async () => {
     const data = createTestData();
     const table = await createDiningTable(data.db, { name: '4', area: 'Salon' }, new Date());
     const ezme = await createProduct(
@@ -17,7 +17,7 @@ describe('the restaurant’s day close', () => {
     );
     const tab = await openTab(data.db, { tableId: table.id, deviceCode: 'K1' }, new Date());
     await addTabItem(data.db, tab.id, ezme, { qtyMilli: 1000 }, { deviceCode: 'K1' }, new Date());
-    await renderWithData(<ReportsScreen />, data);
+    await renderWithData(<ReportsSection />, data);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Gün sonu' }));
     const close = await screen.findByRole('dialog', { name: 'Gün sonu' });
@@ -36,13 +36,13 @@ describe('the restaurant’s day close', () => {
 
   it('counts the till at once, even when it was never opened that day', async () => {
     const data = createTestData();
-    await renderWithData(<ReportsScreen />, data);
+    await renderWithData(<ReportsSection />, data);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Gün sonu' }));
     const close = await screen.findByRole('dialog', { name: 'Gün sonu' });
-    await userEvent.click(
-      await within(close).findByRole('button', { name: 'Kasayı say ve günü kapat' }),
-    );
+    // The button is there, disabled, until the open tabs are read: wait for them, then click.
+    expect(await within(close).findByText(/Açık adisyon yok\./)).toBeInTheDocument();
+    await userEvent.click(within(close).getByRole('button', { name: 'Kasayı say ve günü kapat' }));
     const till = await screen.findByRole('dialog', { name: 'Kasa' });
     // Straight to counting: no "Kasayı aç" at the end of the day, only a word on why it is 0.
     expect(await within(till).findByText(/Kasa açılmadı\./)).toBeInTheDocument();
@@ -55,12 +55,12 @@ describe('the restaurant’s day close', () => {
 
   it('closes the window when the count is called off, not back to opening the till', async () => {
     const data = createTestData();
-    await renderWithData(<ReportsScreen />, data);
+    await renderWithData(<ReportsSection />, data);
     await userEvent.click(await screen.findByRole('button', { name: 'Gün sonu' }));
     const close = await screen.findByRole('dialog', { name: 'Gün sonu' });
-    await userEvent.click(
-      await within(close).findByRole('button', { name: 'Kasayı say ve günü kapat' }),
-    );
+    // The button is there, disabled, until the open tabs are read: wait for them, then click.
+    expect(await within(close).findByText(/Açık adisyon yok\./)).toBeInTheDocument();
+    await userEvent.click(within(close).getByRole('button', { name: 'Kasayı say ve günü kapat' }));
     const till = await screen.findByRole('dialog', { name: 'Kasa' });
     await userEvent.click(await within(till).findByRole('button', { name: 'Vazgeç' }));
     expect(screen.queryByRole('dialog', { name: 'Kasa' })).toBeNull();

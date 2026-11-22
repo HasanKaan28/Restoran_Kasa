@@ -2,19 +2,19 @@ import type { JSX } from 'react';
 import { KitchenScreen } from '@/restaurant/KitchenScreen';
 import { TablesScreen } from '@/restaurant/TablesScreen';
 import { TillOpenPrompt } from '@/restaurant/TillOpenPrompt';
+import { ManageScreen } from '@/manage/ManageScreen';
 import { ProductsScreen } from '@/products/ProductsScreen';
-import { ReportsScreen } from '@/reports/ReportsScreen';
 import { DeviceSettingsScreen, SettingsScreen } from '@/settings/SettingsScreen';
 import { useData, useSyncStatus } from './appData';
 import { AppShell } from './AppShell';
-import { ROUTE_PERMISSIONS, type Route } from './route';
+import { NoAccessNote } from './NoAccessNote';
+import { canOpenRoute, type Route } from './route';
 import { useSession } from './session';
 
 /** The screen an address names, if the person signed in may open it. */
 export function Screens({ route }: { route: Route }): JSX.Element {
   const session = useSession();
-  const needed = ROUTE_PERMISSIONS[route];
-  if (needed !== undefined && !session.can(needed)) {
+  if (!canOpenRoute(route, session.can)) {
     // Everyone may set this device's own notices and screen.
     return route === 'settings' ? <DeviceSettingsScreen /> : <NoAccess route={route} />;
   }
@@ -31,14 +31,14 @@ export function Screens({ route }: { route: Route }): JSX.Element {
       return <KitchenScreen />;
     case 'products':
       return <ProductsScreen />;
-    case 'reports':
-      return <ReportsScreen />;
+    case 'manage':
+      return <ManageScreen />;
     case 'settings':
       return <SettingsScreen />;
   }
 }
 
-/** What a screen shows a person not allowed to use it, as when they type its address. */
+/** A screen the person signed in may not open, in the frame of the app. */
 function NoAccess({ route }: { route: Route }): JSX.Element {
   const { settings, runner } = useData();
   const status = useSyncStatus(runner);
@@ -51,9 +51,7 @@ function NoAccess({ route }: { route: Route }): JSX.Element {
       syncError={status.error}
       activeNav={route}
     >
-      <p className="rounded-control border border-line bg-surface p-5 text-text-2">
-        Bu ekran için yetkiniz yok.
-      </p>
+      <NoAccessNote />
     </AppShell>
   );
 }

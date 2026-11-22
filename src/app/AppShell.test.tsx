@@ -18,12 +18,22 @@ describe('AppShell', () => {
       within(nav)
         .getAllByRole('link')
         .map((l) => l.textContent),
-    ).toEqual(['Masalar', 'Mutfak / Bar', 'Menü', 'Raporlar', 'Ayarlar']);
+    ).toEqual(['Masalar', 'Mutfak / Bar', 'Menü', 'Yönetim', 'Ayarlar']);
     expect(within(nav).getByRole('link', { name: 'Masalar' })).toHaveAttribute(
       'aria-current',
       'page',
     );
     expect(within(nav).getByRole('link', { name: 'Menü' })).toHaveAttribute('href', '#/products');
+    expect(within(nav).getByRole('link', { name: 'Yönetim' })).toHaveAttribute('href', '#/manage');
+  });
+
+  it('marks Yönetim while one of its sections is open', () => {
+    render(<AppShell {...base} activeNav="manage" syncState="online" />);
+    const nav = screen.getByRole('navigation', { name: 'Ana menü' });
+    expect(within(nav).getByRole('link', { name: 'Yönetim' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
   it.each([

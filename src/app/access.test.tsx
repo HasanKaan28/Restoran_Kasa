@@ -1,6 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AppData } from '@/app/appData';
 import { createCustomer } from '@/data/customers';
 import { createProduct } from '@/data/products';
@@ -10,9 +10,10 @@ import { invoiceForSale } from '@/data/invoices';
 import { PosScreen } from '@/pos/PosScreen';
 import { CustomersScreen } from '@/customers/CustomersScreen';
 import { ProductsScreen } from '@/products/ProductsScreen';
-import { ReportsScreen } from '@/reports/ReportsScreen';
+import { ReportsSection } from '@/manage/ReportsSection';
 import { createTestData, renderWithData } from '@/test/renderWithData';
 import { ApprovalDialog } from './ApprovalDialog';
+import { parseRoute } from './route';
 import { Screens } from './Screens';
 import { SessionProvider } from './SessionProvider';
 import { signInAs } from '@/test/session';
@@ -68,7 +69,7 @@ describe('access', () => {
     await signInAs(data.db, ayse.id);
     await renderWithData(
       <SessionProvider>
-        <Screens route="reports" />
+        <Screens route="manage" />
       </SessionProvider>,
       data,
     );
@@ -112,6 +113,8 @@ describe('access', () => {
 
   it('sells over the credit limit only with approval', async () => {
     const { data, ayse } = await team();
+    // A waiter sells on credit only once the owner turns it on for them.
+    await data.db.staff.update(ayse.id, { permissions: { creditSale: true } });
     await signInAs(data.db, ayse.id);
     await createCustomer(data.db, { name: 'Ahmet Yılmaz', creditLimit: 1000 }, before());
     await register(data);
@@ -139,7 +142,7 @@ describe('access', () => {
     });
     await renderWithData(
       <SessionProvider>
-        <ReportsScreen />
+        <ReportsSection />
       </SessionProvider>,
       data,
     );
@@ -231,13 +234,13 @@ describe('access', () => {
     await signInAs(data.db, zeynep.id);
     await renderWithData(
       <SessionProvider>
-        <Screens route="reports" />
+        <Screens route="manage" />
       </SessionProvider>,
       data,
     );
     expect(await screen.findByText('Bu ekran için yetkiniz yok.')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Ana menü' });
-    expect(within(nav).queryByRole('link', { name: 'Raporlar' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Yönetim' })).toBeNull();
   });
 
   it('asks for an invoice from a receipt', async () => {
@@ -324,5 +327,122 @@ describe('access', () => {
       await within(dialog).findByText('Bu işlemi onaylayabilecek kimse yok.'),
     ).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: 'Onayla' })).toBeNull();
+  });
+});
+
+describe('Yönetim', () => {
+  afterEach(() => {
+    window.location.hash = '';
+  });
+
+  /** Opens an address as typed into the browser, for the person signed in. */
+  async function open(data: AppData, hash: string) {
+    window.location.hash = hash;
+    return renderWithData(
+      <SessionProvider>
+        <Screens route={parseRoute(hash)} />
+      </SessionProvider>,
+      data,
+    );
+  }
+
+  function menu() {
+    return within(screen.getByRole('navigation', { name: 'Ana menü' }))
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+  }
+
+  function sectionTabs() {
+    return within(screen.getByRole('navigation', { name: 'Yönetim bölümleri' }))
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+  }
+
+  it.each(['#/manage/stock', '#/manage/credit', '#/reports', '#/manage'])(
+    'keeps a waiter out, from the menu and at %s',
+    async (hash) => {
+      const { data, ayse } = await team();
+      await signInAs(data.db, ayse.id);
+      await open(data, hash);
+      expect(await screen.findByText('Bu ekran için yetkiniz yok.')).toBeInTheDocument();
+      expect(menu()).toEqual(['Masalar', 'Mutfak / Bar', 'Ayarlar']);
+      expect(screen.queryByRole('heading', { name: 'Yönetim' })).toBeNull();
+      expect(screen.queryByRole('navigation', { name: 'Yönetim bölümleri' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Net satış' })).toBeNull();
+    },
+  );
+
+  it('shows the owner every section, and the reports at the old address', async () => {
+    const { data, kaan } = await team();
+    await signInAs(data.db, kaan.id);
+    await open(data, '#/reports');
+    expect(await screen.findByRole('heading', { name: 'Yönetim', level: 1 })).toBeInTheDocument();
+    expect(menu()).toEqual(['Masalar', 'Mutfak / Bar', 'Menü', 'Yönetim', 'Ayarlar']);
+    expect(sectionTabs()).toEqual([
+      'Raporlar',
+      'Personel',
+      'Veresiye',
+      'Stok',
+      'Tedarikçi / Fatura',
+      'Arşiv',
+    ]);
+    const tabs = screen.getByRole('navigation', { name: 'Yönetim bölümleri' });
+    expect(within(tabs).getByRole('link', { name: 'Raporlar' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(tabs).getByRole('link', { name: 'Stok' })).toHaveAttribute(
+      'href',
+      '#/manage/stock',
+    );
+    expect(await screen.findByRole('group', { name: 'Net satış' })).toBeInTheDocument();
+  });
+
+  it('shows a kitchen person given stock only the stock section', async () => {
+    const { data } = await team();
+    const ali = await createStaff(
+      data.db,
+      { name: 'Ali', role: 'stock', pin: '5555', permissions: { stock: true } },
+      before(),
+    );
+    await signInAs(data.db, ali.id);
+    await open(data, '#/manage');
+    expect(await screen.findByRole('heading', { name: 'Yönetim', level: 1 })).toBeInTheDocument();
+    expect(menu()).toEqual(['Masalar', 'Mutfak / Bar', 'Yönetim', 'Ayarlar']);
+    expect(sectionTabs()).toEqual(['Stok']);
+    // Yönetim without a section opens the first one the person may see.
+    await vi.waitFor(() => expect(window.location.hash).toBe('#/manage/stock'));
+    expect(
+      within(screen.getByRole('navigation', { name: 'Yönetim bölümleri' })).getByRole('link', {
+        name: 'Stok',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('keeps a person out of a section they may not open, typed as an address', async () => {
+    const { data } = await team();
+    const ali = await createStaff(
+      data.db,
+      { name: 'Ali', role: 'stock', pin: '5555', permissions: { stock: true } },
+      before(),
+    );
+    await signInAs(data.db, ali.id);
+    await open(data, '#/manage/reports');
+    expect(await screen.findByText('Bu ekran için yetkiniz yok.')).toBeInTheDocument();
+    expect(sectionTabs()).toEqual(['Stok']);
+    expect(screen.queryByRole('group', { name: 'Net satış' })).toBeNull();
+  });
+
+  it('shows a waiter given credit sales only the credit section', async () => {
+    const { data } = await team();
+    const zeynep = await createStaff(
+      data.db,
+      { name: 'Zeynep', role: 'cashier', pin: '5555', permissions: { creditSale: true } },
+      before(),
+    );
+    await signInAs(data.db, zeynep.id);
+    await open(data, '#/manage/credit');
+    expect(await screen.findByRole('heading', { name: 'Yönetim', level: 1 })).toBeInTheDocument();
+    expect(sectionTabs()).toEqual(['Veresiye']);
   });
 });

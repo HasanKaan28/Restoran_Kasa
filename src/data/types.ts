@@ -451,6 +451,8 @@ export type TabRecord = {
   staffId?: string;
   openedAt: string;
   closedAt?: string;
+  /** Who took the last payment, or closed it empty; absent on tabs closed before it was kept. */
+  closedByStaffId?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -482,6 +484,12 @@ export type TabItemRecord = {
   /** On the house: it is on the bill at no charge. */
   complimentary?: boolean;
   voidReason?: string;
+  /** When it was taken back (ISO), and by whom; absent on lines voided before it was kept. */
+  voidedAt?: string;
+  voidedByStaffId?: string;
+  /** Made again at no charge: the id of the line it remakes, and why. */
+  remakeOf?: string;
+  remakeReason?: string;
   paidSaleId?: string;
   deviceCode: string;
   staffId?: string;
@@ -492,6 +500,12 @@ export type TabItemRecord = {
   readyDeviceCode?: string;
   /** Taken to the table: a ready line the floor no longer counts as waiting to be served. */
   servedAt?: string;
+  /**
+   * Handed over at once when ordered (Teslim edildi): it went to no kitchen screen; such a line
+   * is stored as status 'ready' with sentAt = readyAt = servedAt = deliveredAt, which v1.0.4
+   * devices already read as served.
+   */
+  deliveredAt?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -518,11 +532,34 @@ export type TabPaymentRecord = {
   businessDate: string;
 };
 
+/**
+ * A report of a period kept as it was when saved, for the archive. An entity: archiving it is a
+ * patch.
+ */
+export type SavedReportRecord = {
+  id: string;
+  title: string;
+  kind: 'period';
+  /** Business days, YYYY-MM-DD, both ends included. */
+  from: string;
+  to: string;
+  /** The register the report was limited to; absent for every register. */
+  register?: string;
+  /** The figures as they were when saved; never recomputed. */
+  summary: Summary;
+  deviceCode: string;
+  staffId?: string;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt?: string;
+};
+
 export type OutboxTable =
   | 'diningTables'
   | 'tabs'
   | 'tabItems'
   | 'tabPayments'
+  | 'savedReports'
   | 'products'
   | 'customers'
   | 'categories'
@@ -556,7 +593,8 @@ export type OutboxOp =
         | 'invoices'
         | 'diningTables'
         | 'tabs'
-        | 'tabItems';
+        | 'tabItems'
+        | 'savedReports';
       recordId: string;
       patch: object;
     };

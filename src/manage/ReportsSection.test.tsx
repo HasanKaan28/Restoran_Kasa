@@ -7,9 +7,9 @@ import { createProduct } from '@/data/products';
 import { recordSale } from '@/data/sales';
 import { createStaff } from '@/data/staff';
 import { businessDate } from '@/domain/businessDate';
+import { periodOf } from '@/reports/period';
 import { createTestData, renderWithData } from '@/test/renderWithData';
-import { periodOf } from './period';
-import { ReportsScreen } from './ReportsScreen';
+import { ReportsSection } from './ReportsSection';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -49,23 +49,59 @@ describe('periodOf', () => {
   });
 });
 
-describe('ReportsScreen', () => {
+describe('ReportsSection', () => {
   afterEach(() => {
     window.location.hash = '';
   });
 
-  it('opens from the menu', async () => {
+  it('opens from the menu, as Yönetim’s first section', async () => {
     saveDeviceSettings({ ...DEFAULT_DEVICE, paired: true });
     render(<App />);
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
-    await userEvent.click(within(nav).getByRole('link', { name: 'Raporlar' }));
-    expect(await screen.findByRole('heading', { name: 'Raporlar', level: 1 })).toBeInTheDocument();
+    await userEvent.click(within(nav).getByRole('link', { name: 'Yönetim' }));
+    expect(await screen.findByRole('heading', { name: 'Yönetim', level: 1 })).toBeInTheDocument();
+    const sections = screen.getByRole('navigation', { name: 'Yönetim bölümleri' });
+    expect(
+      await within(sections).findByRole('link', { name: 'Raporlar', current: 'page' }),
+    ).toHaveAttribute('href', '#/manage/reports');
+    expect(await screen.findByRole('group', { name: 'Net satış' })).toBeInTheDocument();
+  });
+
+  it('opens at the address reports had until v1.0.4', async () => {
+    saveDeviceSettings({ ...DEFAULT_DEVICE, paired: true });
+    window.location.hash = '#/reports';
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: 'Yönetim', level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: 'Net satış' })).toBeInTheDocument();
+  });
+
+  it('shows the sales, the tables, the voids and the daily report of the same days', async () => {
+    const { data, sell } = await salesData();
+    await sell(new Date(), 2);
+    await renderWithData(<ReportsSection />, data);
+    expect(await netSales('₺180,00')).toBeInTheDocument();
+    const views = screen.getByRole('group', { name: 'Görünüm' });
+    expect(
+      within(views)
+        .getAllByRole('radio')
+        .map((radio) => radio.closest('label')?.textContent),
+    ).toEqual(['Satışlar', 'Masalar', 'İptal / tekrar', 'Günlük rapor']);
+    await userEvent.click(screen.getByRole('radio', { name: 'Masalar' }));
+    expect(screen.queryByRole('group', { name: 'Net satış' })).toBeNull();
+    // The register applies to the sales alone.
+    expect(screen.queryByLabelText('Cihaz')).toBeNull();
+    // The period stays as chosen across the views.
+    expect(screen.getByRole('radio', { name: 'Bugün' })).toBeChecked();
+    await userEvent.click(screen.getByRole('radio', { name: 'Dün' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Satışlar' }));
+    expect(screen.getByRole('radio', { name: 'Dün' })).toBeChecked();
+    expect(await netSales('₺0,00')).toBeInTheDocument();
   });
 
   it('shows today’s figures', async () => {
     const { data, sell } = await salesData();
     await sell(new Date(), 2);
-    await renderWithData(<ReportsScreen />, data);
+    await renderWithData(<ReportsSection />, data);
     expect(await netSales('₺180,00')).toBeInTheDocument();
     expect(within(tile('İşlem')).getByText('1')).toBeInTheDocument();
     expect(within(tile('Nakit')).getByText('₺180,00')).toBeInTheDocument();
@@ -83,7 +119,7 @@ describe('ReportsScreen', () => {
   it('speaks of the restaurant’s bills, and leaves out credit and returns it never has', async () => {
     const { data, sell } = await salesData();
     await sell(new Date(), 2);
-    await renderWithData(<ReportsScreen />, data);
+    await renderWithData(<ReportsSection />, data);
     expect(await netSales('₺180,00')).toBeInTheDocument();
     expect(within(tile('Ortalama hesap')).getByText('₺180,00')).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Ortalama sepet' })).toBeNull();
@@ -105,7 +141,7 @@ describe('ReportsScreen', () => {
       lines: [{ productId: kebab.id, qtyMilli: 1000 }],
       payments: [{ method: 'card', amount: 45000 }],
     });
-    await renderWithData(<ReportsScreen />, data);
+    await renderWithData(<ReportsSection />, data);
     expect(await netSales('₺450,00')).toBeInTheDocument();
     expect(within(tile('Brüt kâr')).getByText('—')).toBeInTheDocument();
     expect(within(tile('Brüt kâr')).getByText('Alış fiyatı girilmemiş')).toBeInTheDocument();
@@ -115,7 +151,7 @@ describe('ReportsScreen', () => {
     const { data, sell } = await salesData();
     await sell(new Date(), 1, 'K1');
     await sell(new Date(Date.now() - DAY_MS), 3, 'K2');
-    await renderWithData(<ReportsScreen />, data);
+    await renderWithData(<ReportsSection />, data);
     expect(await netSales('₺90,00')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('radio', { name: 'Dün' }));
     expect(await netSales('₺270,00')).toBeInTheDocument();
@@ -156,7 +192,7 @@ describe('ReportsScreen', () => {
       lines: [{ productId: tea?.id ?? '', qtyMilli: 2000 }],
       payments: [{ method: 'cash', amount: 18000 }],
     });
-    await renderWithData(<ReportsScreen />, data);
+    await renderWithData(<ReportsSection />, data);
     const table = await screen.findByRole('table', { name: 'Personel' });
     expect(within(table).getByText('Ayşe')).toBeInTheDocument();
     expect(within(table).getByText('Personelsiz')).toBeInTheDocument();
@@ -173,7 +209,7 @@ describe('ReportsScreen', () => {
     URL.revokeObjectURL = vi.fn();
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     try {
-      await renderWithData(<ReportsScreen />, data);
+      await renderWithData(<ReportsSection />, data);
       await netSales('₺180,00');
       await userEvent.click(screen.getByRole('button', { name: 'CSV indir' }));
       expect((click.mock.contexts[0] as HTMLAnchorElement).download).toMatch(

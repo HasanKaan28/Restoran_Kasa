@@ -29,6 +29,7 @@ const ENTITY_TABLES: ReadonlySet<SyncTable> = new Set([
   'staff',
   'settings',
   'invoices',
+  'savedReports',
 ]);
 
 /**
@@ -119,6 +120,7 @@ function applyTables(db: MarketDb) {
     db.tabs,
     db.tabItems,
     db.tabPayments,
+    db.savedReports,
     db.outbox,
     db.meta,
   ];

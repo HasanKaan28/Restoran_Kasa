@@ -67,9 +67,31 @@ describe('SettingsScreen', () => {
     expect(within(dialog).getByRole('option', { name: 'Garson' })).toBeInTheDocument();
     expect(within(dialog).getByRole('option', { name: 'Mutfak / Bar' })).toBeInTheDocument();
     expect(within(dialog).getByRole('checkbox', { name: 'İkram, indirim' })).toBeInTheDocument();
-    expect(within(dialog).queryByRole('checkbox', { name: /Veresiye/ })).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole('checkbox', { name: /Tedarikçi/ })).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole('checkbox', { name: /Mal kabul/ })).not.toBeInTheDocument();
+    // The market's returns, register products and invoices are not the restaurant's.
+    expect(within(dialog).queryByRole('checkbox', { name: 'Fişli iade' })).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('checkbox', { name: /Fatura kesme/ }),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('checkbox', { name: /Kasada/ })).not.toBeInTheDocument();
+  });
+
+  it('offers credit, stock, counts and suppliers, off for a waiter until the owner turns them on', async () => {
+    const { data, kaan } = await team();
+    await settingsAs(data, kaan.id);
+    await userEvent.click(await screen.findByRole('button', { name: /Ayşe/ }));
+    const dialog = await screen.findByRole('dialog', { name: /Ayşe/ });
+    for (const name of [
+      'Veresiye satış',
+      'Tahsilat, veresiye müşterileri',
+      'Veresiye limit aşımı onayı',
+      'Stok, mal kabul, kritik stok',
+      'Sayım',
+      'Tedarikçi, alış faturaları',
+      'Raporlar',
+    ]) {
+      expect(within(dialog).getByRole('checkbox', { name })).not.toBeChecked();
+    }
+    expect(within(dialog).getByRole('checkbox', { name: 'Hesap alma, ödeme' })).toBeChecked();
   });
 
   it('adds the first person as the owner and signs them in', async () => {
