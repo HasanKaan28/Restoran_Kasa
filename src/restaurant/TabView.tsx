@@ -7,6 +7,7 @@ import { useLicense } from '@/app/license';
 import { useSession } from '@/app/session';
 import { useApproval } from '@/app/useApproval';
 import { listCategories } from '@/data/categories';
+import { deliverTab } from '@/data/deliver';
 import {
   addOneMore,
   addTabItem,
@@ -165,6 +166,13 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
     void runner.run();
   }
 
+  async function deliver() {
+    const count = await deliverTab(db, tabId, new Date());
+    toast.show(`${count} kalem teslim edildi.`);
+    navigator.vibrate?.(10);
+    void runner.run();
+  }
+
   async function addOrdered(product: ProductRecord, input: OrderInput) {
     try {
       await addTabItem(db, tabId, product, input, waiter, new Date());
@@ -248,6 +256,8 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
       canPay={session.can('sell')}
       sendLabel={sendLabel}
       onSend={() => void send()}
+      deliverable={fresh.filter((item) => !item.hold).length}
+      onDeliver={() => void deliver()}
       onFire={() => void fire()}
       onPay={() => setDialog('pay')}
     />
@@ -482,6 +492,8 @@ function OrderActions({
   canPay,
   sendLabel,
   onSend,
+  deliverable,
+  onDeliver,
   onFire,
   onServe,
   onPay,
@@ -494,6 +506,9 @@ function OrderActions({
   canPay: boolean;
   sendLabel: string;
   onSend(): void;
+  /** Lines being taken that can be handed over at once (not those kept for the next course). */
+  deliverable: number;
+  onDeliver(): void;
   onFire(): void;
   onServe(): void;
   onPay(): void;
@@ -524,6 +539,13 @@ function OrderActions({
       >
         Mutfağa gönder
         <CountBadge count={fresh} />
+      </Button>
+      <Button
+        aria-label={`Teslim edildi (${deliverable})`}
+        disabled={deliverable === 0}
+        onClick={onDeliver}
+      >
+        Teslim edildi
       </Button>
       <Button disabled={!canPay} onClick={onPay}>
         Hesap
