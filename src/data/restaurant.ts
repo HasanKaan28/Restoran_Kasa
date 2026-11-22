@@ -477,11 +477,12 @@ export async function setComplimentary(
  * Makes a line the kitchen or the bar already had once more, at no charge (it came cold, it was
  * dropped): a new line, on the house, sent straight to its station as a ticket of its own, the
  * bill as it was. The line it remakes may be paid already (one guest of a split bill); it is not
- * changed, nor is its sale. The tab must still be open.
+ * changed, nor is its sale. The tab must still be open. `quantityMilli` makes only some of a
+ * line of several (one of four beers); left out, the whole line is made again.
  */
 export async function remakeItem(
   db: MarketDb,
-  input: Waiter & { itemId: string; reason: string },
+  input: Waiter & { itemId: string; reason: string; quantityMilli?: number },
   at: Date,
 ): Promise<TabItemRecord> {
   const why = input.reason.trim();
@@ -494,6 +495,10 @@ export async function remakeItem(
     if (item.status !== 'sent' && item.status !== 'ready') {
       throw new RangeError('Only a line the kitchen or the bar has had can be made again');
     }
+    const qtyMilli = input.quantityMilli ?? item.qtyMilli;
+    if (!isRemakeQuantity(qtyMilli, item)) {
+      throw new RangeError('A remake is of some of the line, not more than it holds');
+    }
     const stamp = at.toISOString();
     const record: TabItemRecord = withoutUndefined({
       id: newId(at.getTime()),
@@ -502,7 +507,7 @@ export async function remakeItem(
       name: item.name,
       unit: item.unit,
       unitPrice: item.unitPrice,
-      qtyMilli: item.qtyMilli,
+      qtyMilli,
       note: item.note,
       portion: item.portion,
       options: item.options ? [...item.options] : undefined,
@@ -521,6 +526,12 @@ export async function remakeItem(
     await appendOutbox(db, { kind: 'insert', table: 'tabItems', recordId: record.id, record }, at);
     return record;
   });
+}
+
+/** Some of the line, whole pieces for a counted line; at least a thousandth, at most all of it. */
+function isRemakeQuantity(qtyMilli: number, item: TabItemRecord): boolean {
+  const step = item.unit === 'kg' ? 1 : 1000;
+  return Number.isInteger(qtyMilli / step) && qtyMilli > 0 && qtyMilli <= item.qtyMilli;
 }
 
 /**

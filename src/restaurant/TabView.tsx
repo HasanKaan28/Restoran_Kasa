@@ -461,8 +461,12 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
         <RemakeDialog
           item={remaking}
           onClose={() => setRemaking(null)}
-          onRemake={async (reason) => {
-            await remakeItem(db, { itemId: remaking.id, reason, ...waiter }, new Date());
+          onRemake={async (reason, quantityMilli) => {
+            await remakeItem(
+              db,
+              { itemId: remaking.id, reason, quantityMilli, ...waiter },
+              new Date(),
+            );
             void runner.run();
             setRemaking(null);
             toast.show(`${remaking.name} tekrar hazırlanıyor.`);

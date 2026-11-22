@@ -173,6 +173,44 @@ describe('making a line again (Tekrar hazırla)', () => {
     expect(onRemake).toHaveBeenCalledTimes(1);
   });
 
+  it('asks how many of a line of several, one by default', async () => {
+    const { data, tabId } = await servedTable();
+    const [line] = await data.db.tabItems.where('tabId').equals(tabId).toArray();
+    const onRemake = vi.fn(async () => {});
+    render(
+      <RemakeDialog item={{ ...line!, qtyMilli: 4000 }} onClose={() => {}} onRemake={onRemake} />,
+    );
+    const dialog = await screen.findByRole('dialog', { name: `Tekrar hazırla: ${line!.name}` });
+    expect(within(dialog).getByLabelText('Kaç adet')).toHaveValue('1');
+    await userEvent.type(within(dialog).getByLabelText('Neden'), 'Soğuk');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Tekrar hazırla' }));
+    expect(onRemake).toHaveBeenCalledWith('Soğuk', 1000);
+
+    await userEvent.clear(within(dialog).getByLabelText('Kaç adet'));
+    await userEvent.type(within(dialog).getByLabelText('Kaç adet'), '5');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Tekrar hazırla' }));
+    expect(await within(dialog).findByText('1 ile 4 arasında bir sayı girin.')).toBeInTheDocument();
+    expect(onRemake).toHaveBeenCalledTimes(1);
+  });
+
+  it('remakes the whole weighed line by default', async () => {
+    const { data, tabId } = await servedTable();
+    const [line] = await data.db.tabItems.where('tabId').equals(tabId).toArray();
+    const onRemake = vi.fn(async () => {});
+    render(
+      <RemakeDialog
+        item={{ ...line!, unit: 'kg', qtyMilli: 1500 }}
+        onClose={() => {}}
+        onRemake={onRemake}
+      />,
+    );
+    const dialog = await screen.findByRole('dialog', { name: `Tekrar hazırla: ${line!.name}` });
+    expect(within(dialog).getByLabelText('Kaç kg')).toHaveValue('1,5');
+    await userEvent.type(within(dialog).getByLabelText('Neden'), 'Soğuk');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Tekrar hazırla' }));
+    expect(onRemake).toHaveBeenCalledWith('Soğuk', 1500);
+  });
+
   it('asks a waiter without the treat permission for a manager’s PIN', async () => {
     const { data, tabId } = await servedTable();
     await signedIn(data, 'waiter');

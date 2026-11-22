@@ -384,6 +384,32 @@ describe('making a line again (tekrar hazırla)', () => {
     ]);
   });
 
+  it('makes only the quantity asked for of a line of several', async () => {
+    const { tab, line } = await sentTab();
+    const again = await remakeItem(
+      db,
+      { itemId: line.id, reason: 'Soğuk', quantityMilli: 1000, deviceCode: 'K1' },
+      later(5),
+    );
+    expect(again).toMatchObject({ qtyMilli: 1000, complimentary: true, remakeOf: line.id });
+    expect((await itemOf(line.id)).qtyMilli).toBe(2000);
+    expect((await tabBill(db, tab.id)).total).toBe(92000);
+  });
+
+  it('refuses a quantity outside the line: none, more than it has, or a fraction of a piece', async () => {
+    const { line } = await sentTab();
+    for (const quantityMilli of [0, -1000, 3000, 1500.5, Number.NaN]) {
+      await expect(
+        remakeItem(
+          db,
+          { itemId: line.id, reason: 'Soğuk', quantityMilli, deviceCode: 'K1' },
+          later(5),
+        ),
+      ).rejects.toThrow(RangeError);
+    }
+    expect(await db.tabItems.filter((item) => item.remakeOf === line.id).count()).toBe(0);
+  });
+
   it('needs a reason, an open tab, and a line the kitchen had', async () => {
     const { tab, line, drink } = await sentTab();
     await expect(
