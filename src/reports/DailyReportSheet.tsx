@@ -32,7 +32,7 @@ export function DailyReportSheet({ model }: { model: DailyReportModel }): JSX.El
         <table key={group.categoryId ?? ''} className="w-full border-collapse text-left">
           <caption className="mb-1 text-left text-[12pt] font-semibold">{group.name}</caption>
           <thead>
-            <tr className="border-b border-gray-500 text-[10pt]">
+            <tr className="border-b border-line-strong text-[10pt]">
               <th scope="col" className="py-1 pr-2 font-medium">
                 Ürün
               </th>
@@ -46,7 +46,7 @@ export function DailyReportSheet({ model }: { model: DailyReportModel }): JSX.El
           </thead>
           <tbody>
             {group.rows.map((row) => (
-              <tr key={row.productId} className="border-b border-gray-300">
+              <tr key={row.productId} className="border-b border-line">
                 <td className="py-1 pr-2 [overflow-wrap:anywhere]">{row.name}</td>
                 <td className="whitespace-nowrap px-2 py-1 text-right">
                   {formatStock(row.qtyMilli, row.unit ?? 'piece')}
@@ -65,7 +65,7 @@ export function DailyReportSheet({ model }: { model: DailyReportModel }): JSX.El
           </tfoot>
         </table>
       ))}
-      <dl className="flex flex-col border-t-2 border-black">
+      <dl className="flex flex-col border-t-2 border-text">
         <Line label="Genel toplam" value={formatAmount(report.total)} strong />
         <Line label="Nakit" value={formatAmount(report.byMethod.cash)} />
         <Line label="Kart" value={formatAmount(report.byMethod.card)} />
@@ -108,7 +108,7 @@ export function DailyReportSheet({ model }: { model: DailyReportModel }): JSX.El
           <caption className="mb-1 text-left text-[12pt] font-semibold">İkram edilenler</caption>
           <tbody>
             {report.complimentary.rows.map((row) => (
-              <tr key={row.productId} className="border-b border-gray-300">
+              <tr key={row.productId} className="border-b border-line">
                 <td className="py-1 pr-2 [overflow-wrap:anywhere]">{row.name}</td>
                 <td className="whitespace-nowrap px-2 py-1 text-right">
                   {formatStock(row.qtyMilli, row.unit ?? 'piece')}
@@ -138,7 +138,7 @@ function Line({
 }): JSX.Element {
   return (
     <div
-      className={`flex flex-wrap justify-between gap-x-4 border-b border-gray-300 py-1 ${
+      className={`flex flex-wrap justify-between gap-x-4 border-b border-line py-1 ${
         strong ? 'text-[13pt] font-semibold' : ''
       }`}
     >

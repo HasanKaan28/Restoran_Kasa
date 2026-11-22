@@ -6,7 +6,7 @@ const PAGE_RULE = '@page { size: A4; margin: 15mm; }';
 /** Prints the daily report on A4; the print window can save it as a PDF. */
 export function printDailyReport(model: DailyReportModel, print?: () => void): void {
   printView(
-    <div className="text-black">
+    <div className="text-text">
       <DailyReportSheet model={model} />
     </div>,
     () => PAGE_RULE,
