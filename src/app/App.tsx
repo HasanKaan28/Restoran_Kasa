@@ -18,6 +18,7 @@ import { forgetSkippedWelcome, shouldWelcome } from './welcome';
 import { ServerMissingScreen, WelcomeScreen } from './WelcomeScreen';
 import { Updates } from '@/updates/Updates';
 import { ReadyNotifier } from '@/notify/ReadyNotifier';
+import { OrderSlipPrinter } from '@/restaurant/OrderSlipPrinter';
 
 /** The app, with word of a new release (and the desktop's update screen) over whatever shows. */
 export function App(): JSX.Element {
@@ -86,6 +87,8 @@ function AppContent(): JSX.Element {
       <DataProvider value={data}>
         {/* Above the session: a locked register shows it too. */}
         <MoveBanner />
+        {/* Above the session too: the bar's PC prints while its register is locked. */}
+        <OrderSlipPrinter />
         <SessionProvider>
           <Screens route={route} />
           <ReadyNotifier route={route} />
