@@ -125,6 +125,22 @@ describe('ArchiveSection', () => {
     expect((await data.db.savedReports.toArray())[0]?.archivedAt).toBeDefined();
   });
 
+  it('says so when archiving a saved report fails, and keeps it listed', async () => {
+    const data = await dataWithSale();
+    const summary = await loadSummary(data.db, { from: '0000-01-01', to: '9999-12-31' });
+    await saveReport(
+      data.db,
+      { title: 'Kasım', from: '2026-11-01', to: '2026-11-22', summary, deviceCode: 'K1' },
+      new Date(),
+    );
+    await renderWithData(<ArchiveSection />, data);
+    const archive = await screen.findByRole('button', { name: 'Arşivle, Kasım' });
+    vi.spyOn(data.db.savedReports, 'get').mockRejectedValue(new Error('disk'));
+    await userEvent.click(archive);
+    expect(await screen.findByText('Rapor arşivlenemedi')).toBeInTheDocument();
+    expect(screen.getByText('Kasım')).toBeInTheDocument();
+  });
+
   it('leaves the CSV to the admin and the cost to those who may see it', async () => {
     const data = await dataWithSale();
     const summary = await loadSummary(data.db, { from: '0000-01-01', to: '9999-12-31' });

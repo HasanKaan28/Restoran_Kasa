@@ -237,10 +237,15 @@ function SavedReports(): JSX.Element {
   const { db, runner } = useData();
   const reports = useLiveQuery(async () => (await listSavedReports(db)).map(readableReport), [db]);
   const [open, setOpen] = useState<SavedReportRecord | null>(null);
+  const toast = useToast();
 
   async function archive(report: SavedReportRecord) {
-    await archiveSavedReport(db, report.id, new Date());
-    void runner.run();
+    try {
+      await archiveSavedReport(db, report.id, new Date());
+      void runner.run();
+    } catch {
+      toast.show('Rapor arşivlenemedi');
+    }
   }
 
   return (
@@ -277,6 +282,7 @@ function SavedReports(): JSX.Element {
         </ul>
       )}
       {open ? <SavedReportDialog report={open} onClose={() => setOpen(null)} /> : null}
+      <ToastRegion message={toast.message} />
     </section>
   );
 }
