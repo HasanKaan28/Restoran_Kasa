@@ -40,6 +40,13 @@ describe('Teslim edildi', () => {
     expect(within(order).queryByRole('button', { name: /Hazırları servis et/ })).toBeNull();
     expect(await kitchenTickets(data.db, 'bar')).toEqual([]);
 
+    // Handed over is handed over: it cannot be put back to waiting (and so to recall).
+    await userEvent.click(within(order).getByRole('button', { name: 'Efes: işlemler' }));
+    const line = await screen.findByRole('dialog', { name: 'Efes' });
+    expect(within(line).queryByRole('button', { name: 'Servis edilmedi' })).toBeNull();
+    expect(within(line).getByRole('button', { name: 'İptal' })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+
     await userEvent.click(screen.getByRole('button', { name: 'Masalar' }));
     const card = await screen.findByRole('button', { name: /^S1, dolu/ });
     await waitFor(() => expect(card).toHaveTextContent('₺300,00'));

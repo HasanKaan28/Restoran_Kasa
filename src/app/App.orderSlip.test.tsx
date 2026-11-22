@@ -23,7 +23,7 @@ describe('App order slips', () => {
     const db = openMarketDb(marketId);
     // Someone set up: the register opens locked, asking for a PIN.
     await createStaff(db, { name: 'Kaan', role: 'owner', pin: '4821' }, new Date());
-    chooseSlipMode('delivered', new Date());
+    chooseSlipMode('delivered', new Date(), marketId);
     const print = vi.fn(() => window.dispatchEvent(new Event('afterprint')));
     vi.stubGlobal('print', print);
 

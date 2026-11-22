@@ -20,16 +20,29 @@ describe('slip preferences', () => {
 
   it('keeps the moment a choice was made, so orders before it are never printed', () => {
     const storage = memory();
-    chooseSlipMode('delivered', new Date('2026-11-22T18:00:00Z'), storage);
+    chooseSlipMode('delivered', new Date('2026-11-22T18:00:00Z'), 'grenn', storage);
     expect(loadSlipPrefs(storage)).toEqual({
       mode: 'delivered',
       since: '2026-11-22T18:00:00.000Z',
+      marketId: 'grenn',
     });
 
     // A new choice starts again from its own moment; choosing the same again changes nothing.
-    chooseSlipMode('all', new Date('2026-11-22T19:00:00Z'), storage);
-    chooseSlipMode('all', new Date('2026-11-22T20:00:00Z'), storage);
-    expect(loadSlipPrefs(storage)).toEqual({ mode: 'all', since: '2026-11-22T19:00:00.000Z' });
+    chooseSlipMode('all', new Date('2026-11-22T19:00:00Z'), 'grenn', storage);
+    chooseSlipMode('all', new Date('2026-11-22T20:00:00Z'), 'grenn', storage);
+    expect(loadSlipPrefs(storage)).toEqual({
+      mode: 'all',
+      since: '2026-11-22T19:00:00.000Z',
+      marketId: 'grenn',
+    });
+
+    // The same choice made for another market (the device joined another restaurant) starts again.
+    chooseSlipMode('all', new Date('2026-11-22T21:00:00Z'), 'baska', storage);
+    expect(loadSlipPrefs(storage)).toEqual({
+      mode: 'all',
+      since: '2026-11-22T21:00:00.000Z',
+      marketId: 'baska',
+    });
   });
 
   it('falls back to off when the stored value is broken or unreadable', () => {

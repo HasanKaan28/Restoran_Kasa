@@ -10,6 +10,11 @@ export type SlipPrefs =
       mode: Exclude<SlipMode, 'off'>;
       /** When this choice was made (ISO): an order sent before it is never printed. */
       since: string;
+      /**
+       * The market it was made in. In another market (the device joined another restaurant) it
+       * starts again from that moment, so that market's earlier orders are not printed.
+       */
+      marketId: string;
     };
 
 export const DEFAULT_SLIP_PREFS: SlipPrefs = { mode: 'off' };
@@ -21,14 +26,19 @@ export function loadSlipPrefs(storage?: Pick<Storage, 'getItem'>): SlipPrefs {
   try {
     const raw = (storage ?? localStorage).getItem(SLIP_STORAGE_KEY);
     const parsed = (raw === null ? {} : JSON.parse(raw)) as Partial<
-      Record<'mode' | 'since', unknown>
+      Record<'mode' | 'since' | 'marketId', unknown>
     >;
     if (
       (parsed.mode === 'delivered' || parsed.mode === 'all') &&
       typeof parsed.since === 'string' &&
       !Number.isNaN(Date.parse(parsed.since))
     ) {
-      return { mode: parsed.mode, since: parsed.since };
+      return {
+        mode: parsed.mode,
+        since: parsed.since,
+        // Unknown market: taken as another one, so it starts again from now.
+        marketId: typeof parsed.marketId === 'string' ? parsed.marketId : '',
+      };
     }
     return DEFAULT_SLIP_PREFS;
   } catch {
@@ -37,19 +47,21 @@ export function loadSlipPrefs(storage?: Pick<Storage, 'getItem'>): SlipPrefs {
 }
 
 /**
- * Makes a choice and tells the printer running on this page at once. Turning printing on, or
- * changing what is printed, starts from now: nothing sent before is printed.
+ * Makes a choice in a market and tells the printer running on this page at once. Turning
+ * printing on, changing what is printed, or the same choice in another market starts from now:
+ * nothing sent before is printed.
  */
 export function chooseSlipMode(
   mode: SlipMode,
   now: Date,
+  marketId: string,
   storage?: Pick<Storage, 'getItem' | 'setItem'>,
 ): void {
   const current = unsaved ?? loadSlipPrefs(storage);
-  if (current.mode === mode) {
+  if (current.mode === mode && (current.mode === 'off' || current.marketId === marketId)) {
     return;
   }
-  const next: SlipPrefs = mode === 'off' ? { mode } : { mode, since: now.toISOString() };
+  const next: SlipPrefs = mode === 'off' ? { mode } : { mode, since: now.toISOString(), marketId };
   try {
     (storage ?? localStorage).setItem(SLIP_STORAGE_KEY, JSON.stringify(next));
     unsaved = undefined;

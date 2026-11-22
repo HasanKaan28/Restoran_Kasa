@@ -51,7 +51,7 @@ describe('OrderSlipPrinter', () => {
     const data = createTestData();
     const tab = await fiveBeers(data, true);
     await pause(5);
-    chooseSlipMode('all', new Date());
+    chooseSlipMode('all', new Date(), data.settings.marketId);
     const print = vi.fn(async () => undefined);
     const { unmount } = await renderWithData(
       <OrderSlipPrinter settleMs={10} print={print} />,
@@ -87,12 +87,71 @@ describe('OrderSlipPrinter', () => {
 
   it('with "delivered only" leaves the orders sent to the kitchen or the bar', async () => {
     const data = createTestData();
-    chooseSlipMode('delivered', new Date(Date.now() - 1000));
+    chooseSlipMode('delivered', new Date(Date.now() - 1000), data.settings.marketId);
     const print = vi.fn(async () => undefined);
     await renderWithData(<OrderSlipPrinter settleMs={10} print={print} />, data);
     await fiveBeers(data, false);
     await pause(80);
     expect(print).not.toHaveBeenCalled();
+  });
+});
+
+describe('OrderSlipPrinter, past the basics', () => {
+  it('starts again from now when the choice was made in another market', async () => {
+    const data = createTestData();
+    chooseSlipMode('all', new Date(Date.now() - 60_000), 'another-restaurant');
+    // Sent after that choice, but before this market's printer ever ran.
+    await fiveBeers(data, true);
+    await pause(5);
+    const print = vi.fn(async () => undefined);
+    await renderWithData(<OrderSlipPrinter settleMs={10} print={print} />, data);
+    await pause(80);
+    expect(print).not.toHaveBeenCalled();
+
+    const tab = (await data.db.tabs.toArray())[0]!;
+    const beer = (await data.db.products.toArray())[0]!;
+    await addTabItem(data.db, tab.id, beer, { qtyMilli: 1000 }, { deviceCode: 'P1' }, new Date());
+    await deliverTab(data.db, tab.id, new Date());
+    await waitFor(() => expect(print).toHaveBeenCalledOnce());
+  });
+
+  it('names this device on a slip entered here with no waiter', async () => {
+    const data = createTestData();
+    chooseSlipMode('all', new Date(Date.now() - 1000), data.settings.marketId);
+    const print = vi.fn<(slips: OrderSlip[]) => Promise<void>>(async () => undefined);
+    await renderWithData(<OrderSlipPrinter settleMs={10} print={print} />, data);
+    const beer = await createProduct(
+      data.db,
+      { name: 'Efes', sellPrice: 15000, vatRate: 20, station: 'bar' },
+      new Date(),
+    );
+    const here = { deviceCode: data.settings.deviceCode };
+    const tab = await openTab(data.db, { label: 'Paket 1', ...here }, new Date());
+    await addTabItem(data.db, tab.id, beer, { qtyMilli: 1000 }, here, new Date());
+    await sendTab(data.db, tab.id, new Date());
+    await waitFor(() => expect(print).toHaveBeenCalledOnce());
+    expect(print.mock.calls[0]?.[0][0]?.devices).toEqual([data.settings.deviceName]);
+  });
+
+  it('prints within its longest wait while orders keep coming', async () => {
+    const data = createTestData();
+    chooseSlipMode('all', new Date(Date.now() - 1000), data.settings.marketId);
+    const print = vi.fn(async () => undefined);
+    await renderWithData(<OrderSlipPrinter settleMs={100} maxWaitMs={250} print={print} />, data);
+    const beer = await createProduct(
+      data.db,
+      { name: 'Efes', sellPrice: 15000, vatRate: 20, station: 'bar' },
+      new Date(),
+    );
+    const tab = await openTab(data.db, { label: 'Paket 1', deviceCode: 'P1' }, new Date());
+    // An order every 40 ms for over a second: the settling wait never runs out on its own.
+    const busyUntil = Date.now() + 1200;
+    while (Date.now() < busyUntil && print.mock.calls.length === 0) {
+      await addTabItem(data.db, tab.id, beer, { qtyMilli: 1000 }, { deviceCode: 'P1' }, new Date());
+      await sendTab(data.db, tab.id, new Date());
+      await pause(40);
+    }
+    expect(print).toHaveBeenCalled();
   });
 });
 

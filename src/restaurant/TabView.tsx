@@ -658,7 +658,8 @@ function LineSheet({
       {...(amount !== undefined ? { description: formatTRY(amount) } : {})}
     >
       <div className="flex flex-col gap-2">
-        {item.status === 'ready' ? (
+        {/* A line handed over at once was never waiting: it cannot be put back to waiting. */}
+        {item.status === 'ready' && !item.deliveredAt ? (
           item.servedAt ? (
             <Button onClick={() => onServe(false)}>Servis edilmedi</Button>
           ) : (

@@ -1,9 +1,12 @@
 import { Capacitor } from '@capacitor/core';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useSyncExternalStore, type JSX } from 'react';
-import { ChoiceGroup, type ChoiceOption } from '@/design';
+import { useData } from '@/app/appData';
+import { Button, ChoiceGroup, type ChoiceOption } from '@/design';
+import { loadReceiptSettings } from '@/pos/receiptSettings';
 import { SettingsSection } from '@/settings/MarketSections';
-import type { SlipMode } from './orderSlip';
-import { printsSilently } from './printOrderSlips';
+import { lastSlip, type SlipMode } from './orderSlip';
+import { printOrderSlips, printsSilently } from './printOrderSlips';
 import { chooseSlipMode, slipPrefsSnapshot, subscribeSlipPrefs } from './slipPrefs';
 
 const MODES: readonly ChoiceOption<SlipMode>[] = [
@@ -21,16 +24,31 @@ const MODE_TEXT: Record<SlipMode, string> = {
 
 /**
  * This device's order slips: whether it prints one for each order as it comes in (the device
- * with the printer, the bar's or the till's PC), and which orders. Off unless chosen here.
+ * with the printer, the bar's or the till's PC), and which orders. Off unless chosen here. The
+ * latest slip printed can be printed again (a jammed roll, a torn slip).
  */
 export function OrderSlipSection(): JSX.Element {
+  const { db, settings } = useData();
   const prefs = useSyncExternalStore(subscribeSlipPrefs, slipPrefsSnapshot);
+  const latest = useLiveQuery(() => lastSlip(db), [db]);
   const cannotPrint = !printsSilently() && Capacitor.isNativePlatform();
   return (
     <SettingsSection
       id="slip-heading"
       title="Sipariş adisyonu"
       description="Garson siparişi girince bu cihaz adisyon basar: ürünler ve adetler, giren kişi, masa, saat ve tarih. Yalnız yazıcının bağlı olduğu cihazda açın; açıldığı andan önceki siparişler basılmaz. Bu cihaza özeldir."
+      action={
+        <Button
+          disabled={!latest || cannotPrint}
+          onClick={() => {
+            if (latest) {
+              void printOrderSlips([latest], loadReceiptSettings().paperWidth);
+            }
+          }}
+        >
+          Son adisyonu tekrar bas
+        </Button>
+      }
     >
       {/* The Android app has no way to print: the choice stays as it is. */}
       <fieldset disabled={cannotPrint} className="min-w-0 disabled:opacity-60">
@@ -39,7 +57,7 @@ export function OrderSlipSection(): JSX.Element {
           name="order-slip"
           options={MODES}
           value={prefs.mode}
-          onChange={(mode) => chooseSlipMode(mode, new Date())}
+          onChange={(mode) => chooseSlipMode(mode, new Date(), settings.marketId)}
           wrap
         />
       </fieldset>
