@@ -20,6 +20,7 @@ import { SessionProvider } from '@/app/SessionProvider';
 import { createTestData, disposeTestData, renderWithData } from '@/test/renderWithData';
 import { signInAs } from '@/test/session';
 import { KitchenScreen } from './KitchenScreen';
+import { MoveDialog } from './MoveDialog';
 import { TablesScreen } from './TablesScreen';
 import { TablesSection } from './TablesSection';
 
@@ -600,6 +601,33 @@ describe('the kitchen’s screen', () => {
   });
 });
 
+describe('a table name two areas share', () => {
+  async function twoOnes() {
+    const data = createTestData();
+    await createDiningTable(data.db, { name: '1', area: 'Salon' }, new Date());
+    await createDiningTable(data.db, { name: '1', area: 'Dışarı' }, new Date());
+    await createDiningTable(data.db, { name: '2', area: 'Salon' }, new Date());
+    return data;
+  }
+
+  it('tells the two apart on the floor, leaving a unique name plain', async () => {
+    const data = await twoOnes();
+    await renderWithData(<TablesScreen />, data);
+    expect(await screen.findByRole('button', { name: /^Dışarı 1, boş/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Salon 1, boş/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^2, boş/ })).toBeInTheDocument();
+  });
+
+  it('tells the two apart in the move list', async () => {
+    const data = await twoOnes();
+    const [first] = await listDiningTables(data.db);
+    const tab = await openTab(data.db, { tableId: first!.id, deviceCode: 'K1' }, new Date());
+    await renderWithData(<MoveDialog tabId={tab.id} onClose={vi.fn()} onMoved={vi.fn()} />, data);
+    expect(await screen.findByRole('button', { name: 'Dışarı 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2' })).toBeInTheDocument();
+  });
+});
+
 describe('the tables in settings', () => {
   it('adds a numbered run of tables in one area', async () => {
     const onDone = vi.fn();
@@ -638,9 +666,19 @@ describe('the tables in settings', () => {
 
     const all = await listDiningTables(data.db);
     expect(all.filter((one) => one.area === 'Dışarı').map((one) => one.name)).toEqual(['1']);
-    expect(all.filter((one) => one.area === 'Salon').map((one) => [one.id, one.name, one.area])).toEqual(
-      before,
-    );
+    expect(
+      all.filter((one) => one.area === 'Salon').map((one) => [one.id, one.name, one.area]),
+    ).toEqual(before);
+  });
+
+  it('holds the add button back until the tables have loaded', async () => {
+    const data = createTestData();
+    await createDiningTable(data.db, { name: '1', area: 'Salon' }, new Date());
+    await renderWithData(<TablesSection onDone={vi.fn()} />, data);
+    // Before the list is in, the run to add is the empty-restaurant 1 to 10.
+    expect(screen.getByRole('button', { name: 'Masaları ekle' })).toBeDisabled();
+    await screen.findByRole('list', { name: 'Masa listesi' });
+    expect(screen.getByRole('button', { name: 'Masaları ekle' })).toBeEnabled();
   });
 
   it('does not remove a table while its tab has lines to pay', async () => {

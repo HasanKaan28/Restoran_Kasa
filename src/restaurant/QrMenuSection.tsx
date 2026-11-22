@@ -9,6 +9,7 @@ import { printView } from '@/pos/printView';
 import { deviceClient, ownerClient } from '@/server/client';
 import { SERVER } from '@/server/config';
 import { changeQrMenu, menuLink, menuPageUrl, readQrMenu, type QrMenuState } from '@/server/qrMenu';
+import { tableLabelIn } from './tableTitle';
 import { SettingsSection } from '@/settings/MarketSections';
 import { TableCardPreview, TableCardSheet } from './TableCards';
 import { CARD_PAGE_RULE, CARDS_PER_SHEET, type CardSize, type TableCard } from './tableCardSizes';
@@ -413,8 +414,8 @@ function TableCardsDialog({
       .filter((table) => !left.has(table.id))
       .map((table) => ({
         key: table.id,
-        table: table.name,
-        link: menuLink(slug, table.name, page),
+        table: tableLabelIn(table, tables ?? []),
+        link: menuLink(slug, tableLabelIn(table, tables ?? []), page),
       })),
     ...(withGeneral ? [{ key: 'genel', link: menuLink(slug, undefined, page) }] : []),
   ];
@@ -484,9 +485,9 @@ function TableCardsDialog({
                     className="size-5 accent-[var(--color-accent)]"
                     checked={!left.has(table.id)}
                     onChange={() => flip(table.id)}
-                    aria-label={table.name}
+                    aria-label={tableLabelIn(table, tables ?? [])}
                   />
-                  <span aria-hidden="true">{tableLabel(table.name)}</span>
+                  <span aria-hidden="true">{tableLabel(tableLabelIn(table, tables ?? []))}</span>
                 </label>
               ))}
             </div>

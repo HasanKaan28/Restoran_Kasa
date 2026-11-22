@@ -107,6 +107,20 @@ describe('names on the floor', () => {
   });
 });
 
+describe('a name two areas share', () => {
+  it('titles each tab with its area, while a unique name stays as it was', async () => {
+    await createDiningTable(db, { name: '1', area: 'Salon' }, at);
+    await createDiningTable(db, { name: '1', area: 'Dışarı' }, at);
+    await createDiningTable(db, { name: '2', area: 'Salon' }, at);
+    const [salon1, salon2, outside1] = await listDiningTables(db);
+    const title = async (tableId: string) =>
+      tabTitle(db, await openTab(db, { tableId, ...waiter }, at));
+    expect(await title(salon1!.id)).toBe('Salon 1');
+    expect(await title(outside1!.id)).toBe('Dışarı 1');
+    expect(await title(salon2!.id)).toBe('Masa 2');
+  });
+});
+
 describe('a table’s tab', () => {
   it('opens one tab per table and finds it again', async () => {
     const table = await createDiningTable(db, { name: 'S1', area: 'Salon' }, at);

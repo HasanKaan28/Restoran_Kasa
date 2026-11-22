@@ -4,6 +4,7 @@ import { computeCart, lineTotal } from '@/domain/pricing';
 import type { MarketDb } from './db';
 import { PaymentMismatchError, RecordNotFoundError, TableInUseError } from './errors';
 import { newId } from './ids';
+import { tableLabelIn } from '@/restaurant/tableTitle';
 import { appendOutbox } from './outbox';
 import { withoutUndefined } from './records';
 import { recordSale } from './sales';
@@ -834,7 +835,9 @@ export async function recallLast(db: MarketDb, station: Station, at: Date): Prom
 /** A tab's name as people say it: its table's, or the takeaway order's. */
 export async function tabTitle(db: MarketDb, tab: TabRecord): Promise<string> {
   if (tab.tableId) {
-    const name = (await db.diningTables.get(tab.tableId))?.name ?? '';
+    const table = await db.diningTables.get(tab.tableId);
+    // A name two areas share is told apart by its area.
+    const name = table ? tableLabelIn(table, await db.diningTables.toArray()) : '';
     // "3" alone reads as a count; "Masa 3" is how it is said.
     return /^\d+$/.test(name) ? `Masa ${name}` : name || 'Masa';
   }

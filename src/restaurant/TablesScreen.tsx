@@ -24,6 +24,7 @@ import { MoveDialog } from './MoveDialog';
 import { PayDialog } from './PayDialog';
 import { SetupChecklist } from './SetupChecklist';
 import { TabView } from './TabView';
+import { tableLabelIn } from './tableTitle';
 import { minutesSince, useNow } from './time';
 
 const ALL = '';
@@ -140,6 +141,8 @@ export function TablesScreen(): JSX.Element {
   }
 
   const areas = [...new Set((floor?.seated ?? []).map((table) => table.area))];
+  const labelOf = (table: { id: string; name: string; area: string }) =>
+    tableLabelIn(table, floor?.seated ?? []);
   const shown = (floor?.seated ?? []).filter((table) => area === ALL || table.area === area);
   const waiter = { deviceCode: settings.deviceCode, staffId: session.staff?.id };
 
@@ -250,7 +253,7 @@ export function TablesScreen(): JSX.Element {
                     pressEnd();
                     setActions(table);
                   }}
-                  aria-label={`${table.name}, ${
+                  aria-label={`${labelOf(table)}, ${
                     busy
                       ? `${billAsked ? 'hesap istendi' : 'dolu'}, ${formatTRY(table.total)}`
                       : 'boş'
@@ -266,7 +269,7 @@ export function TablesScreen(): JSX.Element {
                   }`}
                 >
                   <span className="font-display text-2xl leading-none font-bold tracking-[-0.02em]">
-                    {table.name}
+                    {labelOf(table)}
                   </span>
                   {busy ? (
                     <span className="flex flex-col text-sm">

@@ -98,7 +98,8 @@ export function TablesSection({ onDone }: { onDone(message: string): void }): JS
             onChange={(event) => setTo(event.target.value)}
           />
         </div>
-        <Button type="submit" variant="primary">
+        {/* Held back while the tables load: the suggested run then is the empty-restaurant 1 to 10. */}
+        <Button type="submit" variant="primary" disabled={tables === undefined}>
           Masaları ekle
         </Button>
       </form>

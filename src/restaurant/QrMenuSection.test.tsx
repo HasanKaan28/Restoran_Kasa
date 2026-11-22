@@ -110,6 +110,30 @@ describe('Settings → QR menü', () => {
     );
   });
 
+  it('names a shared table name by its area on its card and in its link, keeping unique links', async () => {
+    const user = userEvent.setup();
+    const data = createTestData();
+    await createDiningTable(data.db, { name: '1', area: 'Salon' }, new Date());
+    await createDiningTable(data.db, { name: '1', area: 'Dışarı' }, new Date());
+    await createDiningTable(data.db, { name: '2', area: 'Salon' }, new Date());
+    const { props, print } = setup({ enabled: true, slug: SLUG });
+    await renderWithData(<QrMenuPanel {...props} />, data);
+
+    await user.click(await screen.findByRole('button', { name: 'Masa kartlarını yazdır' }));
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByLabelText('Dışarı 1');
+    expect(within(dialog).getByLabelText('Salon 1')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Yazdır' }));
+
+    expect(print).toHaveBeenCalledTimes(1);
+    const printed = within(document.getElementById('print-root') as HTMLElement);
+    expect(printed.getAllByRole('img').map((code) => code.getAttribute('aria-label'))).toEqual([
+      `QR kod: ${PAGE}?masa=Salon%201#${SLUG}`,
+      `QR kod: ${PAGE}?masa=2#${SLUG}`,
+      `QR kod: ${PAGE}?masa=D%C4%B1%C5%9Far%C4%B1%201#${SLUG}`,
+    ]);
+  });
+
   it('prints one card per table, each with its own QR code', async () => {
     const user = userEvent.setup();
     const data = createTestData();

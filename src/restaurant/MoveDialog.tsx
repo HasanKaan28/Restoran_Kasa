@@ -3,7 +3,7 @@ import { useState, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { listDiningTables, mergeTabs, moveTab, openTabs } from '@/data/restaurant';
 import { Button, Dialog } from '@/design';
-import { tableTitle } from './tableTitle';
+import { tableLabelIn, tableTitle } from './tableTitle';
 
 /**
  * Moves a tab to another table: to an empty one it simply moves; onto a table with its own tab
@@ -29,6 +29,8 @@ export function MoveDialog({
       tab: tabs.find((tab) => tab.tableId === table.id),
     }));
   }, [db]);
+
+  const tables = (floor ?? []).map(({ table }) => table);
 
   async function choose(tableId: string, otherTabId: string | undefined) {
     try {
@@ -73,11 +75,11 @@ export function MoveDialog({
                   className="w-full"
                   onClick={() =>
                     tab
-                      ? setMerging({ name: table.name, tabId: tab.id })
+                      ? setMerging({ name: tableLabelIn(table, tables), tabId: tab.id })
                       : void choose(table.id, undefined)
                   }
                 >
-                  {`${table.name}${tab ? ' (dolu)' : ''}`}
+                  {`${tableLabelIn(table, tables)}${tab ? ' (dolu)' : ''}`}
                 </Button>
               </li>
             ))}
