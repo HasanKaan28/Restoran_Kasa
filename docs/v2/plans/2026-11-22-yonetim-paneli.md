@@ -128,3 +128,41 @@
 2. Eski kayıtlar (yeni alanlar yok) ve v1.0.4 cihazdan gelen satırlar.
 3. 375 px: alt menü, Yönetim sekmeleri, rapor tabloları — sayfa yana kaymaz.
 4. Business day sınırı (`cutoffMinutes`) ile "Bugün/Bu ay".
+
+---
+
+## Ek (2026-11-22, kullanıcının yeni istekleri)
+
+Task 1'e eklenenler (temel): `ManageSection` → `'suppliers'` (Tedarikçi / Fatura, izin `suppliers`, `src/manage/SuppliersSection.tsx` yer tutucu); ReportsSection'a 4. alt görünüm `Günlük rapor` → `src/reports/DailyReportView.tsx` (`{from, to}`); `TabItemRecord.deliveredAt?: string`.
+
+**Karar — "fatura takibi":** `src/invoices/` e-Arşiv satış faturasıdır; faturayı sunucudaki sağlayıcı bağdaştırıcısı keser ve canlı sunucuda yoktur (kayıtlar "bekliyor"da kalır). Bu yüzden restorana bağlanmaz; sunucu adımı olarak raporlanır. Alış faturası takibi `src/suppliers/` (tedarikçi, alış faturası, ödeme; `suppliers` + `supplierLedger` canlıda zaten eşitleniyor) Task 6 kapsamında Yönetim > Tedarikçi / Fatura bölümüne bağlanır.
+
+## Task 7 — Bölüme göre masa numarası
+
+**Files:** `src/restaurant/TablesSection.tsx` ve masa adı önerisini üreten yer (gerekirse yeni saf modül `src/restaurant/tableNumbering.ts` + testi). `src/data/restaurant.ts`'e dokunma (gerekiyorsa yalnız okunur).
+
+- [ ] Bir bölüme masa eklenirken önerilen numara o bölümün kendi en büyük numarasından devam eder; boş bölüm 1'den başlar (Salon 1–10, Dışarı 1, 2…). Toplu ekleme varsa aynı kural.
+- [ ] Mevcut masalar, id'leri ve adları değişmez; yalnız yeni masa önerisi değişir. Arşivli masalar numara hesabında: ruling ver, yaz.
+- [ ] Test önce: Salon 1–10 varken Dışarı'ya eklenen ilk masa "1".
+
+## Task 8 — Günlük rapor (ürün bazlı, yazdır/PDF)
+
+**Files (yeni):** `src/reports/dailyReport.ts`, `src/reports/dailyReport.test.ts`, `src/reports/DailyReportView.tsx` (+ test), `src/reports/printDailyReport.tsx`. Mevcut `summary.ts`, `printReport.tsx`, `reportCsv.ts`'i yeniden kullan; değiştirme (gerekirse yalnız ekleme).
+
+- [ ] Dönem için (çoğunlukla Bugün): kategoriye göre gruplu ürün satırları (ad, adet/miktar, tutar), kategori ara toplamları, genel toplam, ödeme dağılımı (nakit/kart/veresiye), ikramlar ve iptaller ayrı satırda, fiş sayısı. Kategorisiz ürünler "Diğer".
+- [ ] "Günlük rapor al": temiz, sunulabilir sayfa; Yazdır (tarayıcı yazdırma = PDF olarak kaydet) ve CSV. 375 px'te okunur.
+- [ ] Para tamsayı kuruş; iptal edilmiş fiş rapora girmez.
+
+## Task 10 — "Teslim edildi" ve otomatik sipariş adisyonu
+
+**Files:** yeni `src/data/deliver.ts` (+ test), yeni `src/restaurant/orderSlip.ts` (+ test), yeni `src/restaurant/OrderSlipPrinter.tsx`, yeni cihaz ayarı modülü (mevcut `src/notify/` cihaz ayarı deseniyle), sipariş girişindeki gönder düğmesinin olduğu bileşen (TabView/OrderLines/MenuBrowser — en az dokunuşla), Ayarlar'da cihaz ayarı satırı (`src/settings/SettingsScreen.tsx` DeviceSettings bölümü). `src/data/restaurant.ts`'e yalnız gerekli küçük export eklemeleri.
+
+- [ ] Gönderilmemiş satırlar için "Mutfağa gönder"in yanında "Teslim edildi": satırlar `status: 'ready'`, `sentAt = readyAt = servedAt = deliveredAt = at` olur; mutfak/bar ekranında görünmez, beklemez. v1.0.4 bu satırları servis edilmiş hazır satır olarak okur (yeni durum yok).
+- [ ] Cihaz ayarı "Siparişte adisyon bas": Kapalı (varsayılan) / Yalnız teslim edilenler / Tüm siparişler. Yalnız açık cihaz basar.
+- [ ] Basan cihaz, eşitlemeyle gelen her yeni sipariş partisini (aynı tab + aynı `sentAt`) bir kez basar: ürünler ve adetler, giren kişi, masa, saat ve tarih. Yeniden yükleme/yeniden eşitleme sonrası tekrar basmaz; ayar ilk açıldığında eski partileri basmaz (açılış anı imleç olarak saklanır; basılan parti anahtarları cihazda tutulur, sınırlı boyutta).
+- [ ] Sessiz baskı: tarayıcı her zaman yazdırma penceresi gösterir; Electron'da sessiz baskı mümkünse `electron/` tarafına küçük bir köprü (yoksa ruling + rapor). Android: ne mümkün olduğunu rapora yaz, kod yazma.
+- [ ] Ödemedeki fiş değişmez; normal mutfağa gönder akışı aynen kalır.
+
+## Paralel dağıtım (Task 1'den sonra, her biri kendi worktree'sinde)
+
+T2 (iptal damgası, tekrar, veresiye ödeme), T3 (masa + iptal/tekrar raporu), T4 (personel performansı + StaffDialog izin ekranı), T5 (rapor arşivi), T6 (stok + veresiye + tedarikçi/fatura bölümleri), T7 (masa numarası), T8 (günlük rapor), T10 (teslim edildi + adisyon). T2 ve T10 `TabView`/`restaurant.ts`'te çakışabilir: ikisi de değişikliği küçük tutar, yeni kodu yeni dosyalara koyar; birleştirmeyi controller yapar.
