@@ -1,6 +1,6 @@
 import type { MarketDb } from '@/data/db';
 import type { PaymentMethod, ProductUnit } from '@/data/types';
-import type { Kurus } from '@/domain/money';
+import { divRoundHalfUp, type Kurus } from '@/domain/money';
 import { formatPriceInput, formatQtyInput } from '@/pos/format';
 import { csvText } from '@/products/exportCsv';
 import { buildSummary, loadRange, type SummaryInput } from './summary';
@@ -45,8 +45,13 @@ export type DailyReport = {
     value: Kurus;
     rows: { productId: string; name: string; unit?: ProductUnit; qtyMilli: number; value: Kurus }[];
   };
+  /** Receipts voided within the range: they are in no figure above. */
   voidCount: number;
   voidTotal: Kurus;
+  /** Receipts of earlier days voided within the range: their money is off the grand total. */
+  earlierVoidCount: number;
+  earlierVoidTotal: Kurus;
+  /** Returns within the range: already off the grand total. */
   returnCount: number;
   returnTotal: Kurus;
 };
@@ -62,34 +67,74 @@ export function buildDailyReport(
   { from, to }: { from: string; to: string },
 ): DailyReport {
   const summary = buildSummary(input);
+  const inRange = new Set(input.sales.map((sale) => sale.id));
   const voided = new Set(input.voids.map((saleVoid) => saleVoid.saleId));
+  const isTreat = (line: { net: Kurus; lineDiscount: Kurus }) =>
+    line.net === 0 && line.lineDiscount > 0;
   const treats = new Map<
     string,
-    { name: string; unit?: ProductUnit; qtyMilli: number; value: Kurus }
+    { name: string; unit?: ProductUnit; qtyMilli: number; value: Kurus; lines: number }
   >();
-  let treatCount = 0;
-  let treatValue = 0;
+  // What the summary's quantity of a product holds of treats, to take off its sold row: the
+  // treats of the range's receipts, less those returned or voided (the summary took those off).
+  const inSummary = new Map<string, number>();
+  const bump = (productId: string, qtyMilli: number) =>
+    inSummary.set(productId, (inSummary.get(productId) ?? 0) + qtyMilli);
   for (const sale of input.sales) {
     if (voided.has(sale.id)) {
       continue;
     }
-    for (const line of sale.lines) {
-      if (line.net !== 0 || line.lineDiscount <= 0) {
-        continue;
-      }
-      treatCount += 1;
-      treatValue += line.lineDiscount;
+    for (const line of sale.lines.filter(isTreat)) {
+      bump(line.productId, line.qtyMilli);
       const found = treats.get(line.productId) ?? {
         name: line.name,
         ...(line.unit ? { unit: line.unit } : {}),
         qtyMilli: 0,
         value: 0,
+        lines: 0,
       };
       treats.set(line.productId, {
         ...found,
         qtyMilli: found.qtyMilli + line.qtyMilli,
         value: found.value + line.lineDiscount,
+        lines: found.lines + 1,
       });
+    }
+  }
+  // A sale of an earlier day voided now: the summary took its lines off, treats among them.
+  for (const saleVoid of input.voids) {
+    const sale = input.salesById.get(saleVoid.saleId);
+    if (sale && !inRange.has(sale.id)) {
+      for (const line of sale.lines.filter(isTreat)) {
+        bump(line.productId, -line.qtyMilli);
+      }
+    }
+  }
+  // A returned treat comes off the treats too, if its sale is of this range.
+  for (const saleReturn of input.returns) {
+    if (voided.has(saleReturn.saleId)) {
+      continue;
+    }
+    for (const line of saleReturn.lines) {
+      if (line.net !== 0 || line.qtyMilli <= 0) {
+        continue;
+      }
+      bump(line.productId, -line.qtyMilli);
+      const found = inRange.has(saleReturn.saleId) ? treats.get(line.productId) : undefined;
+      if (!found) {
+        continue;
+      }
+      const back = Math.min(line.qtyMilli, found.qtyMilli);
+      const left = found.qtyMilli - back;
+      if (left === 0) {
+        treats.delete(line.productId);
+      } else {
+        treats.set(line.productId, {
+          ...found,
+          qtyMilli: left,
+          value: found.value - divRoundHalfUp(found.value * back, found.qtyMilli),
+        });
+      }
     }
   }
 
@@ -97,8 +142,8 @@ export function buildDailyReport(
   const categoryName = new Map(input.categories.map((c) => [c.id, c.name]));
   const groups = new Map<string, DailyReportGroup>();
   for (const sold of summary.productsSold) {
-    const qtyMilli = sold.qtyMilli - (treats.get(sold.productId)?.qtyMilli ?? 0);
-    if (qtyMilli === 0 && sold.net === 0) {
+    const qtyMilli = sold.qtyMilli - (inSummary.get(sold.productId) ?? 0);
+    if (qtyMilli <= 0 && sold.net === 0) {
       continue;
     }
     const categoryId = productCategory.get(sold.productId);
@@ -134,14 +179,22 @@ export function buildDailyReport(
     salesCount: summary.salesCount,
     byMethod: summary.byMethod,
     complimentary: {
-      count: treatCount,
-      value: treatValue,
+      count: [...treats.values()].reduce((sum, row) => sum + row.lines, 0),
+      value: [...treats.values()].reduce((sum, row) => sum + row.value, 0),
       rows: [...treats]
-        .map(([productId, row]) => ({ productId, ...row }))
+        .map(([productId, row]) => ({
+          productId,
+          name: row.name,
+          ...(row.unit ? { unit: row.unit } : {}),
+          qtyMilli: row.qtyMilli,
+          value: row.value,
+        }))
         .sort((a, b) => b.value - a.value || byName.compare(a.name, b.name)),
     },
-    voidCount: summary.voidCount,
-    voidTotal: summary.voidTotal,
+    voidCount: summary.voidCount - summary.earlierVoidCount,
+    voidTotal: summary.voidTotal - summary.earlierVoidTotal,
+    earlierVoidCount: summary.earlierVoidCount,
+    earlierVoidTotal: summary.earlierVoidTotal,
     returnCount: summary.returnCount,
     returnTotal: summary.returnTotal,
   };
@@ -184,11 +237,40 @@ export function dailyReportCsv(report: DailyReport): string {
   lines.push(row('Kart', '', '', '', formatPriceInput(report.byMethod.card)));
   lines.push(row('Veresiye', '', '', '', formatPriceInput(report.byMethod.credit)));
   lines.push(
-    row('İkram', '', String(report.complimentary.count), 'Kalem', formatPriceInput(report.complimentary.value)),
+    row(
+      'İkram',
+      '',
+      String(report.complimentary.count),
+      'Kalem',
+      formatPriceInput(report.complimentary.value),
+    ),
   );
-  lines.push(row('İptal', '', String(report.voidCount), 'Fiş', formatPriceInput(report.voidTotal)));
   lines.push(
-    row('İade', '', String(report.returnCount), 'İade', formatPriceInput(report.returnTotal)),
+    row(
+      'İptal (genel toplama dahil değil)',
+      '',
+      String(report.voidCount),
+      'Fiş',
+      formatPriceInput(report.voidTotal),
+    ),
+  );
+  lines.push(
+    row(
+      'Önceki günlerin iptali (genel toplamdan düşüldü)',
+      '',
+      String(report.earlierVoidCount),
+      'Fiş',
+      formatPriceInput(report.earlierVoidTotal),
+    ),
+  );
+  lines.push(
+    row(
+      'İade (genel toplamdan düşüldü)',
+      '',
+      String(report.returnCount),
+      'İade',
+      formatPriceInput(report.returnTotal),
+    ),
   );
   lines.push(row('Fiş sayısı', '', '', '', String(report.salesCount)));
   return BOM + lines.map((line) => line + LINE_END).join('');

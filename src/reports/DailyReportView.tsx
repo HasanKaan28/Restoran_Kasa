@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Download, Printer } from 'lucide-react';
-import type { JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { useSession } from '@/app/session';
 import { Button } from '@/design';
@@ -15,6 +15,8 @@ export function DailyReportView({ from, to }: { from: string; to: string }): JSX
   const { db, settings } = useData();
   const session = useSession();
   const report = useLiveQuery(() => loadDailyReport(db, { from, to }), [db, from, to]);
+  // Fixed per report, so a redraw does not change the time shown on the sheet.
+  const shownAt = useMemo(() => (report ? new Date() : undefined), [report]);
 
   return (
     <>
@@ -49,7 +51,7 @@ export function DailyReportView({ from, to }: { from: string; to: string }): JSX
       {report ? (
         <div className="rounded-control border border-line bg-surface p-4">
           <DailyReportSheet
-            model={{ marketName: settings.marketName, report, printedAt: new Date() }}
+            model={{ marketName: settings.marketName, report, printedAt: shownAt ?? new Date() }}
           />
         </div>
       ) : (

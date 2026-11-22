@@ -3,6 +3,7 @@ import { createCategory } from '@/data/categories';
 import { createCustomer } from '@/data/customers';
 import type { MarketDb } from '@/data/db';
 import { createProduct } from '@/data/products';
+import { recordReturn } from '@/data/returns';
 import { recordSale } from '@/data/sales';
 import { voidSale } from '@/data/voids';
 import { makeTestDb } from '@/test/db';
@@ -126,7 +127,135 @@ describe('loadDailyReport', () => {
   });
 });
 
+describe('treats with returns and earlier voids', () => {
+  const noNegativeFreebies = (report: Awaited<ReturnType<typeof loadDailyReport>>) =>
+    report.categories
+      .flatMap((group) => group.rows)
+      .filter((row) => row.qtyMilli < 0 && row.net === 0);
+
+  it('does not count a returned treat twice', async () => {
+    const { tea, cola } = await setup();
+    const sale = await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29),
+      lines: [
+        { productId: tea.id, qtyMilli: 1000 },
+        { productId: cola.id, qtyMilli: 2000, lineDiscount: 6000 },
+      ],
+      payments: [{ method: 'cash', amount: 9000 }],
+    });
+    await recordReturn(db, {
+      saleId: sale.id,
+      lines: [{ productId: cola.id, qtyMilli: 2000 }],
+      deviceCode: 'K1',
+      at: day(29, 5),
+    });
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+    expect(noNegativeFreebies(report)).toEqual([]);
+    expect(report.categories.flatMap((group) => group.rows.map((row) => row.name))).toEqual([
+      'Çay',
+    ]);
+    expect(report.complimentary).toEqual({ count: 0, value: 0, rows: [] });
+    expect(report.total).toBe(9000);
+  });
+
+  it('keeps a partly returned treat for what is left', async () => {
+    const { tea, cola } = await setup();
+    const sale = await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29),
+      lines: [
+        { productId: tea.id, qtyMilli: 1000 },
+        { productId: cola.id, qtyMilli: 2000, lineDiscount: 6000 },
+      ],
+      payments: [{ method: 'cash', amount: 9000 }],
+    });
+    await recordReturn(db, {
+      saleId: sale.id,
+      lines: [{ productId: cola.id, qtyMilli: 1000 }],
+      deviceCode: 'K1',
+      at: day(29, 5),
+    });
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+    expect(noNegativeFreebies(report)).toEqual([]);
+    expect(report.complimentary.rows).toEqual([
+      expect.objectContaining({ name: 'Kola', qtyMilli: 1000, value: 3000 }),
+    ]);
+    expect(report.complimentary.value).toBe(3000);
+    expect(report.returnCount).toBe(1);
+  });
+
+  it('leaves the treats of an earlier day alone when its sale is voided now', async () => {
+    const { tea, cola } = await setup();
+    const sale = await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(28),
+      lines: [
+        { productId: tea.id, qtyMilli: 1000 },
+        { productId: cola.id, qtyMilli: 1000, lineDiscount: 3000 },
+      ],
+      payments: [{ method: 'cash', amount: 9000 }],
+    });
+    await voidSale(db, { saleId: sale.id, reason: 'Yanlış', deviceCode: 'K1', at: day(29) });
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+    expect(noNegativeFreebies(report)).toEqual([]);
+    expect(report.complimentary).toEqual({ count: 0, value: 0, rows: [] });
+    expect(report.earlierVoidCount).toBe(1);
+    expect(report.earlierVoidTotal).toBe(9000);
+    expect(report.total).toBe(-9000);
+  });
+
+  it('does not take a treat of an earlier day off this day when it is returned', async () => {
+    const { tea, cola } = await setup();
+    const sale = await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(28),
+      lines: [
+        { productId: tea.id, qtyMilli: 1000 },
+        { productId: cola.id, qtyMilli: 1000, lineDiscount: 3000 },
+      ],
+      payments: [{ method: 'cash', amount: 9000 }],
+    });
+    await recordReturn(db, {
+      saleId: sale.id,
+      lines: [{ productId: cola.id, qtyMilli: 1000 }],
+      deviceCode: 'K1',
+      at: day(29),
+    });
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+    expect(noNegativeFreebies(report)).toEqual([]);
+    expect(report.complimentary.count).toBe(0);
+  });
+});
+
 describe('dailyReportCsv', () => {
+  it('says returns and earlier voids are already off the grand total', async () => {
+    const { tea } = await setup();
+    const sale = await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(28),
+      lines: [{ productId: tea.id, qtyMilli: 1000 }],
+      payments: [{ method: 'cash', amount: 9000 }],
+    });
+    const kept = await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29),
+      lines: [{ productId: tea.id, qtyMilli: 2000 }],
+      payments: [{ method: 'cash', amount: 18000 }],
+    });
+    await recordReturn(db, {
+      saleId: kept.id,
+      lines: [{ productId: tea.id, qtyMilli: 1000 }],
+      deviceCode: 'K1',
+      at: day(29, 5),
+    });
+    await voidSale(db, { saleId: sale.id, reason: 'Yanlış', deviceCode: 'K1', at: day(29, 6) });
+    const csv = dailyReportCsv(await loadDailyReport(db, { from: date(29), to: date(29) }));
+    expect(csv).toContain('İade (genel toplamdan düşüldü);;1;İade;90,00\r\n');
+    expect(csv).toContain('Önceki günlerin iptali (genel toplamdan düşüldü);;1;Fiş;90,00\r\n');
+    expect(csv).toContain('İptal (genel toplama dahil değil);;0;Fiş;0,00\r\n');
+  });
+
   it('lists products with category, subtotals and the figures, behind a BOM', async () => {
     const { tea, cola } = await setup();
     await recordSale(db, {

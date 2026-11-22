@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createCategory } from '@/data/categories';
 import { createProduct } from '@/data/products';
+import { recordReturn } from '@/data/returns';
 import { recordSale } from '@/data/sales';
-import { businessDate } from '@/domain/businessDate';
 import { createTestData, renderWithData } from '@/test/renderWithData';
 import { DailyReportView } from './DailyReportView';
 
@@ -16,7 +16,7 @@ async function dayData() {
     { name: 'Çay', sellPrice: 9000, buyPrice: 7000, vatRate: 1, categoryId: drinks.id },
     new Date(),
   );
-  await recordSale(data.db, {
+  const sale = await recordSale(data.db, {
     deviceCode: 'K1',
     at: new Date(),
     lines: [
@@ -25,14 +25,28 @@ async function dayData() {
     ],
     payments: [{ method: 'cash', amount: 18000 }],
   });
-  return data;
+  // The day the sale landed on, whatever the clock says.
+  return { data, sale, tea };
 }
 
-const today = () => businessDate(new Date(), { cutoffMinutes: 0 });
-
 describe('DailyReportView', () => {
+  it('says treats and full discounts, and what is already off the total', async () => {
+    const { data, sale, tea } = await dayData();
+    await recordReturn(data.db, {
+      saleId: sale.id,
+      lines: [{ productId: tea.id, qtyMilli: 1000 }],
+      deviceCode: 'K1',
+      at: new Date(),
+    });
+    await renderWithData(<DailyReportView from={sale.businessDate} to={sale.businessDate} />, data);
+    expect(await screen.findByText('İade (1 iade, genel toplamdan düşüldü)')).toBeInTheDocument();
+    expect(screen.getByText('İptal (0 fiş, genel toplama dahil değil)')).toBeInTheDocument();
+    expect(screen.getByText(/%100\) satırlar da ikram sayılır/)).toBeInTheDocument();
+  });
+
   it('shows the report of the day by category, with treats and totals', async () => {
-    const data = await dayData();
+    const { data, sale } = await dayData();
+    const today = () => sale.businessDate;
     await renderWithData(<DailyReportView from={today()} to={today()} />, data);
     const table = await screen.findByRole('table', { name: 'İçecek' });
     expect(within(table).getByText('Çay')).toBeInTheDocument();
@@ -43,7 +57,8 @@ describe('DailyReportView', () => {
   });
 
   it('prints the same report and exports it as CSV', async () => {
-    const data = await dayData();
+    const { data, sale } = await dayData();
+    const today = () => sale.businessDate;
     const files: Blob[] = [];
     URL.createObjectURL = vi.fn((file: Blob) => {
       files.push(file);

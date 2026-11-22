@@ -81,16 +81,28 @@ export function DailyReportSheet({ model }: { model: DailyReportModel }): JSX.El
         <Line
           label="İptal"
           value={formatAmount(report.voidTotal)}
-          note={`${report.voidCount} fiş`}
+          note={`${report.voidCount} fiş, genel toplama dahil değil`}
         />
+        {report.earlierVoidCount > 0 ? (
+          <Line
+            label="Önceki günlerin iptali"
+            value={formatAmount(report.earlierVoidTotal)}
+            note={`${report.earlierVoidCount} fiş, genel toplamdan düşüldü`}
+          />
+        ) : null}
         {report.returnCount > 0 ? (
           <Line
             label="İade"
             value={formatAmount(report.returnTotal)}
-            note={`${report.returnCount} iade`}
+            note={`${report.returnCount} iade, genel toplamdan düşüldü`}
           />
         ) : null}
       </dl>
+      {report.complimentary.count > 0 ? (
+        <p className="text-[10pt]">
+          İkram toplama dahil değildir. Tamamı indirimli (%100) satırlar da ikram sayılır.
+        </p>
+      ) : null}
       {report.complimentary.rows.length > 0 ? (
         <table className="w-full border-collapse text-left">
           <caption className="mb-1 text-left text-[12pt] font-semibold">İkram edilenler</caption>
