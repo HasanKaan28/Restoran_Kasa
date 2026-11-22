@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type JSX } from 'react';
 import { useData } from '@/app/appData';
+import { useSession } from '@/app/session';
 import { formatDay } from '@/data/dates';
 import { listSupplierPurchases } from '@/data/purchases';
 import { documentDay } from '@/data/supplierLedger';
@@ -23,6 +24,9 @@ const invoiceName = (purchase: PurchaseRecord) =>
  */
 export function SupplierInvoices({ supplierId }: { supplierId: string }): JSX.Element | null {
   const { db } = useData();
+  // What each product cost is the cost's (seeCost); what the invoice adds up to is owed, so the
+  // supplier's own permission shows it.
+  const seeCost = useSession().can('seeCost');
   const purchases = useLiveQuery(() => listSupplierPurchases(db, supplierId), [db, supplierId]);
   const [openId, setOpenId] = useState<string>();
 
@@ -66,12 +70,16 @@ export function SupplierInvoices({ supplierId }: { supplierId: string }): JSX.El
                         <th scope="col" className="py-1.5 pr-3 text-right font-medium">
                           Miktar
                         </th>
-                        <th scope="col" className="py-1.5 pr-3 text-right font-medium">
-                          Alış fiyatı
-                        </th>
-                        <th scope="col" className="py-1.5 text-right font-medium">
-                          Tutar
-                        </th>
+                        {seeCost ? (
+                          <>
+                            <th scope="col" className="py-1.5 pr-3 text-right font-medium">
+                              Alış fiyatı
+                            </th>
+                            <th scope="col" className="py-1.5 text-right font-medium">
+                              Tutar
+                            </th>
+                          </>
+                        ) : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -81,10 +89,16 @@ export function SupplierInvoices({ supplierId }: { supplierId: string }): JSX.El
                           <td className="py-1.5 pr-3 text-right font-mono">
                             {formatStock(line.qtyMilli, line.unit)}
                           </td>
-                          <td className="py-1.5 pr-3 text-right font-mono">
-                            {line.free ? 'Bedelsiz' : formatTRY(line.buyPrice)}
-                          </td>
-                          <td className="py-1.5 text-right font-mono">{formatTRY(line.cost)}</td>
+                          {seeCost ? (
+                            <>
+                              <td className="py-1.5 pr-3 text-right font-mono">
+                                {line.free ? 'Bedelsiz' : formatTRY(line.buyPrice)}
+                              </td>
+                              <td className="py-1.5 text-right font-mono">
+                                {formatTRY(line.cost)}
+                              </td>
+                            </>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>

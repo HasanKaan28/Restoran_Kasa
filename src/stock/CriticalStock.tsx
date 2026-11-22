@@ -7,8 +7,8 @@ import { formatStock } from '@/pos/format';
 import { isCritical } from '@/products/productList';
 
 export type CriticalStockProps = {
-  /** Puts a product on the goods receipt being prepared. */
-  onReceive(product: ProductRecord): void;
+  /** Puts a product on the goods receipt being prepared; without it no button is offered. */
+  onReceive?: (product: ProductRecord) => void;
 };
 
 /** Live products at or below their critical level, the furthest below it first. */
@@ -70,12 +70,14 @@ export function CriticalStock({ onReceive }: CriticalStockProps): JSX.Element {
               {formatStock(product.criticalLevelMilli, product.unit)}
             </td>
             <td className="py-1.5">
-              <Button
-                aria-label={`Mal kabule ekle: ${product.name}`}
-                onClick={() => onReceive(product)}
-              >
-                Mal kabule ekle
-              </Button>
+              {onReceive ? (
+                <Button
+                  aria-label={`Mal kabule ekle: ${product.name}`}
+                  onClick={() => onReceive(product)}
+                >
+                  Mal kabule ekle
+                </Button>
+              ) : null}
             </td>
           </tr>
         ))}

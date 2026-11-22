@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { MessageCircle, Plus } from 'lucide-react';
-import { useState, type JSX } from 'react';
+import { useState, type JSX, type ReactNode } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { useMarketSettings } from '@/app/marketSettings';
 import { useSession } from '@/app/session';
@@ -24,10 +24,37 @@ const VIEWS: readonly { value: CustomerView; label: string }[] = [
   { value: 'reminders', label: 'Hatırlatma' },
 ];
 
-/** The credit customers: what each owes, since when, and against which limit. */
+/** The credit customers' screen of the market's own menu. */
 export function CustomersScreen(): JSX.Element {
-  const { db, settings, runner } = useData();
+  const { settings, runner } = useData();
   const status = useSyncStatus(runner);
+  return (
+    <AppShell
+      marketName={settings.marketName}
+      deviceName={settings.deviceName}
+      syncState={status.state}
+      pendingCount={status.pendingCount}
+      syncError={status.error}
+      activeNav="customers"
+    >
+      <CustomersPanel title={<h1 className="text-xl font-semibold">Müşteriler</h1>} allowV1Import />
+    </AppShell>
+  );
+}
+
+/**
+ * The credit customers without a screen around it: what each owes, since when, and against
+ * which limit. Bringing v1's customers over is offered (to the owners) only when `allowV1Import`.
+ */
+export function CustomersPanel({
+  title,
+  allowV1Import = false,
+}: {
+  /** The heading to show above the count; the screen gives its own. */
+  title?: ReactNode;
+  allowV1Import?: boolean;
+}): JSX.Element {
+  const { db, settings, runner } = useData();
   const toast = useToast();
   const [query, setQuery] = useState('');
   const [view, setView] = useState<CustomerView>('all');
@@ -55,23 +82,16 @@ export function CustomersScreen(): JSX.Element {
 
   return (
     <>
-      <AppShell
-        marketName={settings.marketName}
-        deviceName={settings.deviceName}
-        syncState={status.state}
-        pendingCount={status.pendingCount}
-        syncError={status.error}
-        activeNav="customers"
-      >
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="mr-auto">
-            <h1 className="text-xl font-semibold">Müşteriler</h1>
+            {title}
             {summaries ? (
               <p className="text-sm text-text-2">{`${summaries.length} müşteri`}</p>
             ) : null}
           </div>
           {/* Bringing v1's debts over writes the ledger: the owners' job. */}
-          {session.can('admin') ? (
+          {allowV1Import && session.can('admin') ? (
             <Button onClick={() => setDialog({ kind: 'v1' })}>v1'den aktar</Button>
           ) : null}
           <Button
@@ -192,7 +212,7 @@ export function CustomersScreen(): JSX.Element {
             </tbody>
           </table>
         ) : null}
-      </AppShell>
+      </div>
       {dialog?.kind === 'customer' ? (
         <CustomerDialog open customerId={dialog.id} onClose={() => setDialog(null)} onDone={done} />
       ) : null}

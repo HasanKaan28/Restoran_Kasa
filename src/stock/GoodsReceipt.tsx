@@ -58,7 +58,10 @@ export type GoodsReceiptProps = {
 export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
   const { db, settings, runner } = useData();
   const actor = useActor();
-  const { staff } = useSession();
+  const { staff, can } = useSession();
+  // A receipt changes the menu's sell price and starts or brings back products: editProducts.
+  // (The view itself is for whoever has stock and seeCost: StockPanel.)
+  const editProducts = can('editProducts');
   const { cutoffMinutes } = useMarketSettings();
   const [draft, setDraft] = useState<ReceiptDraft>(() => loadDraft());
   const [query, setQuery] = useState('');
@@ -116,9 +119,17 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
     if (product && !product.deletedAt) {
       add(product);
     } else if (product) {
-      setForm({ product });
+      if (editProducts) {
+        setForm({ product });
+      } else {
+        setFailure('Bu ürün silinmiş. Geri getirmek için yetkiniz yok.');
+      }
     } else if (!typed || looksLikeBarcode(code)) {
-      setForm({ barcode: code });
+      if (editProducts) {
+        setForm({ barcode: code });
+      } else {
+        setFailure('Bu barkod kayıtlı değil. Ürün eklemek için yetkiniz yok.');
+      }
     }
   }
 
@@ -184,7 +195,13 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
         db,
         draft.lines.map((line) => line.productId),
       );
-      const read = readDraftLines(draft, products);
+      // A draft kept on this device by someone who could edit prices never sets one for someone who cannot.
+      const read = readDraftLines(
+        editProducts
+          ? draft
+          : { ...draft, lines: draft.lines.map((line) => ({ ...line, sellPrice: undefined })) },
+        products,
+      );
       setErrors(read.errors);
       if (read.errors.size > 0) {
         const names = draft.lines
@@ -275,6 +292,7 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
                 product={product}
                 stockMilli={live?.stock.get(line.productId) ?? 0}
                 cost={cost}
+                showSellPrice={editProducts}
                 error={error}
                 onChange={(field, value) => setLine(line.productId, field, value)}
                 onFree={(free) => setFree(line.productId, free)}
@@ -400,6 +418,7 @@ function ReceiptLine({
   product,
   stockMilli,
   cost,
+  showSellPrice,
   error,
   onChange,
   onFree,
@@ -410,6 +429,8 @@ function ReceiptLine({
   product: ProductRecord | undefined;
   stockMilli: number;
   cost: number | undefined;
+  /** The sell price a receipt may change: for whoever edits the menu. */
+  showSellPrice: boolean;
   error: string | undefined;
   onChange(field: LineField, value: string): void;
   onFree(free: boolean): void;
@@ -453,15 +474,17 @@ function ReceiptLine({
           placeholder={keptPrice(product, 'buyPrice')}
           onChange={(event) => onChange('buyPrice', event.target.value)}
         />
-        <TextField
-          label="Satış fiyatı"
-          hint={unit === 'kg' ? 'Kilogram fiyatı' : undefined}
-          inputMode="decimal"
-          autoComplete="off"
-          value={shownPrice(line, product, 'sellPrice')}
-          placeholder={keptPrice(product, 'sellPrice')}
-          onChange={(event) => onChange('sellPrice', event.target.value)}
-        />
+        {showSellPrice ? (
+          <TextField
+            label="Satış fiyatı"
+            hint={unit === 'kg' ? 'Kilogram fiyatı' : undefined}
+            inputMode="decimal"
+            autoComplete="off"
+            value={shownPrice(line, product, 'sellPrice')}
+            placeholder={keptPrice(product, 'sellPrice')}
+            onChange={(event) => onChange('sellPrice', event.target.value)}
+          />
+        ) : null}
         <TextField
           label="SKT"
           hint="Son kullanma tarihi, isteğe bağlı"
