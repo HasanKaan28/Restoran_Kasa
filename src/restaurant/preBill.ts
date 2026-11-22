@@ -44,7 +44,7 @@ export function buildPreBill(
     lines: bill.lines.map(({ item, price, amount }) => ({
       name: itemLabel(item),
       detail: `${formatLineQty(item.qtyMilli, item.unit)} × ${formatTRY(price)}`,
-      ...(item.complimentary ? { discount: 'İkram' } : {}),
+      ...(item.remakeOf ? { discount: 'Tekrar' } : item.complimentary ? { discount: 'İkram' } : {}),
       amount: formatTRY(amount),
     })),
     totals: [

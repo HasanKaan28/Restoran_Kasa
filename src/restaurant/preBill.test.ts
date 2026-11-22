@@ -5,6 +5,7 @@ import {
   addTabItem,
   openTab,
   payTabAmount,
+  remakeItem,
   sendTab,
   setComplimentary,
   tabBill,
@@ -64,6 +65,24 @@ describe('the pre-bill (adisyon)', () => {
     const text = receiptText(model, 32);
     expect(text).toContain('ÖN HESAP (ADİSYON)');
     expect(text).not.toContain('Fiş ');
+  });
+
+  it('marks a remade line Tekrar, apart from a treat', async () => {
+    const kebab = await createProduct(
+      db,
+      { name: 'Adana', sellPrice: 45000, vatRate: 10, station: 'kitchen' },
+      at,
+    );
+    const tab = await openTab(db, { label: 'Paket 1', deviceCode: 'K1' }, at);
+    const line = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000 }, { deviceCode: 'K1' }, at);
+    await sendTab(db, tab.id, at);
+    await remakeItem(db, { itemId: line.id, reason: 'soğuk', deviceCode: 'K1' }, at);
+    const due = await tabDue(db, tab.id);
+    const bill = await tabBill(db, tab.id, due.lineIds);
+    const model = buildPreBill(bill, due, { ...context, at });
+    expect(model.lines.map((one) => one.discount)).toHaveLength(2);
+    expect(model.lines.filter((one) => one.discount === 'Tekrar')).toHaveLength(1);
+    expect(model.lines.filter((one) => one.discount === undefined)).toHaveLength(1);
   });
 
   it('names no waiter when none opened the tab', async () => {

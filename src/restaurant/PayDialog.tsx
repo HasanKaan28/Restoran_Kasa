@@ -449,7 +449,7 @@ export function PayDialog({
                     className="size-5 accent-accent"
                   />
                   <span className="flex min-w-0 flex-1 flex-col py-1.5">
-                    <span>{`${formatLineQty(item.qtyMilli, item.unit)} × ${itemLabel(item)}${item.complimentary ? ' (ikram)' : ''}`}</span>
+                    <span>{`${formatLineQty(item.qtyMilli, item.unit)} × ${itemLabel(item)}${item.remakeOf ? ' (tekrar)' : item.complimentary ? ' (ikram)' : ''}`}</span>
                     {item.options ? (
                       <span className="text-sm text-text-2">{item.options.join(' · ')}</span>
                     ) : null}

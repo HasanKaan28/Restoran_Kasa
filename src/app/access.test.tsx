@@ -391,6 +391,16 @@ describe('Yönetim', () => {
       'aria-current',
       'page',
     );
+    // The open section is inked like a chosen ChoiceGroup option, not a greyed-out pill.
+    expect(within(tabs).getByRole('link', { name: 'Raporlar' })).toHaveClass(
+      'border-text',
+      'bg-text',
+      'text-bg',
+    );
+    expect(within(tabs).getByRole('link', { name: 'Stok' })).toHaveClass(
+      'bg-surface',
+      'text-text-2',
+    );
     expect(within(tabs).getByRole('link', { name: 'Stok' })).toHaveAttribute(
       'href',
       '#/manage/stock',

@@ -6,7 +6,7 @@ import { archiveDiningTable, createDiningTable, listDiningTables } from '@/data/
 import { Button, TextField } from '@/design';
 import { SettingsSection } from '@/settings/MarketSections';
 import { suggestedRun } from './tableNumbering';
-import { tableTitle } from './tableTitle';
+import { tableLabelIn, tableTitle } from './tableTitle';
 
 const MAX_AT_ONCE = 50;
 
@@ -118,7 +118,7 @@ export function TablesSection({ onDone }: { onDone(message: string): void }): JS
               <span>{`${table.name} · ${table.area}`}</span>
               <Button
                 variant="ghost"
-                aria-label={`Kaldır: ${table.name}`}
+                aria-label={`Kaldır: ${tableLabelIn(table, tables)}`}
                 onClick={() =>
                   void archiveDiningTable(db, table.id, new Date()).then(
                     () => {

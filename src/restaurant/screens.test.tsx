@@ -10,7 +10,9 @@ import {
   openTab,
   openTabs,
   payTabAmount,
+  remakeItem,
   sendTab,
+  setComplimentary,
 } from '@/data/restaurant';
 import { expectedCash } from '@/data/cash';
 import { saveServerLicense } from '@/data/license';
@@ -601,6 +603,47 @@ describe('the kitchen’s screen', () => {
   });
 });
 
+describe('the bill sheet names a free line by why it is free', () => {
+  it('labels a remake (tekrar) apart from a treat (ikram)', async () => {
+    const data = await restaurant();
+    const [table] = await listDiningTables(data.db);
+    const tab = await openTab(data.db, { tableId: table!.id, deviceCode: 'K1' }, new Date());
+    const kebab = await data.db.products.filter((one) => one.name === 'Adana kebap').first();
+    const ayran = await data.db.products.filter((one) => one.name === 'Ayran').first();
+    const sent = await addTabItem(
+      data.db,
+      tab.id,
+      kebab!,
+      { qtyMilli: 1000 },
+      { deviceCode: 'K1' },
+      new Date(),
+    );
+    const drink = await addTabItem(
+      data.db,
+      tab.id,
+      ayran!,
+      { qtyMilli: 1000 },
+      { deviceCode: 'K1' },
+      new Date(),
+    );
+    await sendTab(data.db, tab.id, new Date());
+    await remakeItem(
+      data.db,
+      { itemId: sent.id, reason: 'soğuk geldi', deviceCode: 'K1' },
+      new Date(),
+    );
+    await setComplimentary(data.db, drink.id, true, new Date());
+    await renderWithData(<TablesScreen />, data);
+
+    await userEvent.click(await screen.findByRole('button', { name: /^S1, dolu/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Hesap' }));
+    const bill = await screen.findByRole('dialog', { name: 'Hesap' });
+    const lines = await within(bill).findByRole('list', { name: 'Kalemler' });
+    expect(within(lines).getByText('1 × Adana kebap (tekrar)')).toBeInTheDocument();
+    expect(within(lines).getByText('1 × Ayran (ikram)')).toBeInTheDocument();
+  });
+});
+
 describe('a table name two areas share', () => {
   async function twoOnes() {
     const data = createTestData();
@@ -669,6 +712,17 @@ describe('the tables in settings', () => {
     expect(
       all.filter((one) => one.area === 'Salon').map((one) => [one.id, one.name, one.area]),
     ).toEqual(before);
+  });
+
+  it('tells same-named tables apart on the remove chips', async () => {
+    const data = createTestData();
+    await createDiningTable(data.db, { name: '1', area: 'Salon' }, new Date());
+    await createDiningTable(data.db, { name: '1', area: 'Dışarı' }, new Date());
+    await createDiningTable(data.db, { name: '2', area: 'Salon' }, new Date());
+    await renderWithData(<TablesSection onDone={vi.fn()} />, data);
+    expect(await screen.findByRole('button', { name: 'Kaldır: Salon 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kaldır: Dışarı 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kaldır: 2' })).toBeInTheDocument();
   });
 
   it('holds the add button back until the tables have loaded', async () => {
