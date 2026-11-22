@@ -21,6 +21,7 @@ const slip: OrderSlip = {
   tabId: 'tab-1',
   title: 'Masa 5',
   waiters: ['Ali'],
+  devices: [],
   sentAt: '2026-11-22T18:05:00.000Z',
   delivered: true,
   lines: [
@@ -110,10 +111,17 @@ describe('OrderSlipsView', () => {
   });
 
   it('calls an order sent to the kitchen a "Sipariş"', () => {
-    render(<OrderSlipsView slips={[{ ...slip, delivered: false, waiters: [] }]} paperWidth={58} />);
+    render(
+      <OrderSlipsView
+        slips={[{ ...slip, delivered: false, waiters: [], devices: ['Kasa 1'] }]}
+        paperWidth={58}
+      />,
+    );
     const printed = screen.getByRole('article', { name: 'Masa 5 siparişi' });
     expect(printed).toHaveTextContent('Sipariş');
     expect(printed).not.toHaveTextContent('Garson');
+    // No waiter known: the device it was entered on says who.
+    expect(printed).toHaveTextContent('Cihaz: Kasa 1');
   });
 });
 

@@ -31,6 +31,7 @@ function SlipView({ slip }: { slip: OrderSlip }): JSX.Element {
       <p className="text-center font-semibold">{slip.delivered ? 'Teslim edildi' : 'Sipariş'}</p>
       <p className="text-center text-[18px] font-bold">{slip.title}</p>
       {slip.waiters.length > 0 ? <p>{waiterLine(slip.waiters.join(', '))}</p> : null}
+      {slip.devices.length > 0 ? <p>{`Cihaz: ${slip.devices.join(', ')}`}</p> : null}
       <div className="flex justify-between">
         <span>{date}</span>
         <span>{time}</span>

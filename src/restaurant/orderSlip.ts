@@ -26,6 +26,8 @@ export type OrderSlip = {
   title: string;
   /** Who took the lines; empty when no staff are set up or the lines predate it. */
   waiters: string[];
+  /** Where the lines with no known waiter were entered: a device's name, or its code ("P1"). */
+  devices: string[];
   sentAt: string;
   /** Every line was handed over at once rather than sent to the kitchen or the bar. */
   delivered: boolean;
@@ -34,10 +36,23 @@ export type OrderSlip = {
 
 /** Where this device keeps the lines it has already printed (or passed over), by line and send. */
 const PRINTED_KEY = 'orderSlipsPrinted';
+/**
+ * The newest send the record had to forget past its ceiling: nothing sent at or before it is
+ * looked at again, so a forgotten line can never print twice.
+ */
+const FLOOR_KEY = 'orderSlipsFloor';
+/** The latest slip printed, for "Son adisyonu tekrar bas". */
+const LAST_KEY = 'orderSlipLast';
 /** An order sent longer ago than this is never printed; the record forgets it after as long. */
 const REMEMBER_MS = 24 * 60 * 60_000;
 /** A ceiling for a very busy day, so the record stays small whatever happens. */
 const MOST_REMEMBERED = 5_000;
+
+/** The oldest send still looked at: the choice's moment, or a day ago, whichever is later. */
+export function slipWindowStart(since: string, now: Date): string {
+  const dayAgo = new Date(now.getTime() - REMEMBER_MS).toISOString();
+  return since > dayAgo ? since : dayAgo;
+}
 
 /**
  * Looks at every order line sent since printing was turned on (`since`) and within the last day
@@ -49,7 +64,15 @@ const MOST_REMEMBERED = 5_000;
  */
 export async function takeNewSlips(
   db: MarketDb,
-  options: { mode: SlipMode; since: string; now: Date },
+  options: {
+    mode: SlipMode;
+    since: string;
+    now: Date;
+    /** Names of devices by code, for lines with no known waiter (this device's own, say). */
+    deviceNames?: Readonly<Record<string, string>>;
+    /** The record's ceiling; smaller only in tests. */
+    most?: number;
+  },
 ): Promise<OrderSlip[]> {
   if (options.mode === 'off') {
     return [];
@@ -61,11 +84,14 @@ export async function takeNewSlips(
     async () => {
       const stored = (await db.meta.get(PRINTED_KEY))?.value;
       const printed = new Set(Array.isArray(stored) ? stored.filter(isText) : []);
-      const dayAgo = new Date(options.now.getTime() - REMEMBER_MS).toISOString();
-      const from = options.since > dayAgo ? options.since : dayAgo;
-      const unseen = (await db.tabItems.where('sentAt').aboveOrEqual(from).toArray()).filter(
-        (item) => !printed.has(printedKey(item)),
-      );
+      const storedFloor = (await db.meta.get(FLOOR_KEY))?.value;
+      const floor = typeof storedFloor === 'string' ? storedFloor : '';
+      const unseen = (
+        await db.tabItems
+          .where('sentAt')
+          .aboveOrEqual(slipWindowStart(options.since, options.now))
+          .toArray()
+      ).filter((item) => (item.sentAt ?? '') > floor && !printed.has(printedKey(item)));
 
       const slips: OrderSlip[] = [];
       const looked: string[] = [];
@@ -86,18 +112,26 @@ export async function takeNewSlips(
           id: `${first.tabId}@${first.sentAt ?? ''}`,
           tabId: first.tabId,
           title: await tabTitle(db, tab),
-          waiters: await waiterNames(db, shown),
+          ...(await whoEntered(db, shown, options.deviceNames ?? {})),
           sentAt: first.sentAt ?? '',
           delivered: shown.every((item) => item.deliveredAt),
           lines: sumByDish(shown),
         });
       }
 
-      const kept = [...printed].filter((key) => key.slice(key.indexOf('@') + 1) >= dayAgo);
-      await db.meta.put({
-        key: PRINTED_KEY,
-        value: [...kept, ...looked].slice(-MOST_REMEMBERED),
-      });
+      const dayAgo = new Date(options.now.getTime() - REMEMBER_MS).toISOString();
+      const record = remember(
+        [...printed, ...looked].filter((key) => sentOf(key) >= dayAgo),
+        options.most ?? MOST_REMEMBERED,
+      );
+      await db.meta.put({ key: PRINTED_KEY, value: record.keys });
+      if (record.floor > floor) {
+        await db.meta.put({ key: FLOOR_KEY, value: record.floor });
+      }
+      const latest = slips.at(-1);
+      if (latest) {
+        await db.meta.put({ key: LAST_KEY, value: latest });
+      }
       return slips;
     },
   );
@@ -119,6 +153,40 @@ const TIME = new Intl.DateTimeFormat('tr-TR', {
 export function slipDateTime(iso: string): { date: string; time: string } {
   const when = new Date(iso);
   return { date: DATE.format(when), time: TIME.format(when) };
+}
+
+/** The latest slip printed on this device, or null before the first. */
+export async function lastSlip(db: MarketDb): Promise<OrderSlip | null> {
+  const stored = (await db.meta.get(LAST_KEY))?.value;
+  return isSlip(stored) ? stored : null;
+}
+
+/**
+ * The record within its ceiling: past it, the oldest sends are forgotten whole and the newest of
+ * them becomes the floor, below which nothing is looked at again.
+ */
+function remember(keys: string[], most: number): { keys: string[]; floor: string } {
+  if (keys.length <= most) {
+    return { keys, floor: '' };
+  }
+  const sorted = [...keys].sort((a, b) => sentOf(a).localeCompare(sentOf(b)));
+  const floor = sentOf(sorted[keys.length - most - 1]!);
+  return { keys: sorted.filter((key) => sentOf(key) > floor), floor };
+}
+
+function sentOf(key: string): string {
+  return key.slice(key.indexOf('@') + 1);
+}
+
+function isSlip(value: unknown): value is OrderSlip {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as OrderSlip).id === 'string' &&
+    Array.isArray((value as OrderSlip).lines) &&
+    Array.isArray((value as OrderSlip).waiters) &&
+    Array.isArray((value as OrderSlip).devices)
+  );
 }
 
 /** A line sent again (a recall, a later course) has a new `sentAt`, so it is a new order. */
@@ -143,16 +211,23 @@ function byOrder(items: TabItemRecord[]): TabItemRecord[][] {
   return [...orders.values()];
 }
 
-async function waiterNames(db: MarketDb, lines: TabItemRecord[]): Promise<string[]> {
-  const ids = [...new Set(lines.flatMap((line) => (line.staffId ? [line.staffId] : [])))];
-  const names: string[] = [];
-  for (const id of ids) {
-    const person = await db.staff.get(id);
+/** The waiters by name; for lines whose waiter is unknown, the device they were entered on. */
+async function whoEntered(
+  db: MarketDb,
+  lines: TabItemRecord[],
+  deviceNames: Readonly<Record<string, string>>,
+): Promise<Pick<OrderSlip, 'waiters' | 'devices'>> {
+  const waiters = new Set<string>();
+  const devices = new Set<string>();
+  for (const line of lines) {
+    const person = line.staffId ? await db.staff.get(line.staffId) : undefined;
     if (person) {
-      names.push(person.name);
+      waiters.add(person.name);
+    } else {
+      devices.add(deviceNames[line.deviceCode] ?? line.deviceCode);
     }
   }
-  return names;
+  return { waiters: [...waiters], devices: [...devices] };
 }
 
 function sumByDish(lines: TabItemRecord[]): OrderSlipLine[] {

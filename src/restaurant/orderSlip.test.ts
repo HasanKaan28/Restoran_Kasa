@@ -11,7 +11,7 @@ import {
   voidItem,
 } from '@/data/restaurant';
 import type { StaffRecord } from '@/data/types';
-import { slipDateTime, takeNewSlips, type SlipMode } from './orderSlip';
+import { lastSlip, slipDateTime, takeNewSlips, type SlipMode } from './orderSlip';
 
 let db: MarketDb;
 beforeEach(() => {
@@ -26,8 +26,14 @@ const later = (minutes: number) => new Date(at.getTime() + minutes * 60_000);
 const aliOnPhone = { deviceCode: 'P1', staffId: 'ali' };
 
 /** The bar PC turned printing on at `at`. */
-const take = (minutes: number, mode: SlipMode = 'all', since = at) =>
-  takeNewSlips(db, { mode, since: since.toISOString(), now: later(minutes) });
+const take = (minutes: number, mode: SlipMode = 'all', since = at, most?: number) =>
+  takeNewSlips(db, {
+    mode,
+    since: since.toISOString(),
+    now: later(minutes),
+    deviceNames: { K1: 'Kasa 1' },
+    ...(most === undefined ? {} : { most }),
+  });
 
 async function setUp() {
   await db.staff.put({
@@ -71,6 +77,7 @@ describe('takeNewSlips', () => {
         tabId: tab.id,
         title: 'Masa 5',
         waiters: ['Ali'],
+        devices: [],
         sentAt: later(2).toISOString(),
         delivered: true,
         lines: [
@@ -176,12 +183,53 @@ describe('takeNewSlips', () => {
     ]);
   });
 
-  it('prints a line sent by a v1.0.4 device or with no staff set up, without a waiter', async () => {
+  it('says the device that entered a line with no staff, by name when known, by code otherwise', async () => {
     const { beer, tab } = await setUp();
     await addTabItem(db, tab.id, beer, { qtyMilli: 1000 }, { deviceCode: 'K1' }, later(1));
     await sendTab(db, tab.id, later(2));
-    const [slip] = await take(3);
-    expect(slip).toMatchObject({ waiters: [], delivered: false, title: 'Masa 5' });
+    await addTabItem(db, tab.id, beer, { qtyMilli: 1000 }, { deviceCode: 'P7' }, later(3));
+    await sendTab(db, tab.id, later(4));
+    const slips = await take(5);
+    expect(slips.map((slip) => [slip.waiters, slip.devices])).toEqual([
+      [[], ['Kasa 1']],
+      [[], ['P7']],
+    ]);
+    expect(slips[0]).toMatchObject({ delivered: false, title: 'Masa 5' });
+  });
+
+  it('never prints again what it has had to forget past its ceiling', async () => {
+    const { beer, tab } = await setUp();
+    for (const minute of [1, 2, 3]) {
+      await addTabItem(db, tab.id, beer, { qtyMilli: 1000 }, aliOnPhone, later(minute));
+      await sendTab(db, tab.id, later(minute));
+    }
+    expect(await take(4, 'all', at, 2)).toHaveLength(3);
+    expect((await db.meta.get('orderSlipsPrinted'))?.value).toHaveLength(2);
+    // The oldest line fell off the record, and still does not come back.
+    expect(await take(5, 'all', at, 2)).toEqual([]);
+    expect(await take(6, 'all', at, 2)).toEqual([]);
+
+    // A new order still prints.
+    await addTabItem(db, tab.id, beer, { qtyMilli: 1000 }, aliOnPhone, later(7));
+    await sendTab(db, tab.id, later(7));
+    expect((await take(8, 'all', at, 2)).map((slip) => slip.sentAt)).toEqual([
+      later(7).toISOString(),
+    ]);
+    expect(await take(9, 'all', at, 2)).toEqual([]);
+  });
+
+  it('keeps the latest slip printed, to print again by hand', async () => {
+    const { beer, tab } = await setUp();
+    expect(await lastSlip(db)).toBeNull();
+    await addTabItem(db, tab.id, beer, { qtyMilli: 1000 }, aliOnPhone, later(1));
+    await sendTab(db, tab.id, later(1));
+    await addTabItem(db, tab.id, beer, { qtyMilli: 3000 }, aliOnPhone, later(2));
+    await deliverTab(db, tab.id, later(2));
+    const slips = await take(3);
+    expect(await lastSlip(db)).toEqual(slips[1]);
+    // A look that prints nothing keeps it.
+    await take(4);
+    expect((await lastSlip(db))?.lines[0]?.qtyMilli).toBe(3000);
   });
 
   it('remembers what it printed for a day only, and prints nothing older', async () => {
