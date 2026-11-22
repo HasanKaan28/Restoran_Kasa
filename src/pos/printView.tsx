@@ -7,16 +7,41 @@ const PAGE_STYLE_ID = 'print-page';
 const PRINTING_CLASS = 'printing-receipt';
 
 /**
- * Prints one view through the browser's print window: the view is rendered into a root laid
- * out off-screen, the page rule is worked out from it (a receipt is measured for its height),
- * and only while it prints does the page hide everything else (app.css). All of it is undone
- * once printing is over, so a later Ctrl+P prints the screen as usual.
+ * A print the page goes on with while it runs: the desktop app's silent print of an order slip.
+ * Until it is over, every other print waits for it, so none takes its page away.
+ */
+let inFlight: Promise<void> | null = null;
+/** Ends the print shown through the browser's window that has not yet said it is over. */
+let endShown: (() => void) | null = null;
+
+/**
+ * Prints one view: the view is rendered into a root laid out off-screen, the page rule is worked
+ * out from it (a receipt is measured for its height), and only while it prints does the page hide
+ * everything else (app.css). All of it is undone once printing is over, so a later Ctrl+P prints
+ * the screen as usual.
+ *
+ * Every print of the app comes through here, one at a time. `print` is the browser's print window
+ * by default, over once `afterprint` comes (a print started after it takes its place, as before);
+ * a `print` that returns a promise (the desktop's silent print) is over when it settles, and
+ * holds back every other print until then. The returned promise settles when this one is over.
  */
 export function printView(
   view: ReactNode,
   pageRule: (printed: HTMLElement) => string,
-  print: () => void = () => window.print(),
-): void {
+  print: () => void | Promise<unknown> = () => window.print(),
+): Promise<void> {
+  if (inFlight) {
+    return inFlight.then(() => printView(view, pageRule, print));
+  }
+  return printNow(view, pageRule, print);
+}
+
+function printNow(
+  view: ReactNode,
+  pageRule: (printed: HTMLElement) => string,
+  print: () => void | Promise<unknown>,
+): Promise<void> {
+  endShown?.();
   document.getElementById(ROOT_ID)?.remove();
   const container = document.createElement('div');
   container.id = ROOT_ID;
@@ -28,17 +53,49 @@ export function printView(
   style.textContent = pageRule(container);
   document.body.classList.add(PRINTING_CLASS);
 
-  window.addEventListener(
-    'afterprint',
-    () => {
+  return new Promise((resolve) => {
+    let over = false;
+    const end = () => {
+      if (over) {
+        return;
+      }
+      over = true;
+      window.removeEventListener('afterprint', end);
+      if (endShown === end) {
+        endShown = null;
+      }
       root.unmount();
       container.remove();
       style.remove();
       document.body.classList.remove(PRINTING_CLASS);
-    },
-    { once: true },
-  );
-  print();
+      resolve();
+    };
+
+    // Listened for before printing: a browser's window blocks, and says `afterprint` before
+    // `print` returns.
+    window.addEventListener('afterprint', end);
+    endShown = end;
+    let job: void | Promise<unknown>;
+    try {
+      job = print();
+    } catch (error) {
+      end();
+      throw error;
+    }
+    if (job instanceof Promise) {
+      // Over when it settles, whatever else says `afterprint` meanwhile.
+      window.removeEventListener('afterprint', end);
+      endShown = null;
+      const settled = job.then(
+        () => undefined,
+        () => undefined,
+      );
+      inFlight = settled.then(() => {
+        inFlight = null;
+        end();
+      });
+    }
+  });
 }
 
 function pageStyle(): HTMLStyleElement {
