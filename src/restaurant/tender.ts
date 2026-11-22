@@ -1,8 +1,11 @@
 import type { Payment } from '@/data/types';
 import { parseTRY, type Kurus } from '@/domain/money';
 
-/** How a bill is paid: all in cash, all by card, or part in cash and the rest by card. */
-export type Tender = 'cash' | 'card' | 'mixed';
+/**
+ * How a bill is paid: all in cash, all by card, part in cash and the rest by card, or all written
+ * to a customer's account (veresiye).
+ */
+export type Tender = 'cash' | 'card' | 'mixed' | 'credit';
 
 /** The payments of one receipt, or why they cannot be taken as typed. */
 export type TenderResult = { payments: Payment[]; cashGiven?: Kurus } | { error: string };
@@ -31,8 +34,8 @@ export function tenderFor(
   if (due === 0) {
     return { payments: [] };
   }
-  if (tender === 'card') {
-    return { payments: [{ method: 'card', amount: due }] };
+  if (tender === 'card' || tender === 'credit') {
+    return { payments: [{ method: tender, amount: due }] };
   }
   const given = typedAmount(typed.given);
   if (given === null) {
