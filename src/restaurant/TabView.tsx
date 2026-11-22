@@ -74,6 +74,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   const [voiding, setVoiding] = useState<TabItemRecord | null>(null);
   const [remaking, setRemaking] = useState<TabItemRecord | null>(null);
   const [dialog, setDialog] = useState<'pay' | 'move' | null>(null);
+  const [confirmingDelivery, setConfirmingDelivery] = useState(false);
   const [ordering, setOrdering] = useState<ProductRecord | null>(null);
   const waiter = { deviceCode: settings.deviceCode, staffId: session.staff?.id };
   // Once the licence's grace is over nothing more is sold (DESIGN §8.6): no new order is taken,
@@ -115,6 +116,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   // An order being taken: a new release reloads the web app only once it is sent.
   useHoldUpdates(fresh.length > 0);
   const held = (items ?? []).filter((item) => item.status === 'held');
+  const deliverable = fresh.filter((item) => !item.hold);
   const paid = (items ?? []).filter((item) => item.paidSaleId);
   const shown = (items ?? []).filter((item) => !item.paidSaleId);
   const billRequested = tab?.record.billRequestedAt !== undefined;
@@ -170,10 +172,15 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   }
 
   async function deliver() {
-    const count = await deliverTab(db, tabId, new Date());
-    toast.show(`${count} kalem teslim edildi.`);
-    navigator.vibrate?.(10);
-    void runner.run();
+    setConfirmingDelivery(false);
+    try {
+      const count = await deliverTab(db, tabId, new Date());
+      toast.show(`${count} kalem teslim edildi.`);
+      navigator.vibrate?.(10);
+      void runner.run();
+    } catch {
+      toast.show('Teslim edilemedi.');
+    }
   }
 
   async function addOrdered(product: ProductRecord, input: OrderInput) {
@@ -259,8 +266,13 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
       canPay={session.can('sell')}
       sendLabel={sendLabel}
       onSend={() => void send()}
-      deliverable={fresh.filter((item) => !item.hold).length}
-      onDeliver={() => void deliver()}
+      deliverable={deliverable.length}
+      // Kitchen lines handed over never reach the kitchen: that takes a second tap to confirm.
+      onDeliver={() =>
+        deliverable.some((item) => item.station === 'kitchen')
+          ? setConfirmingDelivery(true)
+          : void deliver()
+      }
       onFire={() => void fire()}
       onPay={() => setDialog('pay')}
     />
@@ -472,6 +484,24 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
             toast.show(`${remaking.name} tekrar hazırlanıyor.`);
           }}
         />
+      ) : null}
+      {confirmingDelivery ? (
+        <Dialog
+          open
+          onOpenChange={(next) => !next && setConfirmingDelivery(false)}
+          title="Mutfak ürünleri de teslim edilsin mi?"
+          description="Mutfak ürünleri de teslim edilmiş sayılacak, mutfağa gitmeyecek. Devam?"
+          footer={
+            <>
+              <Button onClick={() => setConfirmingDelivery(false)}>Vazgeç</Button>
+              <Button variant="primary" onClick={() => void deliver()}>
+                Devam
+              </Button>
+            </>
+          }
+        >
+          {null}
+        </Dialog>
       ) : null}
       {dialog === 'pay' ? (
         <PayDialog
