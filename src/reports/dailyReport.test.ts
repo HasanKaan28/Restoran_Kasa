@@ -1,0 +1,150 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createCategory } from '@/data/categories';
+import { createCustomer } from '@/data/customers';
+import type { MarketDb } from '@/data/db';
+import { createProduct } from '@/data/products';
+import { recordSale } from '@/data/sales';
+import { voidSale } from '@/data/voids';
+import { makeTestDb } from '@/test/db';
+import { dailyReportCsv, loadDailyReport } from './dailyReport';
+
+let db: MarketDb;
+beforeEach(() => {
+  db = makeTestDb();
+});
+afterEach(async () => {
+  await db.delete();
+});
+
+const day = (n: number, minute = 0) => new Date(Date.UTC(2026, 9, n, 9, minute));
+const date = (n: number) => `2026-10-${String(n).padStart(2, '0')}`;
+
+async function setup() {
+  const drinks = await createCategory(db, 'İçecek', day(1));
+  const tea = await createProduct(
+    db,
+    { name: 'Çay', sellPrice: 9000, buyPrice: 7000, vatRate: 1, categoryId: drinks.id },
+    day(1),
+  );
+  const coffee = await createProduct(
+    db,
+    { name: 'Kahve', sellPrice: 12000, buyPrice: 8000, vatRate: 1, categoryId: drinks.id },
+    day(1),
+  );
+  const cola = await createProduct(
+    db,
+    { name: 'Kola', sellPrice: 3000, buyPrice: 2000, vatRate: 20 },
+    day(1),
+  );
+  const ahmet = await createCustomer(db, { name: 'Ahmet' }, day(1));
+  return { tea, coffee, cola, ahmet };
+}
+
+describe('loadDailyReport', () => {
+  it('groups products by category with subtotals, payment split and void line', async () => {
+    const { tea, coffee, cola, ahmet } = await setup();
+    await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29),
+      lines: [
+        { productId: tea.id, qtyMilli: 2000 },
+        { productId: coffee.id, qtyMilli: 1000 },
+      ],
+      payments: [
+        { method: 'cash', amount: 10000 },
+        { method: 'card', amount: 20000 },
+      ],
+    });
+    await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29, 1),
+      lines: [{ productId: cola.id, qtyMilli: 1000 }],
+      payments: [{ method: 'credit', amount: 3000 }],
+      customerId: ahmet.id,
+    });
+    const voided = await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29, 2),
+      lines: [{ productId: tea.id, qtyMilli: 5000 }],
+      payments: [{ method: 'cash', amount: 45000 }],
+    });
+    await voidSale(db, { saleId: voided.id, reason: 'Yanlış', deviceCode: 'K1', at: day(29, 3) });
+
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+
+    expect(report.categories.map((group) => group.name)).toEqual(['İçecek', 'Diğer']);
+    const [drinks, other] = report.categories;
+    expect(drinks?.net).toBe(30000);
+    expect(drinks?.rows).toEqual([
+      expect.objectContaining({ name: 'Çay', qtyMilli: 2000, net: 18000 }),
+      expect.objectContaining({ name: 'Kahve', qtyMilli: 1000, net: 12000 }),
+    ]);
+    expect(other?.rows).toEqual([expect.objectContaining({ name: 'Kola', net: 3000 })]);
+    expect(report.total).toBe(33000);
+    expect(report.salesCount).toBe(2);
+    expect(report.byMethod).toEqual({ cash: 10000, card: 20000, credit: 3000 });
+    expect(report.voidCount).toBe(1);
+    expect(report.voidTotal).toBe(45000);
+  });
+
+  it('reports complimentary lines apart, at menu price, not in the sold rows', async () => {
+    const { tea } = await setup();
+    await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29),
+      lines: [
+        { productId: tea.id, qtyMilli: 1000 },
+        { productId: tea.id, qtyMilli: 2000, lineDiscount: 18000 },
+      ],
+      payments: [{ method: 'cash', amount: 9000 }],
+    });
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+    expect(report.categories[0]?.rows).toEqual([
+      expect.objectContaining({ name: 'Çay', qtyMilli: 1000, net: 9000 }),
+    ]);
+    expect(report.total).toBe(9000);
+    expect(report.complimentary).toEqual({
+      count: 1,
+      value: 18000,
+      rows: [expect.objectContaining({ name: 'Çay', qtyMilli: 2000, value: 18000 })],
+    });
+  });
+
+  it('leaves a product sold only as complimentary out of the sold rows; an empty day is empty', async () => {
+    const { cola } = await setup();
+    await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29),
+      lines: [{ productId: cola.id, qtyMilli: 1000, lineDiscount: 3000 }],
+      payments: [],
+    });
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+    expect(report.categories).toEqual([]);
+    expect(report.complimentary.count).toBe(1);
+    const empty = await loadDailyReport(db, { from: date(30), to: date(30) });
+    expect(empty).toMatchObject({ total: 0, salesCount: 0, categories: [] });
+  });
+});
+
+describe('dailyReportCsv', () => {
+  it('lists products with category, subtotals and the figures, behind a BOM', async () => {
+    const { tea, cola } = await setup();
+    await recordSale(db, {
+      deviceCode: 'K1',
+      at: day(29),
+      lines: [
+        { productId: tea.id, qtyMilli: 2000 },
+        { productId: cola.id, qtyMilli: 1000 },
+      ],
+      payments: [{ method: 'cash', amount: 21000 }],
+    });
+    const csv = dailyReportCsv(await loadDailyReport(db, { from: date(29), to: date(29) }));
+    expect(csv.startsWith('﻿Kategori;Ürün;Miktar;Birim;Tutar\r\n')).toBe(true);
+    expect(csv).toContain('İçecek;Çay;2;Adet;180,00\r\n');
+    expect(csv).toContain('İçecek;Ara toplam;;;180,00\r\n');
+    expect(csv).toContain('Diğer;Kola;1;Adet;30,00\r\n');
+    expect(csv).toContain('Genel toplam;;;;210,00\r\n');
+    expect(csv).toContain('Nakit;;;;210,00\r\n');
+    expect(csv).toContain('Fiş sayısı;;;;1\r\n');
+  });
+});
