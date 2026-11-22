@@ -222,7 +222,11 @@ export function StaffDialog({
             value={role}
             disabled={first && !person}
             hint={first && !person ? 'İlk kişi sahiptir.' : undefined}
-            onChange={(event) => setRole(event.target.value as Role)}
+            onChange={(event) => {
+              // A new role starts from its own defaults: nothing of the old role's toggles stays.
+              setRole(event.target.value as Role);
+              setOverrides({});
+            }}
           />
         </div>
         {!person ? (
@@ -243,7 +247,8 @@ export function StaffDialog({
             <p className="text-sm text-text-2">Sahip her şeyi yapabilir.</p>
           ) : null}
           <p className="text-sm text-text-2">
-            Rolün varsayılanı işaretlidir; burada değiştirdiğiniz yalnızca bu kişi için geçerlidir.
+            Kutular bu kişinin güncel iznini gösterir; rolden farklı olanlar “kişiye özel” diye
+            işaretlenir.
           </p>
           {PERMISSION_GROUPS.map((group) => {
             // Staff, devices, settings and exports are the owners' alone, never a person's own.

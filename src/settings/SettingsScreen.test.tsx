@@ -112,6 +112,76 @@ describe('SettingsScreen', () => {
     );
   });
 
+  it('resets the toggles to the new role when the role changes', async () => {
+    const { data, kaan } = await team();
+    // As a save writes them: every changed-default key stored, true for a manager, false for a waiter.
+    const keys = [
+      'creditSale',
+      'collect',
+      'editProducts',
+      'seeCost',
+      'stock',
+      'suppliers',
+      'count',
+    ];
+    const stored = (on: boolean) => Object.fromEntries(keys.map((key) => [key, on]));
+    const mudur = await createStaff(
+      data.db,
+      {
+        name: 'Müdür',
+        role: 'manager',
+        pin: '6666',
+        permissions: { ...stored(true), addProduct: true },
+      },
+      before(),
+    );
+    const ayse = await createStaff(
+      data.db,
+      {
+        name: 'Ayten',
+        role: 'cashier',
+        pin: '7777',
+        permissions: { ...stored(false), addProduct: true },
+      },
+      before(),
+    );
+    await settingsAs(data, kaan.id);
+    await userEvent.click(await screen.findByRole('button', { name: /Müdür/ }));
+    let dialog = await screen.findByRole('dialog', { name: 'Müdür' });
+    await userEvent.selectOptions(within(dialog).getByLabelText('Rol'), 'Garson');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Kaydet' }));
+    await vi.waitFor(async () =>
+      expect((await data.db.staff.get(mudur.id))?.permissions).toEqual({
+        creditSale: false,
+        collect: false,
+        addProduct: true,
+        editProducts: false,
+        seeCost: false,
+        stock: false,
+        suppliers: false,
+        count: false,
+      }),
+    );
+
+    // A waiter made a manager gets the manager's values, not the waiter's.
+    await userEvent.click(await screen.findByRole('button', { name: /Ayten/ }));
+    dialog = await screen.findByRole('dialog', { name: 'Ayten' });
+    await userEvent.selectOptions(within(dialog).getByLabelText('Rol'), 'Yönetici');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Kaydet' }));
+    await vi.waitFor(async () =>
+      expect((await data.db.staff.get(ayse.id))?.permissions).toEqual({
+        creditSale: true,
+        collect: true,
+        addProduct: true,
+        editProducts: true,
+        seeCost: true,
+        stock: true,
+        suppliers: true,
+        count: true,
+      }),
+    );
+  });
+
   it('saves the keys whose defaults changed as explicit values, so older registers agree', async () => {
     const { data, kaan } = await team();
     const mutfak = await createStaff(
