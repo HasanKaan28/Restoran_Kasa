@@ -167,7 +167,7 @@ export async function reopenCancelledWithLines(
     if ((await db.tabItems.where('tabId').equals(tabId).filter(payable).count()) === 0) {
       continue;
     }
-    await patch(db, 'tabs', tabId, { status: 'open', closedAt: null }, at);
+    await patch(db, 'tabs', tabId, { status: 'open', closedAt: null, closedByStaffId: null }, at);
     reopened += 1;
   }
   return reopened;

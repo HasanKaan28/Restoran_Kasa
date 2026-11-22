@@ -12,6 +12,7 @@ import {
   markServed,
   openTab,
   payTabItems,
+  reopenCancelledWithLines,
   sendTab,
   setComplimentary,
   tabBill,
@@ -131,6 +132,46 @@ describe('who closed a tab', () => {
       later(1),
     );
     expect(await db.tabs.get(other.id)).not.toHaveProperty('closedByStaffId');
+  });
+
+  it('forgets who closed a cancelled tab once it opens again', async () => {
+    const empty = await openTab(db, { deviceCode: 'K1', label: 'Paket' }, at);
+    await payTabItems(
+      db,
+      { tabId: empty.id, itemIds: [], payments: [], deviceCode: 'K1', staffId: 'ayse' },
+      later(1),
+    );
+    // A line ordered on another register before the close reached it, brought in by sync.
+    const kebab = await createProduct(
+      db,
+      { name: 'Adana kebap', sellPrice: 45000, vatRate: 10, station: 'kitchen' },
+      at,
+    );
+    await db.tabItems.add({
+      id: 'from-other-register',
+      tabId: empty.id,
+      productId: kebab.id,
+      name: kebab.name,
+      unit: 'piece',
+      unitPrice: 45000,
+      qtyMilli: 1000,
+      station: 'kitchen',
+      status: 'sent',
+      deviceCode: 'K2',
+      orderedAt: at.toISOString(),
+      sentAt: at.toISOString(),
+      createdAt: at.toISOString(),
+      updatedAt: at.toISOString(),
+    });
+    await db.transaction('rw', db.tabs, db.tabItems, db.outbox, () =>
+      reopenCancelledWithLines(db, [empty.id], later(2)),
+    );
+
+    const tab = await db.tabs.get(empty.id);
+    expect(tab).toMatchObject({ status: 'open' });
+    expect(tab).not.toHaveProperty('closedByStaffId');
+    const ops = (await pendingOps(db)).filter((op) => op.recordId === empty.id);
+    expect(ops.at(-1)).toMatchObject({ kind: 'patch', patch: { closedByStaffId: null } });
   });
 
   it('names nobody on a tab paid only in part', async () => {

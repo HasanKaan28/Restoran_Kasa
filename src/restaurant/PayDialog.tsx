@@ -1,9 +1,12 @@
+import Dexie from 'dexie';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useId, useState, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { useMarketSettings } from '@/app/marketSettings';
+import { useActor } from '@/app/actor';
+import { ApprovalDialog } from '@/app/ApprovalDialog';
 import { useSession } from '@/app/session';
-import { useApproval } from '@/app/useApproval';
+import { recordApproval } from '@/data/audit';
 import { CreditLimitError, RecordNotFoundError } from '@/data/errors';
 import {
   dropUnsent,
@@ -87,9 +90,10 @@ export function PayDialog({
   const [receipt] = useState(loadReceiptSettings);
   const [printIt, setPrintIt] = useState(receipt.printing && receipt.autoPrint);
   // Veresiye: the customer is picked once "Ödemeyi al" is pressed; going over their limit waits
-  // for a permitted person's PIN, as on the market's register.
+  // for a permitted person's PIN, as on the market's register, where even a manager types theirs.
   const [picking, setPicking] = useState(false);
-  const approval = useApproval();
+  const [overLimit, setOverLimit] = useState<CustomerRecord | null>(null);
+  const actor = useActor();
   const canCredit = session.can('creditSale');
   const methods = canCredit ? [...METHODS, CREDIT] : METHODS;
   // Credit chosen by someone who may no longer sell on credit (signed out meanwhile) is cash.
@@ -134,7 +138,10 @@ export function PayDialog({
   }
 
   /** The receipt of a sale just made, when it is to be printed. */
-  function printSale(sale: SaleRecord, names: { table?: string; waiter?: string }) {
+  function printSale(
+    sale: SaleRecord,
+    names: { table?: string; waiter?: string; customerName?: string },
+  ) {
     if (printIt) {
       printReceipt(
         buildReceipt(sale, { ...receiptContext(settings, receipt), ...names }),
@@ -275,7 +282,11 @@ export function PayDialog({
         new Date(),
       );
       if ('id' in paid) {
-        printSale(paid, names);
+        // A credit receipt names whose account it went on, as the register's does.
+        printSale(
+          paid,
+          onCredit && credit ? { ...names, customerName: credit.customer.name } : names,
+        );
       }
       const closed = chosen.length === payable.length && unsent.length === 0;
       onPaid(
@@ -306,7 +317,7 @@ export function PayDialog({
     credit: { customer: CustomerRecord; allowOverLimit?: boolean },
   ) {
     if (failure instanceof CreditLimitError && !credit.allowOverLimit && !session.open) {
-      approval.ask('overLimit', () => void pay({ ...credit, allowOverLimit: true }));
+      setOverLimit(credit.customer);
       return;
     }
     setError(
@@ -558,7 +569,28 @@ export function PayDialog({
           onPick={(customer) => void pay({ customer })}
         />
       ) : null}
-      {approval.dialog}
+      {overLimit ? (
+        <ApprovalDialog
+          open
+          permission="overLimit"
+          onClose={() => setOverLimit(null)}
+          onApproved={(approver) => {
+            // Called right after the PIN check's transaction: the log entry and the payment are
+            // work of their own. The payment runs from this render, so it takes the lines ticked
+            // now.
+            Dexie.ignoreTransaction(() => {
+              void recordApproval(
+                db,
+                { permission: 'overLimit', approverId: approver.id },
+                new Date(),
+                actor,
+              );
+              setOverLimit(null);
+              void pay({ customer: overLimit, allowOverLimit: true });
+            });
+          }}
+        />
+      ) : null}
     </Dialog>
   );
 }

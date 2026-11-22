@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useRef, useState, type JSX } from 'react';
 import type { TabItemRecord } from '@/data/types';
 import { Button, Dialog, TextField } from '@/design';
 
@@ -19,6 +19,9 @@ export function RemakeDialog({
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // Read and set at once: a second submit before the first re-renders must not make a second
+  // free line.
+  const sending = useRef(false);
   return (
     <Dialog
       open
@@ -30,14 +33,21 @@ export function RemakeDialog({
         className="flex flex-col gap-3"
         onSubmit={(event) => {
           event.preventDefault();
+          if (sending.current) {
+            return;
+          }
           if (reason.trim() === '') {
             setError('Tekrar hazırlamanın nedenini yazın.');
             return;
           }
+          sending.current = true;
           setBusy(true);
           onRemake(reason)
             .catch(() => setError('Tekrar hazırlanamadı.'))
-            .finally(() => setBusy(false));
+            .finally(() => {
+              sending.current = false;
+              setBusy(false);
+            });
         }}
       >
         <TextField

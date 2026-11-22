@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionProvider } from '@/app/SessionProvider';
 import type { AppData } from '@/app/appData';
 import { createCustomer, customerBalance } from '@/data/customers';
@@ -12,6 +12,7 @@ import type { Permission } from '@/domain/permissions';
 import { createTestData, disposeTestData, renderWithData } from '@/test/renderWithData';
 import { signInAs } from '@/test/session';
 import { KitchenScreen } from './KitchenScreen';
+import { RemakeDialog } from './RemakeDialog';
 import { TablesScreen } from './TablesScreen';
 
 afterEach(async () => {
@@ -158,6 +159,20 @@ describe('making a line again (Tekrar hazırla)', () => {
     expect(within(marked[0]!).queryByText(/Tekrar/)).toBeNull();
   });
 
+  it('sends one copy however fast the reason is sent twice', async () => {
+    const { data, tabId } = await servedTable();
+    const [line] = await data.db.tabItems.where('tabId').equals(tabId).toArray();
+    // The remake never finishes here: the window stays open, as on a slow device.
+    const onRemake = vi.fn(() => new Promise<void>(() => {}));
+    render(<RemakeDialog item={line!} onClose={() => {}} onRemake={onRemake} />);
+    const dialog = await screen.findByRole('dialog', { name: `Tekrar hazırla: ${line!.name}` });
+    await userEvent.type(within(dialog).getByLabelText('Neden'), 'Soğuk');
+    const form = within(dialog).getByLabelText('Neden').closest('form')!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(onRemake).toHaveBeenCalledTimes(1);
+  });
+
   it('asks a waiter without the treat permission for a manager’s PIN', async () => {
     const { data, tabId } = await servedTable();
     await signedIn(data, 'waiter');
@@ -234,6 +249,63 @@ describe('paying a tab on credit (Veresiye)', () => {
     );
     expect(screen.queryByRole('dialog', { name: 'Yetkili onayı' })).toBeNull();
     expect(await recentSales(data.db)).toEqual([]);
+  });
+
+  it('prints the customer on the receipt of a credit payment', async () => {
+    localStorage.setItem(
+      'rk.receipt',
+      JSON.stringify({
+        printing: true,
+        autoPrint: true,
+        paperWidth: 80,
+        shopName: '',
+        header: '',
+        footer: '',
+      }),
+    );
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const { data } = await servedTable();
+    await signedIn(data, 'owner');
+    await createCustomer(data.db, { name: 'Ahmet Yılmaz' }, before());
+    const bill = await openBill(data);
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Veresiye' }));
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    const picker = await screen.findByRole('dialog', { name: 'Veresiye müşterisi' });
+    await userEvent.type(within(picker).getByLabelText(/Müşteri ara/), 'Ahmet');
+    await userEvent.click(await within(picker).findByRole('button', { name: /Ahmet Yılmaz/ }));
+
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    expect(document.getElementById('print-root')).toHaveTextContent('Müşteri: Ahmet Yılmaz');
+    window.dispatchEvent(new Event('afterprint'));
+    print.mockRestore();
+  });
+
+  it('asks for a PIN over the limit even from a person who may approve it', async () => {
+    const { data } = await servedTable();
+    await signedIn(data, 'owner');
+    const ahmet = await createCustomer(
+      data.db,
+      { name: 'Ahmet Yılmaz', creditLimit: 30000 },
+      before(),
+    );
+    const bill = await openBill(data);
+    await userEvent.click(within(bill).getByRole('radio', { name: 'Veresiye' }));
+    await userEvent.click(within(bill).getByRole('button', { name: 'Ödemeyi al' }));
+    const picker = await screen.findByRole('dialog', { name: 'Veresiye müşterisi' });
+    await userEvent.type(within(picker).getByLabelText(/Müşteri ara/), 'Ahmet');
+    await userEvent.click(await within(picker).findByRole('button', { name: /Ahmet Yılmaz/ }));
+
+    expect(await screen.findByRole('dialog', { name: 'Yetkili onayı' })).toBeInTheDocument();
+    expect(await customerBalance(data.db, ahmet.id)).toBe(0);
+    await approveAs('Zeynep · Yönetici', '4444');
+    expect(await screen.findByRole('button', { name: 'S1, boş' })).toBeInTheDocument();
+    expect(await customerBalance(data.db, ahmet.id)).toBe(49000);
+    // The approval is logged, as on the market's register.
+    await waitFor(async () =>
+      expect((await data.db.auditLog.toArray()).some((entry) => entry.action === 'approval')).toBe(
+        true,
+      ),
+    );
   });
 
   it('asks for a permitted person’s PIN to go over the customer’s limit', async () => {
