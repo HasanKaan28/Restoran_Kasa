@@ -9,7 +9,6 @@ import {
   can,
   PERMISSION_LABELS,
   PERMISSIONS,
-  RESTAURANT_PERMISSIONS,
   ROLE_LABELS,
   ROLE_PERMISSIONS,
   ROLES,
@@ -29,6 +28,30 @@ export type StaffDialogProps = {
 };
 
 type Overrides = Partial<Record<Permission, boolean>>;
+
+/** The permission list in the restaurant's terms: what each group of toggles is about. */
+const PERMISSION_GROUPS: { title: string; permissions: readonly Permission[] }[] = [
+  { title: 'Satış / Hesap', permissions: ['sell', 'discount', 'voidSale'] },
+  { title: 'Veresiye', permissions: ['creditSale', 'collect', 'overLimit'] },
+  { title: 'Menü ve maliyet', permissions: ['editProducts', 'seeCost'] },
+  { title: 'Stok', permissions: ['stock', 'count', 'suppliers'] },
+  { title: 'Yönetim', permissions: ['reports', 'closeDay', 'admin'] },
+];
+
+/**
+ * Keys whose role default changed (or that are new) since v1.0.4: registers still on it compute
+ * against the old defaults, so these are always written out as yes or no, never left to the role.
+ */
+const EXPLICIT_PERMISSIONS: readonly Permission[] = [
+  'creditSale',
+  'collect',
+  'addProduct',
+  'editProducts',
+  'seeCost',
+  'stock',
+  'suppliers',
+  'count',
+];
 
 const ROLE_OPTIONS = ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role] }));
 
@@ -219,43 +242,52 @@ export function StaffDialog({
           {role === 'owner' ? (
             <p className="text-sm text-text-2">Sahip her şeyi yapabilir.</p>
           ) : null}
-          <div className="grid gap-x-4 sm:grid-cols-2">
-            {/* Staff, devices, settings and exports are the owners' alone, never a person's own. */}
-            {RESTAURANT_PERMISSIONS.filter(
+          <p className="text-sm text-text-2">
+            Rolün varsayılanı işaretlidir; burada değiştirdiğiniz yalnızca bu kişi için geçerlidir.
+          </p>
+          {PERMISSION_GROUPS.map((group) => {
+            // Staff, devices, settings and exports are the owners' alone, never a person's own.
+            const shown = group.permissions.filter(
               (permission) => permission !== 'admin' || role === 'owner',
-            ).map(
-              (permission) => {
-                const changed =
-                  overrides[permission] !== undefined &&
-                  overrides[permission] !== ROLE_PERMISSIONS[role].includes(permission);
-                return (
-                  <label
-                    key={permission}
-                    className="flex min-h-11 cursor-pointer items-center gap-3 has-disabled:cursor-default has-disabled:text-muted"
-                  >
-                    <input
-                      type="checkbox"
-                      className="size-5 accent-accent"
-                      disabled={role === 'owner'}
-                      checked={can(draft, permission)}
-                      onChange={(event) =>
-                        setOverrides((current) => ({
-                          ...current,
-                          [permission]: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      {PERMISSION_LABELS[permission]}
-                      {changed && role !== 'owner' ? (
-                        <span className="ml-2 text-sm text-accent">kişiye özel</span>
-                      ) : null}
-                    </span>
-                  </label>
-                );
-              },
-            )}
-          </div>
+            );
+            return shown.length === 0 ? null : (
+              <div key={group.title} className="flex flex-col">
+                <h4 className="mt-1 text-sm font-medium text-text-2">{group.title}</h4>
+                {shown.map((permission) => {
+                  const byRole = ROLE_PERMISSIONS[role].includes(permission);
+                  const changed =
+                    overrides[permission] !== undefined && overrides[permission] !== byRole;
+                  return (
+                    <label
+                      key={permission}
+                      className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 has-disabled:cursor-default has-disabled:text-muted"
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-5 shrink-0 accent-accent"
+                        disabled={role === 'owner'}
+                        checked={can(draft, permission)}
+                        onChange={(event) =>
+                          setOverrides((current) => ({
+                            ...current,
+                            [permission]: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span className="min-w-0 break-words">
+                        {PERMISSION_LABELS[permission]}
+                        {changed && role !== 'owner' ? (
+                          <span className="ml-2 text-sm text-accent">
+                            {`kişiye özel (rol: ${byRole ? 'açık' : 'kapalı'})`}
+                          </span>
+                        ) : null}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            );
+          })}
         </fieldset>
         {failure ? (
           <p role="alert" className="font-medium text-danger">
@@ -322,17 +354,22 @@ function PinFields({
   );
 }
 
-/** Only what differs from the role's defaults is kept as the person's own. */
+/**
+ * What is kept as the person's own: what differs from the role's defaults, and for the keys in
+ * EXPLICIT_PERMISSIONS the value as it stands, whatever the default.
+ */
 function overridesFor(role: Role, overrides: Overrides): Overrides | undefined {
   if (role === 'owner') {
     return undefined;
   }
+  const draft = { role, permissions: overrides };
   const kept = Object.fromEntries(
     PERMISSIONS.filter(
       (permission) =>
-        overrides[permission] !== undefined &&
-        overrides[permission] !== ROLE_PERMISSIONS[role].includes(permission),
-    ).map((permission) => [permission, overrides[permission]]),
+        EXPLICIT_PERMISSIONS.includes(permission) ||
+        (overrides[permission] !== undefined &&
+          overrides[permission] !== ROLE_PERMISSIONS[role].includes(permission)),
+    ).map((permission) => [permission, can(draft, permission)]),
   );
   return Object.keys(kept).length > 0 ? kept : undefined;
 }

@@ -94,6 +94,49 @@ describe('SettingsScreen', () => {
     expect(within(dialog).getByRole('checkbox', { name: 'Hesap alma, ödeme' })).toBeChecked();
   });
 
+  it('groups the permissions; turning credit on for a waiter is saved as their own', async () => {
+    const { data, kaan, ayse } = await team();
+    await settingsAs(data, kaan.id);
+    await userEvent.click(await screen.findByRole('button', { name: /Ayşe/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Ayşe' });
+    for (const title of ['Satış / Hesap', 'Veresiye', 'Menü ve maliyet', 'Stok', 'Yönetim']) {
+      expect(within(dialog).getByRole('heading', { name: title })).toBeInTheDocument();
+    }
+    const credit = within(dialog).getByRole('checkbox', { name: 'Veresiye satış' });
+    expect(credit).not.toBeChecked();
+    await userEvent.click(credit);
+    expect(await within(dialog).findByText(/kişiye özel \(rol: kapalı\)/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Kaydet' }));
+    await vi.waitFor(async () =>
+      expect((await data.db.staff.get(ayse.id))?.permissions).toMatchObject({ creditSale: true }),
+    );
+  });
+
+  it('saves the keys whose defaults changed as explicit values, so older registers agree', async () => {
+    const { data, kaan } = await team();
+    const mutfak = await createStaff(
+      data.db,
+      { name: 'Mutfak Usta', role: 'stock', pin: '5555' },
+      before(),
+    );
+    await settingsAs(data, kaan.id);
+    await userEvent.click(await screen.findByRole('button', { name: /Mutfak Usta/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Mutfak Usta' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Kaydet' }));
+    await vi.waitFor(async () =>
+      expect((await data.db.staff.get(mutfak.id))?.permissions).toEqual({
+        creditSale: false,
+        collect: false,
+        addProduct: false,
+        editProducts: false,
+        seeCost: false,
+        stock: false,
+        suppliers: false,
+        count: false,
+      }),
+    );
+  });
+
   it('adds the first person as the owner and signs them in', async () => {
     const data = createTestData();
     await settingsAs(data);
