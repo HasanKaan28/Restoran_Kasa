@@ -1,14 +1,15 @@
 import { act } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { printView } from './printView';
+import { LONGEST_PRINT_MS, printView, resetPrinting } from './printView';
 
 const rule = () => '@page { size: 80mm 100mm; margin: 0; }';
 const rootText = () => document.getElementById('print-root')?.textContent ?? null;
 
 afterEach(() => {
-  act(() => {
-    window.dispatchEvent(new Event('afterprint'));
-  });
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  // A print a test left hanging must not hold the next test's prints back.
+  act(() => resetPrinting());
 });
 
 describe('printView', () => {
@@ -67,6 +68,45 @@ describe('printView', () => {
   it('prints through the window at once when nothing else is printing, as before', () => {
     const dialog = vi.fn();
     void printView(<p>Fiş</p>, rule, dialog);
+    expect(dialog).toHaveBeenCalledOnce();
+  });
+
+  it('lets the other prints go when a silent print never ends', async () => {
+    vi.useFakeTimers();
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(LONGEST_PRINT_MS).toBe(90_000);
+    // A stuck spooler: the printer never answers.
+    const stuck = printView(<p>Masa 5 siparişi</p>, rule, () => new Promise<void>(() => {}));
+    const dialog = vi.fn();
+    void printView(<p>Fiş K1-0001</p>, rule, dialog);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LONGEST_PRINT_MS - 1);
+    });
+    expect(dialog).not.toHaveBeenCalled();
+    expect(rootText()).toBe('Masa 5 siparişi');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    await stuck;
+    expect(dialog).toHaveBeenCalledOnce();
+    expect(rootText()).toBe('Fiş K1-0001');
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining('Yazıcı yanıt vermedi'));
+  });
+
+  it('logs a print that throws, tidies up, and lets the next one print', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failed = printView(<p>Fiş</p>, rule, () => {
+      throw new Error('no printer');
+    });
+    await expect(failed).resolves.toBeUndefined();
+    expect(logged).toHaveBeenCalled();
+    expect(document.getElementById('print-root')).toBeNull();
+    expect(document.body).not.toHaveClass('printing-receipt');
+
+    const dialog = vi.fn();
+    void printView(<p>Fiş 2</p>, rule, dialog);
     expect(dialog).toHaveBeenCalledOnce();
   });
 });

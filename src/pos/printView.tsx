@@ -7,10 +7,16 @@ const PAGE_STYLE_ID = 'print-page';
 const PRINTING_CLASS = 'printing-receipt';
 
 /**
- * A print the page goes on with while it runs: the desktop app's silent print of an order slip.
- * Until it is over, every other print waits for it, so none takes its page away.
+ * A silent print that has said nothing after this is given up on: a stuck spooler or driver must
+ * not hold back every receipt, report and label of the app.
  */
-let inFlight: Promise<void> | null = null;
+export const LONGEST_PRINT_MS = 90_000;
+
+/**
+ * A print the page goes on with while it runs: the desktop app's silent print of an order slip.
+ * Until it is over (or given up on), every other print waits for it, so none takes its page away.
+ */
+let inFlight: { done: Promise<void>; finish(): void } | null = null;
 /** Ends the print shown through the browser's window that has not yet said it is over. */
 let endShown: (() => void) | null = null;
 
@@ -31,9 +37,15 @@ export function printView(
   print: () => void | Promise<unknown> = () => window.print(),
 ): Promise<void> {
   if (inFlight) {
-    return inFlight.then(() => printView(view, pageRule, print));
+    return inFlight.done.then(() => printView(view, pageRule, print));
   }
   return printNow(view, pageRule, print);
+}
+
+/** Ends whatever is printing now, as if it were over; for tests, so none is left holding the rest. */
+export function resetPrinting(): void {
+  inFlight?.finish();
+  endShown?.();
 }
 
 function printNow(
@@ -79,23 +91,46 @@ function printNow(
     try {
       job = print();
     } catch (error) {
+      // Nothing to wait for: tidy up so the next print can go, and say why on the console.
+      console.error('Yazdırılamadı', error);
       end();
-      throw error;
+      return;
     }
     if (job instanceof Promise) {
-      // Over when it settles, whatever else says `afterprint` meanwhile.
+      // Over when it settles, whatever else says `afterprint` meanwhile, or given up on.
       window.removeEventListener('afterprint', end);
       endShown = null;
-      const settled = job.then(
-        () => undefined,
-        () => undefined,
-      );
-      inFlight = settled.then(() => {
-        inFlight = null;
-        end();
-      });
+      inFlight = holdUntilOver(job, end);
     }
   });
+}
+
+/** The lock a silent print holds: let go when the print settles or after `LONGEST_PRINT_MS`. */
+function holdUntilOver(
+  job: Promise<unknown>,
+  end: () => void,
+): { done: Promise<void>; finish(): void } {
+  let release: () => void = () => {};
+  const done = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const lock = {
+    done,
+    finish: () => {
+      clearTimeout(timer);
+      if (inFlight === lock) {
+        inFlight = null;
+      }
+      end();
+      release();
+    },
+  };
+  const timer = setTimeout(() => {
+    console.error('Yazıcı yanıt vermedi; sıradaki yazdırmalar bekletilmiyor.');
+    lock.finish();
+  }, LONGEST_PRINT_MS);
+  job.then(lock.finish, lock.finish);
+  return lock;
 }
 
 function pageStyle(): HTMLStyleElement {
