@@ -463,6 +463,10 @@ export async function setComplimentary(
     if (item.paidSaleId || item.status === 'void') {
       throw new RangeError('Only an unpaid line can be made complimentary');
     }
+    // A line made again is free by what it is: charging for it would change the bill.
+    if (item.remakeOf && !complimentary) {
+      throw new RangeError('A remake stays on the house');
+    }
     await patch(db, 'tabItems', itemId, { complimentary: complimentary ? true : null }, at);
     await assertSharesCovered(db, item.tabId);
   });

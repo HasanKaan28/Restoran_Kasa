@@ -55,7 +55,8 @@ export function OrderLines({
               className={`text-sm font-medium ${item.servedAt ? 'text-text-2' : (STATUS_TONES[item.status] ?? 'text-text-2')}`}
             >
               {`${formatLineQty(item.qtyMilli, item.unit)} · ${statusLabel(item)}${
-                item.complimentary ? ' · İkram' : ''
+                // A line made again is free too; it says which it is.
+                item.remakeOf ? ' · Tekrar' : item.complimentary ? ' · İkram' : ''
               }`}
             </p>
             {item.options ? (

@@ -3,6 +3,8 @@ import { useId, useState, type JSX } from 'react';
 import { useData } from '@/app/appData';
 import { useMarketSettings } from '@/app/marketSettings';
 import { useSession } from '@/app/session';
+import { useApproval } from '@/app/useApproval';
+import { CreditLimitError, RecordNotFoundError } from '@/data/errors';
 import {
   dropUnsent,
   isUnsent,
@@ -16,9 +18,11 @@ import {
   tabTitle,
   type BillLine,
 } from '@/data/restaurant';
-import type { SaleRecord } from '@/data/types';
+import type { CustomerRecord, SaleRecord } from '@/data/types';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
 import { formatTRY } from '@/domain/money';
+import { checkoutErrorMessage } from '@/pos/checkout';
+import { CustomerPicker } from '@/pos/CustomerPicker';
 import { formatLineQty } from '@/pos/format';
 import { printReceipt } from '@/pos/printReceipt';
 import { buildReceipt } from '@/pos/receipt';
@@ -40,6 +44,9 @@ const METHODS: readonly { value: Tender; label: string }[] = [
   // Without spaces it fits one line of the three-part track on a 375 px phone.
   { value: 'mixed', label: 'Nakit+Kart' },
 ];
+
+/** Written to a customer's account: offered only to a person who may sell on credit. */
+const CREDIT: { value: Tender; label: string } = { value: 'credit', label: 'Veresiye' };
 
 /**
  * The bill: every line left to pay is ticked; untick some to split the bill by what each person
@@ -79,6 +86,14 @@ export function PayDialog({
   // every sale is to print by itself.
   const [receipt] = useState(loadReceiptSettings);
   const [printIt, setPrintIt] = useState(receipt.printing && receipt.autoPrint);
+  // Veresiye: the customer is picked once "Ödemeyi al" is pressed; going over their limit waits
+  // for a permitted person's PIN, as on the market's register.
+  const [picking, setPicking] = useState(false);
+  const approval = useApproval();
+  const canCredit = session.can('creditSale');
+  const methods = canCredit ? [...METHODS, CREDIT] : METHODS;
+  // Credit chosen by someone who may no longer sell on credit (signed out meanwhile) is cash.
+  const tender: Tender = method === 'credit' && !canCredit ? 'cash' : method;
 
   // What the kitchen has had, what was paid toward it by amount, and what is left.
   const owed = useLiveQuery(() => tabDue(db, tabId), [db, tabId]);
@@ -106,7 +121,7 @@ export function PayDialog({
   const typedCash = typedAmount(cashPart) ?? undefined;
   const cashShare =
     typedCash !== undefined && typedCash > 0 && typedCash < total ? typedCash : undefined;
-  const cashDue = method === 'mixed' ? cashShare : total;
+  const cashDue = tender === 'mixed' ? cashShare : total;
 
   /** The table's name and its waiter's, for the papers; read before the last payment closes it. */
   async function namesOnPaper(): Promise<{ table?: string; waiter?: string }> {
@@ -218,7 +233,7 @@ export function PayDialog({
     }
   }
 
-  async function pay() {
+  async function pay(credit?: { customer: CustomerRecord; allowOverLimit?: boolean }) {
     if (mode === 'amount') {
       await payShare();
       return;
@@ -232,18 +247,27 @@ export function PayDialog({
       const due = (await tabBill(db, tabId, chosenIds)).total - shares;
       // Named before paying: the last payment closes the tab.
       const names = await namesOnPaper();
-      const tender = tenderFor(method, due, { cashPart, given });
-      if ('error' in tender) {
-        setError(tender.error);
+      const taken = tenderFor(tender, due, { cashPart, given });
+      if ('error' in taken) {
+        setError(taken.error);
         return;
       }
+      const onCredit = taken.payments.some((payment) => payment.method === 'credit');
+      // No customer yet: one is picked first, and the payment comes back here with them.
+      if (onCredit && !credit) {
+        setPicking(true);
+        return;
+      }
+      setPicking(false);
       const paid = await payTabItems(
         db,
         {
           tabId,
           itemIds: chosenIds,
-          payments: tender.payments,
-          ...(tender.cashGiven !== undefined ? { cashGiven: tender.cashGiven } : {}),
+          payments: taken.payments,
+          ...(taken.cashGiven !== undefined ? { cashGiven: taken.cashGiven } : {}),
+          ...(onCredit && credit ? { customerId: credit.customer.id } : {}),
+          ...(credit?.allowOverLimit ? { allowOverLimit: true } : {}),
           deviceCode: settings.deviceCode,
           staffId: session.staff?.id,
           cutoffMinutes,
@@ -255,14 +279,42 @@ export function PayDialog({
       }
       const closed = chosen.length === payable.length && unsent.length === 0;
       onPaid(
-        chosenIds.length === 0 ? 'Masa kapatıldı.' : `Ödeme alındı: ${formatTRY(due)}.`,
+        chosenIds.length === 0
+          ? 'Masa kapatıldı.'
+          : onCredit && credit
+            ? `${formatTRY(due)} veresiye yazıldı: ${credit.customer.name}.`
+            : `Ödeme alındı: ${formatTRY(due)}.`,
         closed,
       );
-    } catch {
-      setError('Ödeme kaydedilemedi.');
+    } catch (failure) {
+      if (credit) {
+        creditRefused(failure, credit);
+      } else {
+        setError('Ödeme kaydedilemedi.');
+      }
     } finally {
       setBusy(false);
     }
+  }
+
+  /**
+   * A credit payment refused: over the customer's limit, a permitted person may let it through;
+   * with no staff set up there is nobody to ask, and it is refused as on the market's register.
+   */
+  function creditRefused(
+    failure: unknown,
+    credit: { customer: CustomerRecord; allowOverLimit?: boolean },
+  ) {
+    if (failure instanceof CreditLimitError && !credit.allowOverLimit && !session.open) {
+      approval.ask('overLimit', () => void pay({ ...credit, allowOverLimit: true }));
+      return;
+    }
+    setError(
+      failure instanceof CreditLimitError ||
+        (failure instanceof RecordNotFoundError && failure.what === 'Customer')
+        ? checkoutErrorMessage(failure)
+        : 'Ödeme kaydedilemedi.',
+    );
   }
 
   /** Sends the lines the kitchen has not had, so they go on the bill, or takes them off it. */
@@ -420,14 +472,16 @@ export function PayDialog({
             <ChoiceGroup<Tender>
               legend="Ödeme"
               name="tabPayment"
-              options={METHODS}
-              value={method}
+              options={methods}
+              // Four do not fit one track on a 375 px phone: they wrap as chips instead.
+              wrap={methods.length > 3}
+              value={tender}
               onChange={(next) => {
                 setMethod(next);
                 setError(undefined);
               }}
             />
-            {method === 'mixed' ? (
+            {tender === 'mixed' ? (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="w-40">
                   <TextField
@@ -445,7 +499,7 @@ export function PayDialog({
                 ) : null}
               </div>
             ) : null}
-            {method !== 'card' ? (
+            {tender === 'cash' || tender === 'mixed' ? (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="w-40">
                   <TextField
@@ -496,6 +550,15 @@ export function PayDialog({
           </p>
         ) : null}
       </div>
+      {picking ? (
+        <CustomerPicker
+          open
+          busy={busy}
+          onClose={() => setPicking(false)}
+          onPick={(customer) => void pay({ customer })}
+        />
+      ) : null}
+      {approval.dialog}
     </Dialog>
   );
 }

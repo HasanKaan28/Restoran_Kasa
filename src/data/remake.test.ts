@@ -13,6 +13,7 @@ import {
   openTab,
   payTabItems,
   sendTab,
+  setComplimentary,
   tabBill,
   tabDue,
   voidItem,
@@ -373,6 +374,18 @@ describe('making a line again (tekrar hazırla)', () => {
     await expect(
       remakeItem(db, { itemId: 'nope', reason: 'Soğuk', deviceCode: 'K1' }, later(5)),
     ).rejects.toThrow(RecordNotFoundError);
+  });
+
+  it('stays on the house: a remake cannot be charged after all', async () => {
+    const { tab, line } = await sentTab();
+    const again = await remakeItem(
+      db,
+      { itemId: line.id, reason: 'Soğuk', deviceCode: 'K1' },
+      later(5),
+    );
+    await expect(setComplimentary(db, again.id, false, later(6))).rejects.toThrow(RangeError);
+    expect(await itemOf(again.id)).toMatchObject({ complimentary: true });
+    expect((await tabBill(db, tab.id)).total).toBe(92000);
   });
 
   it('refuses a tab already closed', async () => {
