@@ -7,6 +7,7 @@ import {
   createDiningTable,
   mergeTabs,
   openTab,
+  remakeItem,
   sendTab,
   voidItem,
 } from '@/data/restaurant';
@@ -62,6 +63,42 @@ async function setUp() {
 }
 
 describe('takeNewSlips', () => {
+  it('marks a remade line "Tekrar" with its short reason, apart from the same dish ordered', async () => {
+    const { kebab, tab } = await setUp();
+    const first = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000 }, aliOnPhone, later(1));
+    await sendTab(db, tab.id, later(2));
+    await remakeItem(db, { itemId: first.id, reason: 'Soğuk geldi', ...aliOnPhone }, later(5));
+
+    const slips = await take(10);
+
+    expect(slips.map((slip) => slip.lines)).toEqual([
+      [{ label: 'Adana kebap', qtyMilli: 1000, unit: 'piece', details: [] }],
+      [
+        {
+          label: 'Adana kebap',
+          qtyMilli: 1000,
+          unit: 'piece',
+          details: ['Tekrar · Soğuk geldi'],
+        },
+      ],
+    ]);
+  });
+
+  it('leaves a long remake reason off the slip', async () => {
+    const { kebab, tab } = await setUp();
+    const first = await addTabItem(db, tab.id, kebab, { qtyMilli: 1000 }, aliOnPhone, later(1));
+    await sendTab(db, tab.id, later(2));
+    await remakeItem(
+      db,
+      { itemId: first.id, reason: 'Müşteri bu yemeği çok soğuk ve tuzlu buldu', ...aliOnPhone },
+      later(5),
+    );
+
+    const slips = await take(10);
+
+    expect(slips[1]?.lines[0]?.details).toEqual(['Tekrar']);
+  });
+
   it('prints a new order once: what and how many, who entered it, the table and when', async () => {
     const { beer, kebab, tab } = await setUp();
     // Two taps on the same beer can make two lines: the slip says "5 × Efes" all the same.

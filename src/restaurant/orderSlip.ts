@@ -47,6 +47,8 @@ const LAST_KEY = 'orderSlipLast';
 const REMEMBER_MS = 24 * 60 * 60_000;
 /** A ceiling for a very busy day, so the record stays small whatever happens. */
 const MOST_REMEMBERED = 5_000;
+/** A remake's reason longer than this stays off the printed slip. */
+const MOST_REASON_CHARS = 30;
 
 /** The oldest send still looked at: the choice's moment, or a day ago, whichever is later. */
 export function slipWindowStart(since: string, now: Date): string {
@@ -234,7 +236,11 @@ function sumByDish(lines: TabItemRecord[]): OrderSlipLine[] {
   const byDish = new Map<string, OrderSlipLine>();
   for (const line of lines) {
     const label = itemLabel(line);
-    const details = [...(line.options ?? []), ...(line.note ? [`Not: ${line.note}`] : [])];
+    const details = [
+      ...(line.remakeOf ? [remakeDetail(line.remakeReason)] : []),
+      ...(line.options ?? []),
+      ...(line.note ? [`Not: ${line.note}`] : []),
+    ];
     const key = [label, line.unit, ...details].join('\u0000');
     const found = byDish.get(key);
     byDish.set(key, {
@@ -245,6 +251,12 @@ function sumByDish(lines: TabItemRecord[]): OrderSlipLine[] {
     });
   }
   return [...byDish.values()];
+}
+
+/** A remade line says so on the slip, with its reason when it is short enough to print. */
+function remakeDetail(reason: string | undefined): string {
+  const why = reason?.trim() ?? '';
+  return why !== '' && why.length <= MOST_REASON_CHARS ? `Tekrar · ${why}` : 'Tekrar';
 }
 
 function isText(value: unknown): value is string {
