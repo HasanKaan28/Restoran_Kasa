@@ -174,7 +174,8 @@ export function ProductFormDialog({
         return 'Ürün kaydedildi.';
       }
       const created = await createProduct(db, read.fields, new Date(), {
-        openingStockMilli: read.openingStockMilli,
+        // Stock on the shelf is a count movement: only a person with `stock` may write one.
+        openingStockMilli: can('stock') ? read.openingStockMilli : 0,
         staffId: actor.staffId,
         cutoffMinutes: actor.cutoffMinutes,
       });
@@ -353,7 +354,7 @@ export function ProductFormDialog({
                     </div>
                   )}
                 </div>
-              ) : askOpeningStock ? (
+              ) : askOpeningStock && can('stock') ? (
                 <TextField
                   label="Başlangıç stoğu"
                   hint={`Rafta şu an kaç ${UNIT_LABELS[draft.unit]} var?`}

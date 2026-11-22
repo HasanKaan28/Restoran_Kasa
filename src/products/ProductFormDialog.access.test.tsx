@@ -71,4 +71,40 @@ describe('ProductFormDialog access', () => {
     await editing({ editProducts: true, stock: true });
     expect(await screen.findByRole('button', { name: 'Stoğu düzelt' })).toBeInTheDocument();
   });
+
+  /** A new product opened by a waiter holding exactly `grant`. */
+  async function adding(grant: Partial<Record<Permission, boolean>>, onSaved = vi.fn()) {
+    const data = createTestData();
+    await createStaff(data.db, { name: 'Kaan', role: 'owner', pin: '4821' }, before());
+    const waiter = await createStaff(
+      data.db,
+      { name: 'Ayşe', role: 'cashier', pin: '1234', permissions: grant },
+      before(),
+    );
+    await signInAs(data.db, waiter.id);
+    await renderWithData(
+      <SessionProvider>
+        <ProductFormDialog open onClose={vi.fn()} onSaved={onSaved} />
+      </SessionProvider>,
+      data,
+    );
+    await screen.findByRole('heading', { name: 'Yeni ürün' });
+    return data;
+  }
+
+  it('asks a new product’s opening stock only of a person with stock', async () => {
+    await adding({ editProducts: true, stock: true });
+    expect(await screen.findByLabelText('Başlangıç stoğu')).toBeInTheDocument();
+  });
+
+  it('hides the opening stock and writes none without stock', async () => {
+    const onSaved = vi.fn();
+    const data = await adding({ editProducts: true }, onSaved);
+    expect(screen.queryByLabelText('Başlangıç stoğu')).toBeNull();
+    await userEvent.type(screen.getByLabelText('Ürün adı'), 'Ayran');
+    await userEvent.type(screen.getByLabelText('Satış fiyatı'), '40');
+    await userEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('Ürün eklendi.'));
+    expect(await data.db.stockMovements.count()).toBe(0);
+  });
 });

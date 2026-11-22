@@ -1,5 +1,6 @@
 import { useState, type JSX } from 'react';
 import { useActor } from '@/app/actor';
+import { useSession } from '@/app/session';
 import { useData } from '@/app/appData';
 import type { ProductRecord } from '@/data/types';
 import { Button, ChoiceGroup, Dialog, TextField } from '@/design';
@@ -55,7 +56,10 @@ export function BulkPriceDialog({
 }: BulkPriceDialogProps): JSX.Element {
   const { db } = useData();
   const actor = useActor();
-  const [target, setTarget] = useState<PriceChange['target']>('sellPrice');
+  const { can } = useSession();
+  const [chosen, setTarget] = useState<PriceChange['target']>('sellPrice');
+  // Buy prices are costs: without seeCost only the sell price can be changed, and none is written.
+  const target = chosen === 'buyPrice' && !can('seeCost') ? 'sellPrice' : chosen;
   const [direction, setDirection] = useState<1 | -1>(1);
   const [by, setBy] = useState<PriceChange['by']>('percent');
   const [amount, setAmount] = useState('');
@@ -96,7 +100,9 @@ export function BulkPriceDialog({
         <ChoiceGroup
           legend="Hangi fiyat"
           name="target"
-          options={TARGETS}
+          options={
+            can('seeCost') ? TARGETS : TARGETS.filter((option) => option.value === 'sellPrice')
+          }
           value={target}
           onChange={(next) => setTarget(next)}
         />
