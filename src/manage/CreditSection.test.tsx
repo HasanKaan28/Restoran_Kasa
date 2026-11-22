@@ -67,7 +67,7 @@ describe('CreditSection', () => {
     expect(await within(dialog).findByRole('button', { name: 'Tahsilat al' })).toBeEnabled();
   });
 
-  it('asks a manager before a new customer is given a credit limit', async () => {
+  it('adds a new customer with a limit with no approval', async () => {
     const { data, waiter } = await team({ creditSale: true });
     await show(data, waiter.id);
     await userEvent.click(await screen.findByRole('button', { name: 'Yeni müşteri' }));
@@ -75,8 +75,8 @@ describe('CreditSection', () => {
     await userEvent.type(within(form).getByLabelText('Ad'), 'Veli');
     await userEvent.type(within(form).getByLabelText('Limit'), '5000');
     await userEvent.click(within(form).getByRole('button', { name: 'Kaydet' }));
-    expect(await screen.findByRole('dialog', { name: 'Yetkili onayı' })).toBeInTheDocument();
-    expect(await data.db.customers.count()).toBe(0);
+    await waitFor(async () => expect(await data.db.customers.count()).toBe(1));
+    expect(screen.queryByRole('dialog', { name: 'Yetkili onayı' })).toBeNull();
   });
 
   it('adds a new customer without a limit with no approval', async () => {

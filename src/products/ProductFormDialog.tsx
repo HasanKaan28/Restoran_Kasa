@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { useActor } from '@/app/actor';
 import { useData } from '@/app/appData';
+import { useSession } from '@/app/session';
 import { createCategory, listCategories, MAX_CATEGORY_NAME_LENGTH } from '@/data/categories';
 import { DuplicateBarcodeError } from '@/data/errors';
 import { createProduct, deleteProduct, restoreProduct, updateProduct } from '@/data/products';
@@ -77,6 +78,7 @@ export function ProductFormDialog({
   onProductSaved,
 }: ProductFormDialogProps): JSX.Element {
   const { db } = useData();
+  const { can } = useSession();
   const actor = useActor();
   const [opened] = useState(() => draftOf(product, barcode));
   const [draft, setDraft] = useState(opened);
@@ -283,15 +285,18 @@ export function ProductFormDialog({
                 value={draft.vatRate}
                 onChange={(rate) => set('vatRate', rate)}
               />
-              <TextField
-                label="Alış fiyatı"
-                hint={profitHint(draft) ?? 'Boş bırakılabilir.'}
-                inputMode="decimal"
-                autoComplete="off"
-                value={draft.buyPrice}
-                error={errors.buyPrice}
-                onChange={(event) => set('buyPrice', event.target.value)}
-              />
+              {/* Cost is for whoever sees costs; without it the product keeps the buy price it has. */}
+              {can('seeCost') ? (
+                <TextField
+                  label="Alış fiyatı"
+                  hint={profitHint(draft) ?? 'Boş bırakılabilir.'}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={draft.buyPrice}
+                  error={errors.buyPrice}
+                  onChange={(event) => set('buyPrice', event.target.value)}
+                />
+              ) : null}
               <TextField
                 label="Barkod"
                 hint="Okutun ya da yazın; boş bırakılabilir."
@@ -341,7 +346,9 @@ export function ProductFormDialog({
                   </p>
                   {deleted ? null : (
                     <div className="flex flex-wrap gap-2">
-                      <Button onClick={() => setStockDialog('adjust')}>Stoğu düzelt</Button>
+                      {can('stock') ? (
+                        <Button onClick={() => setStockDialog('adjust')}>Stoğu düzelt</Button>
+                      ) : null}
                       <Button onClick={() => setStockDialog('movements')}>Hareketler</Button>
                     </div>
                   )}

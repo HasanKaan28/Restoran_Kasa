@@ -14,12 +14,17 @@ import { addProduct, loadDraft, saveDraft } from './receiptDraft';
 
 type StockView = 'receive' | 'count' | 'critical' | 'expiry';
 
-/** Each view with the permission that opens it: the count has its own, the rest are `stock`. */
-const VIEWS: readonly { value: StockView; label: string; permission: Permission }[] = [
-  { value: 'receive', label: 'Mal kabul', permission: 'stock' },
-  { value: 'count', label: 'Sayım', permission: 'count' },
-  { value: 'critical', label: 'Kritik stok', permission: 'stock' },
-  { value: 'expiry', label: 'SKT yaklaşanlar', permission: 'stock' },
+type Can = (permission: Permission) => boolean;
+
+/**
+ * Each view with who may open it: the count has its own permission, the levels are `stock`, and
+ * goods received also needs `seeCost` (a receipt is a purchase invoice: prices, payment, supplier).
+ */
+const VIEWS: readonly { value: StockView; label: string; allowed: (can: Can) => boolean }[] = [
+  { value: 'receive', label: 'Mal kabul', allowed: (can) => can('stock') && can('seeCost') },
+  { value: 'count', label: 'Sayım', allowed: (can) => can('count') },
+  { value: 'critical', label: 'Kritik stok', allowed: (can) => can('stock') },
+  { value: 'expiry', label: 'SKT yaklaşanlar', allowed: (can) => can('stock') },
 ];
 
 /**
@@ -31,7 +36,7 @@ export function StockPanel(): JSX.Element {
   const { can } = useSession();
   const [picked, setPicked] = useState<StockView>();
   const toast = useToast();
-  const allowed = VIEWS.filter((each) => can(each.permission));
+  const allowed = VIEWS.filter((each) => each.allowed(can));
   const view = allowed.find((each) => each.value === picked)?.value ?? allowed[0]?.value;
 
   // The goods receipt reads its draft when it opens, so the product is written to the draft.
@@ -57,7 +62,11 @@ export function StockPanel(): JSX.Element {
       ) : null}
       {view === 'receive' ? <GoodsReceipt onDone={toast.show} /> : null}
       {view === 'count' ? <StockCount onDone={toast.show} /> : null}
-      {view === 'critical' ? <CriticalStock onReceive={receive} /> : null}
+      {view === 'critical' ? (
+        <CriticalStock
+          onReceive={allowed.some((each) => each.value === 'receive') ? receive : undefined}
+        />
+      ) : null}
       {view === 'expiry' ? <ExpiringStock /> : null}
       <ToastRegion message={toast.message} />
     </>

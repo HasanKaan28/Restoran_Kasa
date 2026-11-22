@@ -52,9 +52,8 @@ export function CustomerFormDialog({
     }
     setErrors({});
     const input = { name, phone, creditLimit };
-    // Changing a customer's limit is a manager's call (DESIGN §8.5, limit aşımı onayı), and so is
-    // giving a new customer one.
-    if (creditLimit !== (customer?.creditLimit ?? 0)) {
+    // Changing a customer's limit is a manager's call (DESIGN §8.5, limit aşımı onayı).
+    if (customer && creditLimit !== customer.creditLimit) {
       approval.ask('overLimit', () => void store(input));
     } else {
       await store(input);

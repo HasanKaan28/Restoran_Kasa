@@ -89,9 +89,9 @@ describe('countDraft', () => {
     const draft = { ...countProduct(EMPTY_COUNT, product('tea')), note: 'Raf 3' };
     saveCountDraft(draft, storage);
     expect(loadCountDraft(storage)).toEqual(draft);
-    expect(
-      loadCountDraft(memoryStorage({ 'rk.stockCount': '{"lines":[{"counted":3}]}' })),
-    ).toEqual(EMPTY_COUNT);
+    expect(loadCountDraft(memoryStorage({ 'rk.stockCount': '{"lines":[{"counted":3}]}' }))).toEqual(
+      EMPTY_COUNT,
+    );
     expect(loadCountDraft(memoryStorage({ 'rk.stockCount': 'not json' }))).toEqual(EMPTY_COUNT);
   });
 });
