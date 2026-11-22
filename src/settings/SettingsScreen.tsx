@@ -12,6 +12,7 @@ import { AppearanceSection } from './AppearanceSection';
 import { AuditLog } from './AuditLog';
 import { BackupSection } from './BackupSection';
 import { NotificationsSection } from '@/notify/NotificationsSection';
+import { OrderSlipSection } from '@/restaurant/OrderSlipSection';
 import { QrMenuSection } from '@/restaurant/QrMenuSection';
 import { TablesSection } from '@/restaurant/TablesSection';
 import { LicenseSection, MarketSection, ReceiptSection, RegisterSection } from './MarketSections';
@@ -54,6 +55,7 @@ export function SettingsScreen(): JSX.Element {
         <QrMenuSection onDone={(message) => toast.show(message)} />
         <RegisterSection />
         <NotificationsSection />
+        <OrderSlipSection />
         <AppearanceSection />
         <ReceiptSection onDone={(message) => done(message)} />
         <UpdateSection version={APP_VERSION} {...updateTarget()} />
@@ -155,9 +157,11 @@ export function DeviceSettingsScreen(): JSX.Element {
     >
       <h1 className="text-xl font-semibold">Ayarlar</h1>
       <p className="text-text-2">
-        Bu cihazın bildirimleri ve görünümü. Restoranın diğer ayarlarını yönetici değiştirir.
+        Bu cihazın bildirimleri, adisyonu ve görünümü. Restoranın diğer ayarlarını yönetici
+        değiştirir.
       </p>
       <NotificationsSection />
+      <OrderSlipSection />
       <AppearanceSection />
     </AppShell>
   );

@@ -39,6 +39,8 @@ describe('SettingsScreen', () => {
     await settingsAs(data, ayse.id);
     expect(await screen.findByRole('region', { name: 'Bildirimler' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Görünüm' })).toBeInTheDocument();
+    // The order slip is this device's too: the bar PC may be signed in by a waiter.
+    expect(screen.getByRole('region', { name: 'Sipariş adisyonu' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Personel' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Yedek' })).not.toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Ana menü' });
@@ -49,6 +51,7 @@ describe('SettingsScreen', () => {
     const { data, kaan } = await team();
     await settingsAs(data, kaan.id);
     expect(await screen.findByRole('region', { name: 'Bildirimler' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Sipariş adisyonu' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Personel' })).toBeInTheDocument();
   });
 

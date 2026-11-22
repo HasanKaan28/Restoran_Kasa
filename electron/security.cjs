@@ -133,6 +133,7 @@ module.exports = {
   APP_HOST,
   CONTENT_SECURITY_POLICY,
   SUPABASE_ORIGIN,
+  isAppUrl,
   isExternalUrl,
   permissionAllowed,
   permissionCheckAllowed,

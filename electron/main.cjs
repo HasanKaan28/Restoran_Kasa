@@ -25,6 +25,7 @@ const {
 } = require('./security.cjs');
 const { displayBounds, isDisplayUrl } = require('./display.cjs');
 const { wireUpdates } = require('./updates.cjs');
+const { wirePrint } = require('./print.cjs');
 
 const DIST = path.join(__dirname, '../dist');
 const APP_ORIGIN = `app://${APP_HOST}`;
@@ -71,7 +72,7 @@ function createWindow() {
       nodeIntegration: false,
       webSecurity: true,
       devTools: devToolsAllowed(app.isPackaged),
-      // Runs sandboxed; it hands the page only the update calls.
+      // Runs sandboxed; it hands the page only the update calls and the silent print.
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
@@ -187,6 +188,7 @@ if (!gotTheLock) {
       permissionCheckAllowed(permission, origin, details),
     );
     wireUpdates({ autoUpdater, ipcMain, getWindow: () => mainWindow, isPackaged: app.isPackaged });
+    wirePrint({ ipcMain, getWindow: () => mainWindow });
     createWindow();
 
     app.on('activate', () => {
