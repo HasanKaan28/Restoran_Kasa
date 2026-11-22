@@ -58,7 +58,11 @@ export type GoodsReceiptProps = {
 export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
   const { db, settings, runner } = useData();
   const actor = useActor();
-  const { staff } = useSession();
+  const { staff, can } = useSession();
+  // Buy prices, what a delivery costs and how it is paid are the cost's: seeCost. A receipt
+  // changes the menu's sell price too: editProducts.
+  const seeCost = can('seeCost');
+  const editPrices = can('editProducts');
   const { cutoffMinutes } = useMarketSettings();
   const [draft, setDraft] = useState<ReceiptDraft>(() => loadDraft());
   const [query, setQuery] = useState('');
@@ -84,8 +88,21 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
     suppliers === undefined || suppliers.some((supplier) => supplier.id === draft.supplierId)
       ? (draft.supplierId ?? '')
       : '';
-  const payment = draft.payment ?? 'cash';
-  const fromDrawer = draft.fromDrawer ?? true;
+  // Whoever cannot see costs cannot pay for a delivery either: it is recorded as paid from
+  // elsewhere than the drawer, at the prices the products keep, for the owner to settle.
+  const payment = seeCost ? (draft.payment ?? 'cash') : 'cash';
+  const fromDrawer = seeCost ? (draft.fromDrawer ?? true) : false;
+  // What a draft left on this device by someone with more rights says is not read here.
+  const sendable: ReceiptDraft = {
+    ...draft,
+    pricesExclusive: seeCost ? draft.pricesExclusive : undefined,
+    lines: draft.lines.map((line) => ({
+      ...line,
+      buyPrice: seeCost ? line.buyPrice : undefined,
+      free: seeCost ? line.free : undefined,
+      sellPrice: editPrices ? line.sellPrice : undefined,
+    })),
+  };
 
   useEffect(() => {
     saveDraft(draft);
@@ -116,9 +133,18 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
     if (product && !product.deletedAt) {
       add(product);
     } else if (product) {
-      setForm({ product });
+      // Bringing a deleted product back is editing the menu.
+      openForm({ product }, editPrices);
     } else if (!typed || looksLikeBarcode(code)) {
-      setForm({ barcode: code });
+      openForm({ barcode: code }, editPrices || can('addProduct'));
+    }
+  }
+
+  function openForm(next: { barcode: string } | { product: ProductRecord }, allowed: boolean) {
+    if (allowed) {
+      setForm(next);
+    } else {
+      setFailure('Bu barkod kayıtlı değil. Ürün eklemek için yetkiniz yok.');
     }
   }
 
@@ -184,7 +210,7 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
         db,
         draft.lines.map((line) => line.productId),
       );
-      const read = readDraftLines(draft, products);
+      const read = readDraftLines(sendable, products);
       setErrors(read.errors);
       if (read.errors.size > 0) {
         const names = draft.lines
@@ -211,7 +237,11 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
         actor,
       );
       setDraft(EMPTY_DRAFT);
-      onDone(`Mal kabul kaydedildi: ${purchase.lines.length} ürün, ${formatTRY(purchase.total)}.`);
+      onDone(
+        seeCost
+          ? `Mal kabul kaydedildi: ${purchase.lines.length} ürün, ${formatTRY(purchase.total)}.`
+          : `Mal kabul kaydedildi: ${purchase.lines.length} ürün.`,
+      );
       void runner.run();
     } catch {
       setFailure('Mal kabul kaydedilemedi. Hiçbir şey değişmedi.');
@@ -226,7 +256,7 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
     return {
       line,
       product,
-      cost: gone ? undefined : draftLineCost(line, product, draft.pricesExclusive),
+      cost: gone ? undefined : draftLineCost(line, product, sendable.pricesExclusive),
       error: errors.get(line.productId) ?? (gone ? DELETED_PRODUCT_LINE : undefined),
     };
   });
@@ -274,7 +304,9 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
                 line={line}
                 product={product}
                 stockMilli={live?.stock.get(line.productId) ?? 0}
-                cost={cost}
+                cost={seeCost ? cost : undefined}
+                showBuyPrice={seeCost}
+                showSellPrice={editPrices}
                 error={error}
                 onChange={(field, value) => setLine(line.productId, field, value)}
                 onFree={(free) => setFree(line.productId, free)}
@@ -320,28 +352,32 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
           }
         />
       </div>
-      <label className="flex min-h-11 cursor-pointer items-center gap-3">
-        <input
-          type="checkbox"
-          checked={draft.pricesExclusive ?? false}
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              pricesExclusive: event.target.checked || undefined,
-            }))
-          }
-          className="size-5 accent-accent"
+      {seeCost ? (
+        <label className="flex min-h-11 cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            checked={draft.pricesExclusive ?? false}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                pricesExclusive: event.target.checked || undefined,
+              }))
+            }
+            className="size-5 accent-accent"
+          />
+          Alış fiyatları KDV hariç
+        </label>
+      ) : null}
+      {seeCost ? (
+        <ChoiceGroup
+          legend="Ödeme"
+          name="receiptPayment"
+          options={PAYMENTS}
+          value={payment}
+          onChange={(next) => setDraft((current) => ({ ...current, payment: next }))}
         />
-        Alış fiyatları KDV hariç
-      </label>
-      <ChoiceGroup
-        legend="Ödeme"
-        name="receiptPayment"
-        options={PAYMENTS}
-        value={payment}
-        onChange={(next) => setDraft((current) => ({ ...current, payment: next }))}
-      />
-      {payment === 'cash' ? (
+      ) : null}
+      {seeCost && payment === 'cash' ? (
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
@@ -361,7 +397,7 @@ export function GoodsReceipt({ onDone }: GoodsReceiptProps): JSX.Element {
         value={draft.note}
         onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value }))}
       />
-      <p className="font-semibold">{`Toplam: ${formatTRY(total)}`}</p>
+      {seeCost ? <p className="font-semibold">{`Toplam: ${formatTRY(total)}`}</p> : null}
       {failure ? (
         <p role="alert" className="font-medium text-danger">
           {failure}
@@ -400,6 +436,8 @@ function ReceiptLine({
   product,
   stockMilli,
   cost,
+  showBuyPrice,
+  showSellPrice,
   error,
   onChange,
   onFree,
@@ -410,6 +448,10 @@ function ReceiptLine({
   product: ProductRecord | undefined;
   stockMilli: number;
   cost: number | undefined;
+  /** Buy price and the free-goods box: for whoever sees costs. */
+  showBuyPrice: boolean;
+  /** The sell price a receipt may change: for whoever edits the menu. */
+  showSellPrice: boolean;
   error: string | undefined;
   onChange(field: LineField, value: string): void;
   onFree(free: boolean): void;
@@ -443,25 +485,29 @@ function ReceiptLine({
           value={line.qty}
           onChange={(event) => onChange('qty', event.target.value)}
         />
-        <TextField
-          label="Alış fiyatı"
-          hint={unit === 'kg' ? 'Kilogram fiyatı' : undefined}
-          disabled={line.free}
-          inputMode="decimal"
-          autoComplete="off"
-          value={shownPrice(line, product, 'buyPrice')}
-          placeholder={keptPrice(product, 'buyPrice')}
-          onChange={(event) => onChange('buyPrice', event.target.value)}
-        />
-        <TextField
-          label="Satış fiyatı"
-          hint={unit === 'kg' ? 'Kilogram fiyatı' : undefined}
-          inputMode="decimal"
-          autoComplete="off"
-          value={shownPrice(line, product, 'sellPrice')}
-          placeholder={keptPrice(product, 'sellPrice')}
-          onChange={(event) => onChange('sellPrice', event.target.value)}
-        />
+        {showBuyPrice ? (
+          <TextField
+            label="Alış fiyatı"
+            hint={unit === 'kg' ? 'Kilogram fiyatı' : undefined}
+            disabled={line.free}
+            inputMode="decimal"
+            autoComplete="off"
+            value={shownPrice(line, product, 'buyPrice')}
+            placeholder={keptPrice(product, 'buyPrice')}
+            onChange={(event) => onChange('buyPrice', event.target.value)}
+          />
+        ) : null}
+        {showSellPrice ? (
+          <TextField
+            label="Satış fiyatı"
+            hint={unit === 'kg' ? 'Kilogram fiyatı' : undefined}
+            inputMode="decimal"
+            autoComplete="off"
+            value={shownPrice(line, product, 'sellPrice')}
+            placeholder={keptPrice(product, 'sellPrice')}
+            onChange={(event) => onChange('sellPrice', event.target.value)}
+          />
+        ) : null}
         <TextField
           label="SKT"
           hint="Son kullanma tarihi, isteğe bağlı"
@@ -470,15 +516,17 @@ function ReceiptLine({
           onChange={(event) => onChange('expiry', event.target.value)}
         />
       </div>
-      <label className="flex min-h-11 cursor-pointer items-center gap-3">
-        <input
-          type="checkbox"
-          checked={line.free ?? false}
-          onChange={(event) => onFree(event.target.checked)}
-          className="size-5 accent-accent"
-        />
-        Bedelsiz
-      </label>
+      {showBuyPrice ? (
+        <label className="flex min-h-11 cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            checked={line.free ?? false}
+            onChange={(event) => onFree(event.target.checked)}
+            className="size-5 accent-accent"
+          />
+          Bedelsiz
+        </label>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm font-medium text-danger">
           {error}

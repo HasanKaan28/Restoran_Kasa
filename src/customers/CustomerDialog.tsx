@@ -40,7 +40,7 @@ export function CustomerDialog({
   onDone,
 }: CustomerDialogProps): JSX.Element {
   const { db, settings } = useData();
-  const { staff } = useSession();
+  const { staff, can } = useSession();
   const { cutoffMinutes } = useMarketSettings();
   const approval = useApproval();
   const [panel, setPanel] = useState<Panel>(null);
@@ -100,9 +100,12 @@ export function CustomerDialog({
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button aria-expanded={panel === 'payment'} onClick={() => setPanel('payment')}>
-              Tahsilat al
-            </Button>
+            {/* Taking a payment from a customer is the cashier's `collect`, not any credit seller's. */}
+            {can('collect') ? (
+              <Button aria-expanded={panel === 'payment'} onClick={() => setPanel('payment')}>
+                Tahsilat al
+              </Button>
+            ) : null}
             {/* A write-down or a hand-made debt is a manager's call, like going over a limit. */}
             <Button
               aria-expanded={panel === 'adjustment'}

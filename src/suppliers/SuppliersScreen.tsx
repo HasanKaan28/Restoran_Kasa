@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus } from 'lucide-react';
-import { useState, type JSX } from 'react';
+import { useState, type JSX, type ReactNode } from 'react';
 import { useData, useSyncStatus } from '@/app/appData';
 import { AppShell } from '@/app/AppShell';
 import { normalizeForSearch } from '@/data/text';
@@ -9,10 +9,27 @@ import { SupplierDialog } from './SupplierDialog';
 import { SupplierFormDialog } from './SupplierFormDialog';
 import { formatSupplierBalance, supplierSummaries } from './statement';
 
-/** The suppliers: who delivers, and what the market owes each of them. */
+/** The suppliers' screen of the market's own menu. */
 export function SuppliersScreen(): JSX.Element {
-  const { db, settings, runner } = useData();
+  const { settings, runner } = useData();
   const status = useSyncStatus(runner);
+  return (
+    <AppShell
+      marketName={settings.marketName}
+      deviceName={settings.deviceName}
+      syncState={status.state}
+      pendingCount={status.pendingCount}
+      syncError={status.error}
+      activeNav="suppliers"
+    >
+      <SuppliersPanel title={<h1 className="text-xl font-semibold">Tedarikçiler</h1>} />
+    </AppShell>
+  );
+}
+
+/** The suppliers without a screen around it: who delivers, and what is owed to each of them. */
+export function SuppliersPanel({ title }: { title?: ReactNode }): JSX.Element {
+  const { db, runner } = useData();
   const toast = useToast();
   const [query, setQuery] = useState('');
   const [dialog, setDialog] = useState<{ kind: 'supplier'; id: string } | { kind: 'new' } | null>(
@@ -31,17 +48,10 @@ export function SuppliersScreen(): JSX.Element {
 
   return (
     <>
-      <AppShell
-        marketName={settings.marketName}
-        deviceName={settings.deviceName}
-        syncState={status.state}
-        pendingCount={status.pendingCount}
-        syncError={status.error}
-        activeNav="suppliers"
-      >
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="mr-auto">
-            <h1 className="text-xl font-semibold">Tedarikçiler</h1>
+            {title}
             {summaries ? (
               <p className="text-sm text-text-2">{`${summaries.length} tedarikçi`}</p>
             ) : null}
@@ -106,7 +116,7 @@ export function SuppliersScreen(): JSX.Element {
             </tbody>
           </table>
         ) : null}
-      </AppShell>
+      </div>
       {dialog?.kind === 'supplier' ? (
         <SupplierDialog open supplierId={dialog.id} onClose={() => setDialog(null)} onDone={done} />
       ) : null}
