@@ -56,6 +56,13 @@ describe('tenderFor', () => {
     });
   });
 
+  it('writes all of it on credit (veresiye), whatever was typed for cash', () => {
+    expect(tenderFor('credit', 49000, { cashPart: '200', given: 'x' })).toEqual({
+      payments: [{ method: 'credit', amount: 49000 }],
+    });
+    expect(tenderFor('credit', 0, none)).toEqual({ payments: [] });
+  });
+
   it('takes no payment for a bill of nothing (treats only)', () => {
     expect(tenderFor('cash', 0, none)).toEqual({ payments: [] });
   });

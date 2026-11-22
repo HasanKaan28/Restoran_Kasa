@@ -16,6 +16,7 @@ import {
   itemLabel,
   markServed,
   payTabItems,
+  remakeItem,
   removeNewItem,
   repeatItem,
   requestBill,
@@ -44,6 +45,7 @@ import { MoveDialog } from './MoveDialog';
 import { OrderDialog } from './OrderDialog';
 import { OrderLines, type OrderLineActions } from './OrderLines';
 import { PayDialog } from './PayDialog';
+import { RemakeDialog } from './RemakeDialog';
 
 const PHONE = '(max-width: 767px)';
 const NO_SALE = 'Lisans süresi doldu; yeni sipariş alınamaz.';
@@ -69,6 +71,7 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
   const [sheet, setSheet] = useState<'order' | 'more' | null>(null);
   const [lineFor, setLineFor] = useState<TabItemRecord | null>(null);
   const [voiding, setVoiding] = useState<TabItemRecord | null>(null);
+  const [remaking, setRemaking] = useState<TabItemRecord | null>(null);
   const [dialog, setDialog] = useState<'pay' | 'move' | null>(null);
   const [ordering, setOrdering] = useState<ProductRecord | null>(null);
   const waiter = { deviceCode: settings.deviceCode, staffId: session.staff?.id };
@@ -417,6 +420,12 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
             setLineFor(null);
             approval.ask('voidSale', () => setVoiding(item));
           }}
+          onRemake={() => {
+            const item = lineFor;
+            setLineFor(null);
+            // Free food, like a treat: the same permission, or a permitted person's PIN.
+            approval.ask('discount', () => setRemaking(item));
+          }}
         />
       ) : null}
       {ordering ? (
@@ -431,10 +440,22 @@ export function TabView({ tabId, onClose }: { tabId: string; onClose(): void }):
           item={voiding}
           onClose={() => setVoiding(null)}
           onVoid={async (reason) => {
-            await voidItem(db, voiding.id, reason, new Date());
+            await voidItem(db, voiding.id, reason, new Date(), session.staff?.id);
             void runner.run();
             setVoiding(null);
             toast.show(`${voiding.name} iptal edildi.`);
+          }}
+        />
+      ) : null}
+      {remaking ? (
+        <RemakeDialog
+          item={remaking}
+          onClose={() => setRemaking(null)}
+          onRemake={async (reason) => {
+            await remakeItem(db, { itemId: remaking.id, reason, ...waiter }, new Date());
+            void runner.run();
+            setRemaking(null);
+            toast.show(`${remaking.name} tekrar hazırlanıyor.`);
           }}
         />
       ) : null}
@@ -608,7 +629,10 @@ function CountBadge({ count }: { count: number }): JSX.Element | null {
   ) : null;
 }
 
-/** A sent line's actions: one more of the same, a treat, or a void with its reason. */
+/**
+ * A sent line's actions: one more of the same, made again at no charge (Tekrar hazırla), a treat,
+ * or a void with its reason.
+ */
 function LineSheet({
   item,
   amount,
@@ -618,6 +642,7 @@ function LineSheet({
   onRepeat,
   onTreat,
   onVoid,
+  onRemake,
 }: {
   item: TabItemRecord;
   amount: number | undefined;
@@ -627,7 +652,10 @@ function LineSheet({
   onRepeat(): void;
   onTreat(): void;
   onVoid(): void;
+  onRemake(): void;
 }): JSX.Element {
+  // Only what the kitchen or the bar has had can be made again.
+  const remakable = item.status === 'sent' || item.status === 'ready';
   return (
     <Dialog
       open
@@ -648,7 +676,11 @@ function LineSheet({
         <Button disabled={!canRepeat} onClick={onRepeat}>
           {item.unit === 'kg' ? 'Tekrarla' : 'Bir tane daha'}
         </Button>
-        <Button onClick={onTreat}>{item.complimentary ? 'İkramı kaldır' : 'İkram'}</Button>
+        {remakable ? <Button onClick={onRemake}>Tekrar hazırla</Button> : null}
+        {/* A remake stays on the house: charging for it would change the bill. */}
+        {item.remakeOf ? null : (
+          <Button onClick={onTreat}>{item.complimentary ? 'İkramı kaldır' : 'İkram'}</Button>
+        )}
         <Button variant="danger" onClick={onVoid}>
           İptal
         </Button>

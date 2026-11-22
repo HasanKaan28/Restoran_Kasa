@@ -167,7 +167,7 @@ export async function reopenCancelledWithLines(
     if ((await db.tabItems.where('tabId').equals(tabId).filter(payable).count()) === 0) {
       continue;
     }
-    await patch(db, 'tabs', tabId, { status: 'open', closedAt: null }, at);
+    await patch(db, 'tabs', tabId, { status: 'open', closedAt: null, closedByStaffId: null }, at);
     reopened += 1;
   }
   return reopened;
@@ -414,12 +414,16 @@ export async function removeNewItem(db: MarketDb, itemId: string, at: Date): Pro
   });
 }
 
-/** Takes back a line already sent, with why: it leaves the bill and the kitchen's screen. */
+/**
+ * Takes back a line already sent, with why: it leaves the bill and the kitchen's screen. The line
+ * keeps when it was taken back and, when someone is signed in, by whom.
+ */
 export async function voidItem(
   db: MarketDb,
   itemId: string,
   reason: string,
   at: Date,
+  staffId?: string,
 ): Promise<void> {
   const why = reason.trim();
   if (why === '') {
@@ -430,7 +434,19 @@ export async function voidItem(
     if (item.paidSaleId) {
       throw new RangeError('A paid line is returned from its receipt, not voided');
     }
-    await patch(db, 'tabItems', itemId, { status: 'void', voidReason: why }, at);
+    await patch(
+      db,
+      'tabItems',
+      itemId,
+      {
+        status: 'void',
+        voidReason: why,
+        voidedAt: at.toISOString(),
+        // Left out, not cleared, when nobody is signed in.
+        ...(staffId ? { voidedByStaffId: staffId } : {}),
+      },
+      at,
+    );
     await assertSharesCovered(db, item.tabId);
   });
 }
@@ -447,8 +463,62 @@ export async function setComplimentary(
     if (item.paidSaleId || item.status === 'void') {
       throw new RangeError('Only an unpaid line can be made complimentary');
     }
+    // A line made again is free by what it is: charging for it would change the bill.
+    if (item.remakeOf && !complimentary) {
+      throw new RangeError('A remake stays on the house');
+    }
     await patch(db, 'tabItems', itemId, { complimentary: complimentary ? true : null }, at);
     await assertSharesCovered(db, item.tabId);
+  });
+}
+
+/**
+ * Makes a line the kitchen or the bar already had once more, at no charge (it came cold, it was
+ * dropped): a new line, on the house, sent straight to its station as a ticket of its own, the
+ * bill as it was. The line it remakes may be paid already (one guest of a split bill); it is not
+ * changed, nor is its sale. The tab must still be open.
+ */
+export async function remakeItem(
+  db: MarketDb,
+  input: Waiter & { itemId: string; reason: string },
+  at: Date,
+): Promise<TabItemRecord> {
+  const why = input.reason.trim();
+  if (why === '') {
+    throw new RangeError('A remake needs a reason');
+  }
+  return db.transaction('rw', db.tabs, db.tabItems, db.outbox, async () => {
+    const item = await requireItem(db, input.itemId);
+    await requireOpenTab(db, item.tabId);
+    if (item.status !== 'sent' && item.status !== 'ready') {
+      throw new RangeError('Only a line the kitchen or the bar has had can be made again');
+    }
+    const stamp = at.toISOString();
+    const record: TabItemRecord = withoutUndefined({
+      id: newId(at.getTime()),
+      tabId: item.tabId,
+      productId: item.productId,
+      name: item.name,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      qtyMilli: item.qtyMilli,
+      note: item.note,
+      portion: item.portion,
+      options: item.options ? [...item.options] : undefined,
+      station: item.station,
+      complimentary: true,
+      remakeOf: item.id,
+      remakeReason: why,
+      deviceCode: input.deviceCode,
+      staffId: input.staffId,
+      orderedAt: stamp,
+      createdAt: stamp,
+      updatedAt: stamp,
+      ...(started(item, stamp) as Pick<TabItemRecord, 'status' | 'sentAt' | 'readyAt'>),
+    });
+    await db.tabItems.add(record);
+    await appendOutbox(db, { kind: 'insert', table: 'tabItems', recordId: record.id, record }, at);
+    return record;
   });
 }
 
@@ -827,6 +897,10 @@ export async function payTabItems(
     payments: Payment[];
     cashGiven?: Kurus;
     cutoffMinutes?: number;
+    /** The customer a credit (veresiye) payment is written to. */
+    customerId?: string;
+    /** A permitted person let a credit payment go over the customer's limit. */
+    allowOverLimit?: boolean;
   },
   at: Date,
 ): Promise<SaleRecord | { total: 0; cancelled: true }> {
@@ -848,7 +922,11 @@ export async function payTabItems(
         db,
         'tabs',
         input.tabId,
-        { status: paidBefore ? 'paid' : 'cancelled', closedAt: at.toISOString() },
+        {
+          status: paidBefore ? 'paid' : 'cancelled',
+          closedAt: at.toISOString(),
+          ...closedBy(input.staffId),
+        },
         at,
       );
       return { total: 0, cancelled: true } as const;
@@ -899,15 +977,28 @@ export async function payTabItems(
       }),
       payments,
       ...(input.cashGiven !== undefined ? { cashGiven: input.cashGiven } : {}),
+      ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
+      ...(input.allowOverLimit ? { allowOverLimit: true } : {}),
     });
     for (const item of chosen) {
       await patch(db, 'tabItems', item!.id, { paidSaleId: sale.id }, at);
     }
     if (open.length === chosen.length) {
-      await patch(db, 'tabs', input.tabId, { status: 'paid', closedAt: at.toISOString() }, at);
+      await patch(
+        db,
+        'tabs',
+        input.tabId,
+        { status: 'paid', closedAt: at.toISOString(), ...closedBy(input.staffId) },
+        at,
+      );
     }
     return sale;
   });
+}
+
+/** Who closed a tab, when someone is signed in; left out (not cleared) otherwise. */
+function closedBy(staffId: string | undefined): { closedByStaffId?: string } {
+  return staffId ? { closedByStaffId: staffId } : {};
 }
 
 // --- Paying by amount ---------------------------------------------------------------------------

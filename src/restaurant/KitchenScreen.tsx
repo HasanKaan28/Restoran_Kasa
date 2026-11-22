@@ -163,6 +163,12 @@ export function KitchenScreen(): JSX.Element {
                         onClick={() => void ready([item.id], itemLabel(item))}
                         className="flex w-full flex-col rounded-control border border-line px-3 py-2 text-left hover:bg-bg"
                       >
+                        {item.remakeOf ? (
+                          // Made again (it came cold, it was dropped): the cook sees why.
+                          <span className="self-start rounded-chip bg-warning-bg px-2 text-sm font-semibold text-warning">
+                            {item.remakeReason ? `Tekrar · ${item.remakeReason}` : 'Tekrar'}
+                          </span>
+                        ) : null}
                         <span className="text-lg font-medium">
                           {`${formatLineQty(item.qtyMilli, item.unit)} × ${itemLabel(item)}`}
                         </span>
