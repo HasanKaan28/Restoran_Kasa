@@ -132,4 +132,24 @@ describe('savedReports', () => {
     });
     expect((await listSavedReports(db)).map((r) => r.id)).toEqual(['old']);
   });
+
+  it('keeps a pulled row without createdAt in the list, last', async () => {
+    const { db } = createTestData();
+    const summary = await summaryOf(db);
+    await saveReport(
+      db,
+      { title: 'A', from: '2026-11-01', to: '2026-11-02', summary, deviceCode: 'K1' },
+      new Date('2026-11-01T10:00:00Z'),
+    );
+    await db.savedReports.add({
+      id: 'bad',
+      title: 'Bozuk',
+      kind: 'period',
+      from: '2026-10-01',
+      to: '2026-10-02',
+      summary,
+      deviceCode: 'K1',
+    } as never);
+    expect((await listSavedReports(db)).map((r) => r.title)).toEqual(['A', 'Bozuk']);
+  });
 });

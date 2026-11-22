@@ -69,7 +69,7 @@ describe('ArchiveSection', () => {
   it('says so when there is nothing yet', async () => {
     await renderWithData(<ArchiveSection />);
     expect(await screen.findByText('Henüz gün sonu kaydı yok.')).toBeInTheDocument();
-    expect(screen.getByText('Henüz kaydedilmiş rapor yok.')).toBeInTheDocument();
+    expect(await screen.findByText('Henüz kaydedilmiş rapor yok.')).toBeInTheDocument();
   });
 
   it('saves the period under a title and keeps it as it was when later sales come', async () => {
@@ -157,5 +157,75 @@ describe('ArchiveSection', () => {
     });
     await renderWithData(<ArchiveSection />, data);
     expect(await screen.findByText('Eski rapor')).toBeInTheDocument();
+  });
+
+  it('opens a pulled report whose summary lacks lists, without crashing', async () => {
+    const data = await dataWithSale();
+    const full = await loadSummary(data.db, { from: '0000-01-01', to: '9999-12-31' });
+    const partial: Partial<typeof full> = { ...full };
+    delete partial.byStaff;
+    delete partial.categories;
+    await data.db.savedReports.add({
+      id: 'partial',
+      title: 'Eksik rapor',
+      kind: 'period',
+      from: '2026-10-01',
+      to: '2026-10-02',
+      summary: partial as never,
+      deviceCode: 'K1',
+      createdAt: '2026-10-03T00:00:00.000Z',
+      updatedAt: '2026-10-03T00:00:00.000Z',
+    });
+    await renderWithData(<ArchiveSection />, data);
+    await userEvent.click(await screen.findByRole('button', { name: 'Aç, Eksik rapor' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Eksik rapor' });
+    expect(await within(dialog).findByRole('group', { name: 'Net satış' })).toBeInTheDocument();
+  });
+
+  it('shows a row with a malformed date safely and keeps the rest of the list', async () => {
+    const data = createTestData();
+    const summary = await loadSummary(data.db, { from: '0000-01-01', to: '9999-12-31' });
+    const base = { kind: 'period', summary, deviceCode: 'K1', updatedAt: 'x' } as const;
+    await data.db.savedReports.bulkAdd([
+      {
+        ...base,
+        id: 'good',
+        title: 'Sağlam',
+        from: '2026-10-01',
+        to: '2026-10-02',
+        createdAt: '2026-10-03T00:00:00.000Z',
+      },
+      {
+        ...base,
+        id: 'badDate',
+        title: 'Bozuk tarih',
+        from: '2026-10-01',
+        to: '2026-10-02',
+        createdAt: 'yok',
+      },
+      {
+        ...base,
+        id: 'badDays',
+        title: 'Bozuk gün',
+        from: 5,
+        to: undefined,
+        createdAt: '2026-10-04T00:00:00.000Z',
+      },
+      { ...base, id: 'noStamp', title: 'Damgasız', from: '2026-10-01', to: '2026-10-02' },
+    ] as never);
+    await renderWithData(<ArchiveSection />, data);
+    expect(await screen.findByText('Sağlam')).toBeInTheDocument();
+    expect(screen.getByText('Bozuk tarih')).toBeInTheDocument();
+    expect(screen.getByText('Bozuk gün')).toBeInTheDocument();
+    expect(screen.getByText('Damgasız')).toBeInTheDocument();
+  });
+
+  it('says so when saving fails', async () => {
+    const data = await dataWithSale();
+    vi.spyOn(data.db.savedReports, 'add').mockRejectedValue(new Error('disk'));
+    await renderWithData(<ArchiveSection />, data);
+    const form = screen.getByRole('region', { name: 'Dönemi kaydet' });
+    await userEvent.click(within(form).getByRole('button', { name: 'Kaydet' }));
+    expect(await screen.findByText('Rapor kaydedilemedi')).toBeInTheDocument();
   });
 });

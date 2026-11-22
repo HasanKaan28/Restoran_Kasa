@@ -53,10 +53,17 @@ export async function saveReport(
   return record;
 }
 
-/** The reports not archived, the newest first. */
+/**
+ * The reports not archived, the newest first. A pulled row without a usable createdAt is not
+ * dropped (an index scan would): it goes last.
+ */
 export async function listSavedReports(db: MarketDb): Promise<SavedReportRecord[]> {
-  const all = await db.savedReports.orderBy('createdAt').reverse().toArray();
-  return all.filter((report) => !report.archivedAt);
+  const all = await db.savedReports.toArray();
+  const stamp = (report: SavedReportRecord) =>
+    typeof report.createdAt === 'string' ? report.createdAt : '';
+  return all
+    .filter((report) => !report.archivedAt)
+    .sort((a, b) => stamp(b).localeCompare(stamp(a)));
 }
 
 /** Puts a report away; it stays on the device and in the sync, only out of the list. */

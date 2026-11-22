@@ -19,20 +19,12 @@ import { formatPeriod } from '@/reports/reportFormat';
 import { ReportSummary } from '@/reports/SalesReport';
 import { loadSummary, reportRegisters } from '@/reports/summary';
 import { useReportPeriod } from '@/reports/useReportPeriod';
+import { periodText, readableReport, stampText } from './savedReportView';
 
 /** The register choice that means every register. */
 const ALL = '';
 /** How many day-end records show before "Daha eski kayıtlar". */
 const FIRST_PAGE = 30;
-
-const STAMP = new Intl.DateTimeFormat('tr-TR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'Europe/Istanbul',
-});
 
 /**
  * Yönetim's archive: the day-end (Z) records of the registers, and the reports saved from a
@@ -198,6 +190,8 @@ function SavePeriod(): JSX.Element {
       setTitle('');
       toast.show('Rapor kaydedildi');
       void runner.run();
+    } catch {
+      toast.show('Rapor kaydedilemedi');
     } finally {
       setBusy(false);
     }
@@ -241,7 +235,7 @@ function SavePeriod(): JSX.Element {
 
 function SavedReports(): JSX.Element {
   const { db, runner } = useData();
-  const reports = useLiveQuery(() => listSavedReports(db), [db]);
+  const reports = useLiveQuery(async () => (await listSavedReports(db)).map(readableReport), [db]);
   const [open, setOpen] = useState<SavedReportRecord | null>(null);
 
   async function archive(report: SavedReportRecord) {
@@ -266,7 +260,7 @@ function SavedReports(): JSX.Element {
               <div className="min-w-0 flex-[1_1_200px]">
                 <p className="font-medium [overflow-wrap:anywhere]">{report.title}</p>
                 <p className="text-sm text-text-2 [overflow-wrap:anywhere]">
-                  {`${formatPeriod(report.from, report.to)} · ${report.register ?? 'Tümü'} · ${STAMP.format(new Date(report.createdAt))}`}
+                  {`${periodText(report.from, report.to)} · ${report.register ?? 'Tümü'} · ${stampText(report.createdAt)}`}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -316,7 +310,7 @@ function SavedReportDialog({
       open
       onOpenChange={(next) => !next && onClose()}
       title={report.title}
-      description={`${formatPeriod(report.from, report.to)} · ${report.register ?? 'Tümü'}`}
+      description={`${periodText(report.from, report.to)} · ${report.register ?? 'Tümü'}`}
       size="lg"
       footer={
         <>
