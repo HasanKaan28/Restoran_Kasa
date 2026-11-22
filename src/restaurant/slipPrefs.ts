@@ -20,7 +20,9 @@ export const SLIP_STORAGE_KEY = 'rk.orderSlip';
 export function loadSlipPrefs(storage?: Pick<Storage, 'getItem'>): SlipPrefs {
   try {
     const raw = (storage ?? localStorage).getItem(SLIP_STORAGE_KEY);
-    const parsed = (raw === null ? {} : JSON.parse(raw)) as Partial<Record<'mode' | 'since', unknown>>;
+    const parsed = (raw === null ? {} : JSON.parse(raw)) as Partial<
+      Record<'mode' | 'since', unknown>
+    >;
     if (
       (parsed.mode === 'delivered' || parsed.mode === 'all') &&
       typeof parsed.since === 'string' &&

@@ -61,14 +61,7 @@ describe('takeNewSlips', () => {
     // Two taps on the same beer can make two lines: the slip says "5 × Efes" all the same.
     await addTabItem(db, tab.id, beer, { qtyMilli: 3000 }, aliOnPhone, later(1));
     await addTabItem(db, tab.id, beer, { qtyMilli: 2000 }, aliOnPhone, later(1));
-    await addTabItem(
-      db,
-      tab.id,
-      kebab,
-      { qtyMilli: 1000, note: 'Acısız' },
-      aliOnPhone,
-      later(1.5),
-    );
+    await addTabItem(db, tab.id, kebab, { qtyMilli: 1000, note: 'Acısız' }, aliOnPhone, later(1.5));
     await deliverTab(db, tab.id, later(2));
 
     const slips = await take(3);

@@ -14,11 +14,7 @@ async function bar() {
   const data = createTestData();
   const at = new Date();
   await createDiningTable(data.db, { name: 'S1', area: 'Salon' }, at);
-  await createProduct(
-    data.db,
-    { name: 'Efes', sellPrice: 15000, vatRate: 20, station: 'bar' },
-    at,
-  );
+  await createProduct(data.db, { name: 'Efes', sellPrice: 15000, vatRate: 20, station: 'bar' }, at);
   return data;
 }
 

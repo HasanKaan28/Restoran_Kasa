@@ -61,10 +61,10 @@ describe('deliverTab', () => {
       servedAt: stamp,
       deliveredAt: stamp,
     });
-    const patches = (await pendingOps(db)).filter(
-      (op) => op.kind === 'patch' && op.recordId === line.id,
+    const patches = (await pendingOps(db)).flatMap((op) =>
+      op.kind === 'patch' && op.recordId === line.id ? [op.patch] : [],
     );
-    expect(patches.at(-1)?.patch).toEqual({
+    expect(patches.at(-1)).toEqual({
       status: 'ready',
       sentAt: stamp,
       readyAt: stamp,
@@ -90,9 +90,7 @@ describe('deliverTab', () => {
     expect(await readyToServe(db, tab.id)).toEqual([]);
     expect(await recallLast(db, 'bar', later(2))).toBe(0);
     expect(await recallLast(db, 'kitchen', later(2))).toBe(0);
-    expect(await takeReadyNews(db, me, { scope: 'all', quiet: false, now: later(2) })).toEqual(
-      [],
-    );
+    expect(await takeReadyNews(db, me, { scope: 'all', quiet: false, now: later(2) })).toEqual([]);
     // Still on the bill, to be paid like any line.
     expect((await tabBill(db, tab.id)).total).toBe(5 * 15000 + 45000);
   });

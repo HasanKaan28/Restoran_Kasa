@@ -5,7 +5,9 @@ import { addTabItem, createDiningTable, openTab, sendTab } from '@/data/restaura
 import { deliverTab } from '@/data/deliver';
 import { createTestData, renderWithData } from '@/test/renderWithData';
 import type { OrderSlip } from './orderSlip';
-import { OrderSlipPrinter, OrderSlipsView, printOrderSlips } from './OrderSlipPrinter';
+import { OrderSlipPrinter } from './OrderSlipPrinter';
+import { OrderSlipsView } from './OrderSlipView';
+import { printOrderSlips } from './printOrderSlips';
 import { chooseSlipMode } from './slipPrefs';
 
 afterEach(() => {
@@ -134,7 +136,10 @@ describe('printOrderSlips', () => {
     const silent = vi.fn(
       () =>
         new Promise<boolean>((resolve) => {
-          jobs.push({ text: document.getElementById('print-root')?.textContent ?? null, finish: resolve });
+          jobs.push({
+            text: document.getElementById('print-root')?.textContent ?? null,
+            finish: resolve,
+          });
         }),
     );
     (window as { marketKasa?: unknown }).marketKasa = { print: { silent } };

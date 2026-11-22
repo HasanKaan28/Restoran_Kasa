@@ -41,9 +41,9 @@ describe('desktop silent printing', () => {
 
   it('prints for no other page or window', async () => {
     const { call, print, webContents } = setup();
-    expect(
-      await call({ sender: webContents, senderFrame: { url: 'https://example.com/' } }),
-    ).toBe(false);
+    expect(await call({ sender: webContents, senderFrame: { url: 'https://example.com/' } })).toBe(
+      false,
+    );
     expect(await call({ sender: webContents, senderFrame: null })).toBe(false);
     // The customer display is a window of the app too, but prints nothing.
     expect(

@@ -21,7 +21,10 @@ describe('slip preferences', () => {
   it('keeps the moment a choice was made, so orders before it are never printed', () => {
     const storage = memory();
     chooseSlipMode('delivered', new Date('2026-11-22T18:00:00Z'), storage);
-    expect(loadSlipPrefs(storage)).toEqual({ mode: 'delivered', since: '2026-11-22T18:00:00.000Z' });
+    expect(loadSlipPrefs(storage)).toEqual({
+      mode: 'delivered',
+      since: '2026-11-22T18:00:00.000Z',
+    });
 
     // A new choice starts again from its own moment; choosing the same again changes nothing.
     chooseSlipMode('all', new Date('2026-11-22T19:00:00Z'), storage);

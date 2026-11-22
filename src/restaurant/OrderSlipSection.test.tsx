@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { Capacitor } from '@capacitor/core';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OrderSlipSection } from './OrderSlipSection';
 import { loadSlipPrefs } from './slipPrefs';
 
 afterEach(() => {
+  vi.restoreAllMocks();
   delete (window as { marketKasa?: unknown }).marketKasa;
 });
 
@@ -35,5 +37,13 @@ describe('OrderSlipSection', () => {
     (window as { marketKasa?: unknown }).marketKasa = { print: { silent: async () => true } };
     render(<OrderSlipSection />);
     expect(screen.getByText(/pencere açmadan varsayılan yazıcıya basar/)).toBeInTheDocument();
+  });
+
+  it('cannot be turned on in the Android app, which has no way to print', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    render(<OrderSlipSection />);
+    expect(screen.getByText(/Android uygulaması yazıcıya basamaz/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Tüm siparişler')).toBeDisabled();
+    expect(screen.getByLabelText('Kapalı')).toBeChecked();
   });
 });

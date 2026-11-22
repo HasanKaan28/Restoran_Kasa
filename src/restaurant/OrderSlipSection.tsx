@@ -3,6 +3,7 @@ import { useSyncExternalStore, type JSX } from 'react';
 import { ChoiceGroup, type ChoiceOption } from '@/design';
 import { SettingsSection } from '@/settings/MarketSections';
 import type { SlipMode } from './orderSlip';
+import { printsSilently } from './printOrderSlips';
 import { chooseSlipMode, slipPrefsSnapshot, subscribeSlipPrefs } from './slipPrefs';
 
 const MODES: readonly ChoiceOption<SlipMode>[] = [
@@ -24,33 +25,37 @@ const MODE_TEXT: Record<SlipMode, string> = {
  */
 export function OrderSlipSection(): JSX.Element {
   const prefs = useSyncExternalStore(subscribeSlipPrefs, slipPrefsSnapshot);
+  const cannotPrint = !printsSilently() && Capacitor.isNativePlatform();
   return (
     <SettingsSection
       id="slip-heading"
       title="Sipariş adisyonu"
       description="Garson siparişi girince bu cihaz adisyon basar: ürünler ve adetler, giren kişi, masa, saat ve tarih. Yalnız yazıcının bağlı olduğu cihazda açın; açıldığı andan önceki siparişler basılmaz. Bu cihaza özeldir."
     >
-      <ChoiceGroup<SlipMode>
-        legend="Siparişte adisyon bas"
-        name="order-slip"
-        options={MODES}
-        value={prefs.mode}
-        onChange={(mode) => chooseSlipMode(mode, new Date())}
-        wrap
-      />
+      {/* The Android app has no way to print: the choice stays as it is. */}
+      <fieldset disabled={cannotPrint} className="min-w-0 disabled:opacity-60">
+        <ChoiceGroup<SlipMode>
+          legend="Siparişte adisyon bas"
+          name="order-slip"
+          options={MODES}
+          value={prefs.mode}
+          onChange={(mode) => chooseSlipMode(mode, new Date())}
+          wrap
+        />
+      </fieldset>
       <p className="text-sm text-text-2">{MODE_TEXT[prefs.mode]}</p>
-      <p className="text-sm text-muted">{printerNote()}</p>
+      <p className="text-sm text-muted">{printerNote(cannotPrint)}</p>
     </SettingsSection>
   );
 }
 
 /** How this device prints: on its own, through the browser's window, or not at all. */
-function printerNote(): string {
-  if ((window as { marketKasa?: { print?: unknown } }).marketKasa?.print) {
-    return 'Bu bilgisayar adisyonu pencere açmadan varsayılan yazıcıya basar; Windows’ta adisyon yazıcısını varsayılan yapın. Kâğıt genişliği Fiş ayarlarından gelir.';
-  }
-  if (Capacitor.isNativePlatform()) {
+function printerNote(cannotPrint: boolean): string {
+  if (cannotPrint) {
     return 'Android uygulaması yazıcıya basamaz; adisyonu yazıcının bağlı olduğu bilgisayarda açın.';
+  }
+  if (printsSilently()) {
+    return 'Bu bilgisayar adisyonu pencere açmadan varsayılan yazıcıya basar; Windows’ta adisyon yazıcısını varsayılan yapın. Kâğıt genişliği Fiş ayarlarından gelir.';
   }
   return 'Tarayıcıda her adisyonda yazdırma penceresi açılır. Pencere açmadan basmak için Windows uygulamasını kullanın. Kâğıt genişliği Fiş ayarlarından gelir.';
 }
