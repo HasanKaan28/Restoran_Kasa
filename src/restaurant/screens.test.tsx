@@ -618,6 +618,31 @@ describe('the tables in settings', () => {
     ]);
   });
 
+  it('numbers a new area from 1 and continues an old one, leaving every table as it was', async () => {
+    const data = createTestData();
+    for (let number = 1; number <= 10; number += 1) {
+      await createDiningTable(data.db, { name: String(number), area: 'Salon' }, new Date());
+    }
+    const before = (await listDiningTables(data.db)).map((one) => [one.id, one.name, one.area]);
+    const onDone = vi.fn();
+    await renderWithData(<TablesSection onDone={onDone} />, data);
+    await screen.findByRole('list', { name: 'Masa listesi' });
+
+    await userEvent.clear(screen.getByLabelText('Bölüm'));
+    await userEvent.type(screen.getByLabelText('Bölüm'), 'Dışarı');
+    await waitFor(() => expect(screen.getByLabelText('İlk no')).toHaveValue('1'));
+    expect(screen.getByLabelText('Son no')).toHaveValue('1');
+    await userEvent.click(screen.getByRole('button', { name: 'Masaları ekle' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith('1 masa eklendi.'));
+    await waitFor(() => expect(screen.getByLabelText('İlk no')).toHaveValue('2'));
+
+    const all = await listDiningTables(data.db);
+    expect(all.filter((one) => one.area === 'Dışarı').map((one) => one.name)).toEqual(['1']);
+    expect(all.filter((one) => one.area === 'Salon').map((one) => [one.id, one.name, one.area])).toEqual(
+      before,
+    );
+  });
+
   it('does not remove a table while its tab has lines to pay', async () => {
     const data = await restaurant();
     const [table] = await listDiningTables(data.db);

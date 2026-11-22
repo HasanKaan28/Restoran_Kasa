@@ -5,22 +5,29 @@ import { TableInUseError } from '@/data/errors';
 import { archiveDiningTable, createDiningTable, listDiningTables } from '@/data/restaurant';
 import { Button, TextField } from '@/design';
 import { SettingsSection } from '@/settings/MarketSections';
+import { suggestedRun } from './tableNumbering';
 import { tableTitle } from './tableTitle';
 
 const MAX_AT_ONCE = 50;
 
 /**
  * The restaurant's tables: a numbered run added at once in one area, each named its number with
- * the prefix typed before it ("B" and 1 to 5 give B1…B5), and a table taken out of use.
+ * the prefix typed before it ("B" and 1 to 5 give B1…B5), and a table taken out of use. The
+ * numbers offered start at 1 in each area and go on from the area's own last number.
  */
 export function TablesSection({ onDone }: { onDone(message: string): void }): JSX.Element {
   const { db } = useData();
   const tables = useLiveQuery(() => listDiningTables(db), [db]);
   const [area, setArea] = useState('Salon');
   const [prefix, setPrefix] = useState('');
-  const [from, setFrom] = useState('1');
-  const [to, setTo] = useState('10');
+  // What the person typed in the number fields; until then the area's suggestion shows.
+  const [typedFrom, setFrom] = useState<string>();
+  const [typedTo, setTo] = useState<string>();
   const [error, setError] = useState<string>();
+
+  const suggestion = suggestedRun(tables ?? [], area, prefix);
+  const from = typedFrom ?? String(suggestion.from);
+  const to = typedTo ?? String(suggestion.to);
 
   async function addRun(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,7 +44,12 @@ export function TablesSection({ onDone }: { onDone(message: string): void }): JS
       return;
     }
     setError(undefined);
-    const taken = new Set((tables ?? []).map((table) => table.name));
+    const areaKey = area.trim().toLocaleLowerCase('tr') || 'salon';
+    const taken = new Set(
+      (tables ?? [])
+        .filter((table) => table.area.trim().toLocaleLowerCase('tr') === areaKey)
+        .map((table) => table.name),
+    );
     let added = 0;
     for (let number = first; number <= last; number += 1) {
       const name = `${prefix.trim()}${number}`;
@@ -46,6 +58,8 @@ export function TablesSection({ onDone }: { onDone(message: string): void }): JS
         added += 1;
       }
     }
+    setFrom(undefined);
+    setTo(undefined);
     onDone(`${added} masa eklendi.`);
   }
 
