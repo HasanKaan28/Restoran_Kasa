@@ -6,6 +6,14 @@ import { createProduct } from '@/data/products';
 import { recordReturn } from '@/data/returns';
 import { recordSale } from '@/data/sales';
 import { voidSale } from '@/data/voids';
+import {
+  addTabItem,
+  openTab,
+  payTabItems,
+  remakeItem,
+  sendTab,
+  setComplimentary,
+} from '@/data/restaurant';
 import { makeTestDb } from '@/test/db';
 import { dailyReportCsv, loadDailyReport } from './dailyReport';
 
@@ -124,6 +132,60 @@ describe('loadDailyReport', () => {
     expect(report.complimentary.count).toBe(1);
     const empty = await loadDailyReport(db, { from: date(30), to: date(30) });
     expect(empty).toMatchObject({ total: 0, salesCount: 0, categories: [] });
+  });
+});
+
+describe('remakes (Tekrar) on a tab', () => {
+  const waiter = { deviceCode: 'K1' };
+
+  /** A tab with two teas sent, one of them remade; `treat` also gives the second tea away. */
+  async function paidTabWithRemake(treat: boolean) {
+    const { tea } = await setup();
+    const tab = await openTab(db, { ...waiter, label: 'Paket' }, day(29));
+    const first = await addTabItem(db, tab.id, tea, { qtyMilli: 1000 }, waiter, day(29));
+    const second = await addTabItem(db, tab.id, tea, { qtyMilli: 1000 }, waiter, day(29));
+    await sendTab(db, tab.id, day(29, 1));
+    const again = await remakeItem(
+      db,
+      { itemId: first.id, reason: 'Soğuk', ...waiter },
+      day(29, 2),
+    );
+    if (treat) {
+      await setComplimentary(db, second.id, true, day(29, 3));
+    }
+    await payTabItems(
+      db,
+      {
+        tabId: tab.id,
+        itemIds: [first.id, second.id, again.id],
+        payments: [{ method: 'cash', amount: treat ? 9000 : 18000 }],
+        ...waiter,
+      },
+      day(29, 4),
+    );
+  }
+
+  it('lists a remade line as Tekrar, apart from the treats and the sold rows', async () => {
+    await paidTabWithRemake(false);
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+    expect(report.remade).toEqual({
+      count: 1,
+      value: 9000,
+      rows: [expect.objectContaining({ name: 'Çay', qtyMilli: 1000, value: 9000 })],
+    });
+    expect(report.complimentary).toEqual({ count: 0, value: 0, rows: [] });
+    expect(report.categories[0]?.rows).toEqual([
+      expect.objectContaining({ name: 'Çay', qtyMilli: 2000, net: 18000 }),
+    ]);
+    expect(report.total).toBe(18000);
+  });
+
+  it('keeps both as treats when a real treat and a remake cannot be told apart', async () => {
+    await paidTabWithRemake(true);
+    const report = await loadDailyReport(db, { from: date(29), to: date(29) });
+    expect(report.remade.count).toBe(0);
+    expect(report.complimentary).toMatchObject({ count: 2, value: 18000 });
+    expect(report.total).toBe(9000);
   });
 });
 

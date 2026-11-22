@@ -18,7 +18,8 @@ const printedFormat = new Intl.DateTimeFormat('tr-TR', {
 /** The report as one clean page: products by category, totals, payments, treats and voids. */
 export function DailyReportSheet({ model }: { model: DailyReportModel }): JSX.Element {
   const { report } = model;
-  const empty = report.categories.length === 0 && report.complimentary.count === 0;
+  const empty =
+    report.categories.length === 0 && report.complimentary.count === 0 && report.remade.count === 0;
   return (
     <article aria-label="Günlük rapor" className="flex flex-col gap-4 text-[11pt]">
       <header className="flex flex-col gap-1">
@@ -78,6 +79,13 @@ export function DailyReportSheet({ model }: { model: DailyReportModel }): JSX.El
           value={formatAmount(report.complimentary.value)}
           note={`${report.complimentary.count} kalem, menü fiyatıyla`}
         />
+        {report.remade.count > 0 ? (
+          <Line
+            label="Tekrar"
+            value={formatAmount(report.remade.value)}
+            note={`${report.remade.count} kalem, menü fiyatıyla`}
+          />
+        ) : null}
         <Line
           label="İptal"
           value={formatAmount(report.voidTotal)}
@@ -103,11 +111,34 @@ export function DailyReportSheet({ model }: { model: DailyReportModel }): JSX.El
           İkram toplama dahil değildir. Tamamı indirimli (%100) satırlar da ikram sayılır.
         </p>
       ) : null}
+      {report.remade.count > 0 ? (
+        <p className="text-[10pt]">Tekrar hazırlananlar da toplama dahil değildir.</p>
+      ) : null}
       {report.complimentary.rows.length > 0 ? (
         <table className="w-full border-collapse text-left">
           <caption className="mb-1 text-left text-[12pt] font-semibold">İkram edilenler</caption>
           <tbody>
             {report.complimentary.rows.map((row) => (
+              <tr key={row.productId} className="border-b border-line">
+                <td className="py-1 pr-2 [overflow-wrap:anywhere]">{row.name}</td>
+                <td className="whitespace-nowrap px-2 py-1 text-right">
+                  {formatStock(row.qtyMilli, row.unit ?? 'piece')}
+                </td>
+                <td className="whitespace-nowrap py-1 pl-2 text-right">
+                  {formatAmount(row.value)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+      {report.remade.rows.length > 0 ? (
+        <table className="w-full border-collapse text-left">
+          <caption className="mb-1 text-left text-[12pt] font-semibold">
+            Tekrar hazırlananlar
+          </caption>
+          <tbody>
+            {report.remade.rows.map((row) => (
               <tr key={row.productId} className="border-b border-line">
                 <td className="py-1 pr-2 [overflow-wrap:anywhere]">{row.name}</td>
                 <td className="whitespace-nowrap px-2 py-1 text-right">

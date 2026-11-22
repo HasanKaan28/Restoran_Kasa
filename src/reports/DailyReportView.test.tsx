@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createCategory } from '@/data/categories';
 import { createProduct } from '@/data/products';
 import { recordReturn } from '@/data/returns';
+import { addTabItem, openTab, payTabItems, remakeItem, sendTab } from '@/data/restaurant';
 import { recordSale } from '@/data/sales';
 import { createTestData, renderWithData } from '@/test/renderWithData';
 import { DailyReportView } from './DailyReportView';
@@ -54,6 +55,32 @@ describe('DailyReportView', () => {
     expect(screen.getByText('Genel toplam')).toBeInTheDocument();
     expect(screen.getByText('İkram (1 kalem, menü fiyatıyla)')).toBeInTheDocument();
     expect(screen.getByText('Fiş sayısı')).toBeInTheDocument();
+  });
+
+  it('lists a remade line as Tekrar beside, not inside, the treats', async () => {
+    const { data, sale, tea } = await dayData();
+    const waiter = { deviceCode: 'K1' };
+    const tab = await openTab(data.db, { ...waiter, label: 'Paket' }, new Date());
+    const line = await addTabItem(data.db, tab.id, tea, { qtyMilli: 1000 }, waiter, new Date());
+    await sendTab(data.db, tab.id, new Date());
+    const again = await remakeItem(
+      data.db,
+      { itemId: line.id, reason: 'Soğuk', ...waiter },
+      new Date(),
+    );
+    await payTabItems(
+      data.db,
+      {
+        tabId: tab.id,
+        itemIds: [line.id, again.id],
+        payments: [{ method: 'cash', amount: 9000 }],
+        ...waiter,
+      },
+      new Date(),
+    );
+    await renderWithData(<DailyReportView from={sale.businessDate} to={sale.businessDate} />, data);
+    expect(await screen.findByText('Tekrar (1 kalem, menü fiyatıyla)')).toBeInTheDocument();
+    expect(screen.getByText('İkram (1 kalem, menü fiyatıyla)')).toBeInTheDocument();
   });
 
   it('prints the same report and exports it as CSV', async () => {
