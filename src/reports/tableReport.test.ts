@@ -55,6 +55,23 @@ describe('loadTableReport', () => {
     expect(report.total).toMatchObject({ tabCount: 4, saleCount: 5, revenue: 27001 });
   });
 
+  it('tells same-named tables apart by their area', async () => {
+    await db.diningTables.bulkAdd([
+      aTable({ id: 't1', name: '1', area: 'Salon' }),
+      aTable({ id: 't2', name: '1', area: 'Dışarı' }),
+    ]);
+    await db.tabs.bulkAdd([aTab({ id: 'a', tableId: 't1' }), aTab({ id: 'b', tableId: 't2' })]);
+    await db.sales.bulkAdd([aSale({ id: 's1', total: 4000 }), aSale({ id: 's2', total: 3000 })]);
+    await db.tabItems.bulkAdd([
+      anItem({ id: 'i1', tabId: 'a', paidSaleId: 's1' }),
+      anItem({ id: 'i2', tabId: 'b', paidSaleId: 's2' }),
+    ]);
+
+    const report = await loadTableReport(db, range);
+
+    expect(report.rows.map((row) => row.name)).toEqual(['Salon 1', 'Dışarı 1']);
+  });
+
   it('leaves out sales that were voided', async () => {
     await db.diningTables.add(aTable({ id: 't5', name: 'Masa 5' }));
     await db.tabs.add(aTab({ id: 'a', tableId: 't5' }));

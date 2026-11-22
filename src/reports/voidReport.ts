@@ -2,6 +2,7 @@ import type { MarketDb } from '@/data/db';
 import type { TabItemRecord } from '@/data/types';
 import { businessDate } from '@/domain/businessDate';
 import type { Kurus } from '@/domain/money';
+import { tableLabelIn } from '@/restaurant/tableTitle';
 
 export const UNKNOWN_PERSON = 'Bilinmiyor';
 
@@ -92,18 +93,24 @@ export async function loadVoidReport(
         reason: item.voidReason ?? '',
         staffName: person(item.voidedByStaffId),
         at,
-        amount: Math.round((item.unitPrice * item.qtyMilli) / 1000),
+        // A complimentary line (a treat, a remake) cost the house nothing to void.
+        amount: item.complimentary ? 0 : Math.round((item.unitPrice * item.qtyMilli) / 1000),
       })),
   );
 
-  const tableName = new Map(tables.map((table) => [table.id, table.name]));
+  const tableById = new Map(tables.map((table) => [table.id, table]));
   const cancelledTabs = byTimeDesc(
     cancelled
       .map((tab) => ({ tab, at: tab.closedAt ?? tab.updatedAt }))
       .filter(({ at }) => within(at))
       .map(({ tab, at }) => ({
         id: tab.id,
-        name: (tab.tableId === undefined ? tab.label : tableName.get(tab.tableId)) ?? 'Adisyon',
+        name:
+          (tab.tableId === undefined
+            ? tab.label
+            : tableById.has(tab.tableId)
+              ? tableLabelIn(tableById.get(tab.tableId)!, tables)
+              : undefined) ?? 'Adisyon',
         staffName: person(tab.closedByStaffId ?? tab.staffId),
         at,
       })),

@@ -1,5 +1,6 @@
 import type { MarketDb } from '@/data/db';
 import type { Kurus } from '@/domain/money';
+import { tableLabelIn } from '@/restaurant/tableTitle';
 
 export type TableReportRow = {
   key: string;
@@ -71,7 +72,7 @@ export async function loadTableReport(
     db.diningTables.toArray(),
   ]);
   const tabById = new Map(tabs.flatMap((tab) => (tab ? [[tab.id, tab] as const] : [])));
-  const tableName = new Map(tables.map((table) => [table.id, table.name]));
+  const tableById = new Map(tables.map((table) => [table.id, table]));
 
   type Bucket = {
     name: string;
@@ -105,9 +106,10 @@ export async function loadTableReport(
     if (!tab) add('other', 'Diğer', 'other', null, sale.total);
     else if (tab.tableId === undefined) add('takeaway', 'Paket', 'takeaway', tab.id, sale.total);
     else {
+      const table = tableById.get(tab.tableId);
       add(
         `table:${tab.tableId}`,
-        tableName.get(tab.tableId) ?? 'Bilinmeyen masa',
+        table ? tableLabelIn(table, tables) : 'Bilinmeyen masa',
         'table',
         tab.id,
         sale.total,

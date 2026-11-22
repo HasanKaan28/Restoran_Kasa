@@ -114,6 +114,53 @@ describe('loadVoidReport', () => {
     ]);
   });
 
+  it('tells same-named tables apart by their area on cancelled tabs', async () => {
+    await db.diningTables.bulkAdd([
+      aTable({ id: 't1', name: '1', area: 'Salon' }),
+      aTable({ id: 't2', name: '1', area: 'Dışarı' }),
+    ]);
+    await db.tabs.bulkAdd([
+      aTab({ id: 'a', tableId: 't1', status: 'cancelled', closedAt: day10 }),
+      aTab({ id: 'b', tableId: 't2', status: 'cancelled', closedAt: '2026-10-10T08:00:00.000Z' }),
+    ]);
+
+    const report = await loadVoidReport(db, range);
+
+    expect(report.cancelledTabs.map((row) => row.name)).toEqual(['Salon 1', 'Dışarı 1']);
+  });
+
+  it('counts a voided complimentary line as no money lost', async () => {
+    await db.tabs.add(aTab({ id: 'a', status: 'open' }));
+    await db.tabItems.bulkAdd([
+      anItem({
+        id: 'k1',
+        tabId: 'a',
+        status: 'void',
+        sentAt: day10,
+        voidedAt: day10,
+        complimentary: true,
+        unitPrice: 5000,
+        qtyMilli: 2000,
+      }),
+      anItem({
+        id: 'k2',
+        tabId: 'a',
+        status: 'void',
+        sentAt: day10,
+        voidedAt: '2026-10-10T08:00:00.000Z',
+        unitPrice: 5000,
+        qtyMilli: 2000,
+      }),
+    ]);
+
+    const report = await loadVoidReport(db, range);
+
+    expect(report.lineVoids.map((row) => [row.id, row.amount])).toEqual([
+      ['k1', 0],
+      ['k2', 10000],
+    ]);
+  });
+
   it('falls back to the opener for an old cancelled tab with no closer', async () => {
     await db.staff.add(aStaffer({ id: 'u1', name: 'Ayşe' }));
     await db.diningTables.add(aTable({ id: 't5', name: 'Masa 5' }));
